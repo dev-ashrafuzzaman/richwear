@@ -1,5 +1,5 @@
 import { ObjectId } from "mongodb";
-import { writeAuditLog } from "../database/auditLog.js";
+import { writeAuditLog } from "../utils/logger.js";
 
 /* ======================================================
    CREATE
