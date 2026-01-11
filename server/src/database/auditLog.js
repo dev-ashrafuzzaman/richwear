@@ -1,3 +1,5 @@
+import { nowDate } from "../utils/date.js";
+
 export const writeAuditLog = async ({
   db,
   userId,
@@ -12,6 +14,6 @@ export const writeAuditLog = async ({
     collection,
     documentId,
     payload,
-    createdAt: new Date(),
+    createdAt: nowDate(),
   });
 };
