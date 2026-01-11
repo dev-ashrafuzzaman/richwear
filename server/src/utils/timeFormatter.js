@@ -15,7 +15,7 @@ export const formatBD = (date) => {
   const minutes = String(bdDate.getMinutes()).padStart(2, "0");
 
   const ampm = hours >= 12 ? "PM" : "AM";
-  hours = hours % 12 || 12; // 0 → 12
+  hours = hours % 12 || 12; 
   hours = String(hours).padStart(2, "0");
 
   return `${day}-${month}-${year} ${hours}:${minutes} ${ampm}`;
