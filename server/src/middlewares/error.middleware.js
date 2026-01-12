@@ -1,4 +1,5 @@
-import { ENVIRONMENTS } from "../config/constants.js";
+import { ENVIRONMENTS } from "../config/constants/index.js";
+
 export const errorHandler = (err, req, res, next) => {
   const env = process.env.NODE_ENV || ENVIRONMENTS.DEVELOPMENT;
 
