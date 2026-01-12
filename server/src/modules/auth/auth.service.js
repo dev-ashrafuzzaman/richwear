@@ -58,7 +58,8 @@ export const login = async ({ email, password }) => {
       email: user.email,
       roleName: user.roleName,
       branchId: user.branchId,
-      permissions: user.permissions
+      permissions: user.permissions,
+      isSuperAdmin: user.isSuperAdmin || false
     }
   };
 };

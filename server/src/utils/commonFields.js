@@ -1,74 +1,89 @@
 import { nowDate } from "./date.js";
 
 /**
- * @param {Object} payload 
- * @param {Object} context 
+ * Build operation context safely
+ */
+const buildMeta = (prevMeta = {}, context = {}) => {
+  const {
+    ipAddress = null,
+    device = null,
+    source = "system"
+  } = context;
+
+  return {
+    ...prevMeta,
+    ipAddress,
+    device,
+    source
+  };
+};
+
+/* ======================================================
+   CREATE FIELDS
+====================================================== */
+/**
+ * @param {Object} payload - document fields
+ * @param {Object} context - request context
  */
 export const withCreateFields = (payload = {}, context = {}) => {
   const {
-    userId = null,     
-    branchId = null,    
-    tenantId = null,        
-    ipAddress = null,       
-    device = null,          
-    source = "system"       
+    userId = null,
+    branchId = null
   } = context;
 
   const now = nowDate();
+
   return {
     ...payload,
+
     status: "active",
     branchId,
-    tenantId,
+
     createdAt: now,
     updatedAt: now,
     createdBy: userId,
     updatedBy: userId,
-    meta: {
-      ipAddress,
-      device,
-      source
-    }
+
+    meta: buildMeta({}, context)
   };
 };
 
-export const withUpdateFields = (payload = {}, context = {}) => {
-  const {
-    userId = null,
-    ipAddress = null,
-    device = null,
-    source = "system"
-  } = context;
-
+/* ======================================================
+   UPDATE FIELDS
+====================================================== */
+/**
+ * @param {Object} payload - fields to update
+ * @param {Object} context - request context
+ * @param {Object} prevDoc - existing document (optional)
+ */
+export const withUpdateFields = (
+  payload = {},
+  context = {},
+  prevDoc = {}
+) => {
   return {
     ...payload,
+
     updatedAt: nowDate(),
-    updatedBy: userId,
-    meta: {
-      ipAddress,
-      device,
-      source
-    }
+    updatedBy: context.userId || null,
+
+    meta: buildMeta(prevDoc.meta, context)
   };
 };
 
-
-export const withDeleteFields = (context = {}) => {
-  const {
-    userId = null,
-    ipAddress = null,
-    device = null,
-    source = "system"
-  } = context;
-
+/* ======================================================
+   DELETE FIELDS (SOFT DELETE)
+====================================================== */
+export const withDeleteFields = (
+  context = {},
+  prevDoc = {}
+) => {
   return {
     status: "deleted",
+
     updatedAt: nowDate(),
-    updatedBy: userId,
-    meta: {
-      ipAddress,
-      device,
-      source
-    }
+    updatedBy: context.userId || null,
+
+    meta: buildMeta(prevDoc.meta, context)
   };
 };
