@@ -2,8 +2,8 @@ import { Router } from "express";
 import authRoutes from "./src/modules/auth/auth.routes.js";
 import roleRoutes from "./src/modules/roles/role.routes.js";
 import userRoutes from "./src/modules/users/user.routes.js";
-import productRoutes from "./src/modules/products/product.routes.js";
-import saleRoutes from "./src/modules/sales/sale.routes.js";
+// import productRoutes from "./src/modules/products/product.routes.js";
+// import saleRoutes from "./src/modules/sales/sale.routes.js";
 
 import { authenticate } from "./src/middlewares/auth.middleware.js";
 
@@ -14,7 +14,7 @@ router.use("/auth", authRoutes);
 router.use(authenticate);
 router.use("/roles", roleRoutes);
 router.use("/users", userRoutes);
-router.use("/products", productRoutes);
-router.use("/sales", saleRoutes);
+// router.use("/products", productRoutes);
+// router.use("/sales", saleRoutes);
 
 export default router;

@@ -1,16 +1,29 @@
 import { AppError } from "../utils/AppError.js";
 
-export const permit = (...permissions) => {
+export const permit = (...requiredPermissions) => {
   return (req, res, next) => {
-    if (!req.user?.permissions)
-      throw new AppError("Unauthorized", 401);
+    const user = req.user;
 
-    const allowed = permissions.every(p =>
-      req.user.permissions.includes(p)
+    if (!user) {
+      throw new AppError("Unauthorized", 401);
+    }
+
+    // 🔥 SUPER ADMIN → FULL ACCESS
+    if (user.isSuperAdmin || user.permissions?.includes("*")) {
+      return next();
+    }
+
+    if (!user.permissions) {
+      throw new AppError("Permission denied", 403);
+    }
+
+    const allowed = requiredPermissions.every((p) =>
+      user.permissions.includes(p)
     );
 
-    if (!allowed)
+    if (!allowed) {
       throw new AppError("Permission denied", 403);
+    }
 
     next();
   };
