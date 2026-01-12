@@ -1,12 +1,4 @@
-/**
- * Global Application Constants
- * Used across controllers, services, validations, middleware
- * Keep this file PURE (no imports from other files)
- */
 
-/* ================================
-   ENVIRONMENTS
-================================ */
 export const ENVIRONMENTS = Object.freeze({
   DEVELOPMENT: "development",
   PRODUCTION: "production",

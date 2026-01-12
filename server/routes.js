@@ -12,7 +12,7 @@ const router = Router();
 router.use("/auth", authRoutes);
 
 router.use(authenticate);
-router.use("/roles", roleRoutes);
+router.use("/roles", roleRoutes); 
 router.use("/users", userRoutes);
 // router.use("/products", productRoutes);
 // router.use("/sales", saleRoutes);

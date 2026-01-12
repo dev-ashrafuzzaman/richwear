@@ -3,6 +3,8 @@ import jwt from "jsonwebtoken";
 import { ObjectId } from "mongodb";
 import { getDB } from "../../config/db.js";
 import { AppError } from "../../utils/AppError.js";
+console.log("JWT_SECRET =", process.env.JWT_SECRET);
+console.log("JWT_REFRESH_SECRET =", process.env.JWT_REFRESH_SECRET);
 
 const generateAccessToken = (user) =>
   jwt.sign(
