@@ -1,14 +1,24 @@
 import Joi from "joi";
-import { ROLES } from "../../config/constants.js";
-
-export const registerSchema = Joi.object({
-  name: Joi.string().min(3).required(),
-  email: Joi.string().email().required(),
-  password: Joi.string().min(8).required(),
-  role: Joi.string().valid(...Object.values(ROLES)).optional()
-});
 
 export const loginSchema = Joi.object({
   email: Joi.string().email().required(),
   password: Joi.string().required()
+});
+
+export const refreshTokenSchema = Joi.object({
+  refreshToken: Joi.string().required()
+});
+
+export const changePasswordSchema = Joi.object({
+  oldPassword: Joi.string().required(),
+  newPassword: Joi.string()
+    .min(8)
+    .max(16)
+    .pattern(
+      /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,16}$/
+    )
+    .message(
+      "Password must be 8-16 characters long and include at least 1 letter, 1 number, and 1 special character"
+    )
+    .required()
 });

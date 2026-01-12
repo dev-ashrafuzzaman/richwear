@@ -1,12 +1,34 @@
 import { Router } from "express";
-import { login, register, refreshToken } from "./auth.controller.js";
-import { validate } from "../../middlewares/validate.middleware.js";
-import { loginSchema, registerSchema } from "./auth.validation.js";
+import * as controller from "./auth.controller.js";
+import { validate } from "../../validations/validate.middleware.js";
+import {
+  loginSchema,
+  refreshTokenSchema,
+  changePasswordSchema
+} from "./auth.validation.js";
+import { authenticate } from "../../middlewares/auth.middleware.js";
 
 const router = Router();
 
-router.post("/login", validate(loginSchema), login);
-router.post("/register", validate(registerSchema), register);
-router.post("/refresh-token", refreshToken);
+router.post("/login", validate(loginSchema), controller.login);
+
+router.post(
+  "/refresh-token",
+  validate(refreshTokenSchema),
+  controller.refreshToken
+);
+
+router.post(
+  "/logout",
+  authenticate,
+  controller.logout
+);
+
+router.post(
+  "/change-password",
+  authenticate,
+  validate(changePasswordSchema),
+  controller.changePassword
+);
 
 export default router;
