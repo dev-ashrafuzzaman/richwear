@@ -1,23 +1,16 @@
 import { AppError } from "../utils/AppError.js";
 
-/**
- *
- * @param  {...string} requiredPermissions
- *
- */
-export const permit = (...requiredPermissions) => {
+export const permit = (...permissions) => {
   return (req, res, next) => {
-    if (!req.user?.permissions) {
+    if (!req.user?.permissions)
       throw new AppError("Unauthorized", 401);
-    }
 
-    const hasPermission = requiredPermissions.every((p) =>
+    const allowed = permissions.every(p =>
       req.user.permissions.includes(p)
     );
 
-    if (!hasPermission) {
+    if (!allowed)
       throw new AppError("Permission denied", 403);
-    }
 
     next();
   };

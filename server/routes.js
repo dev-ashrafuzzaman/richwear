@@ -1,16 +1,20 @@
-// GET /customers?search=rahim&status=active&page=1&limit=10
-// GET /customers?search=rahim
-// GET /customers?status=active
-// GET /customers?page=2&limit=20
-// GET /customers?sortBy=name&sort=asc
+import { Router } from "express";
+import authRoutes from "./src/modules/auth/auth.routes.js";
+import roleRoutes from "./src/modules/roles/role.routes.js";
+import userRoutes from "./src/modules/users/user.routes.js";
+import productRoutes from "./src/modules/products/product.routes.js";
+import saleRoutes from "./src/modules/sales/sale.routes.js";
 
+import { authenticate } from "./src/middlewares/auth.middleware.js";
 
-// router.get(
-//   "/",
-//   getAll({
-//     collection: COLLECTIONS.CUSTOMERS,
-//     searchableFields: ["name", "phone"],
-//     filterableFields: ["status"],
-//     projection: { name: 1, phone: 1, dueAmount: 1 }
-//   })
-// );
+const router = Router();
+
+router.use("/auth", authRoutes);
+
+router.use(authenticate);
+router.use("/roles", roleRoutes);
+router.use("/users", userRoutes);
+router.use("/products", productRoutes);
+router.use("/sales", saleRoutes);
+
+export default router;

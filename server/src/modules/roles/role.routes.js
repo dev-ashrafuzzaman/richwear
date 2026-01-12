@@ -1,51 +1,70 @@
 import { Router } from "express";
-import * as roleController from "./role.controller.js";
-import { authenticate } from "../../middlewares/auth.middleware.js";
-import { permit } from "../../middlewares/permission.middleware.js";
-import { validate } from "../../middlewares/validate.middleware.js";
+import {
+  createOne,
+  getAll,
+  getOneById,
+  updateOne,
+  deleteOne
+} from "../../controllers/base.controller.js";
+
 import {
   createRoleSchema,
   updateRoleSchema
 } from "./role.validation.js";
+
+import { permit } from "../../middlewares/permission.middleware.js";
 import { PERMISSIONS } from "../../config/permissions.js";
 
 const router = Router();
+const COLLECTION = "roles";
+
 
 router.post(
   "/",
-  authenticate,
   permit(PERMISSIONS.ROLE_MANAGE),
-  validate(createRoleSchema),
-  roleController.create
+  createOne({
+    collection: COLLECTION,
+    schema: createRoleSchema
+  })
 );
+
 
 router.get(
   "/",
-  authenticate,
   permit(PERMISSIONS.ROLE_MANAGE),
-  roleController.list
+  getAll({
+    collection: COLLECTION,
+    searchableFields: ["name"],
+    filterableFields: ["status"]
+  })
 );
+
 
 router.get(
   "/:id",
-  authenticate,
   permit(PERMISSIONS.ROLE_MANAGE),
-  roleController.getById
+  getOneById({
+    collection: COLLECTION
+  })
 );
+
 
 router.put(
   "/:id",
-  authenticate,
   permit(PERMISSIONS.ROLE_MANAGE),
-  validate(updateRoleSchema),
-  roleController.update
+  updateOne({
+    collection: COLLECTION,
+    schema: updateRoleSchema
+  })
 );
+
 
 router.delete(
   "/:id",
-  authenticate,
   permit(PERMISSIONS.ROLE_MANAGE),
-  roleController.remove
+  deleteOne({
+    collection: COLLECTION
+  })
 );
 
 export default router;
