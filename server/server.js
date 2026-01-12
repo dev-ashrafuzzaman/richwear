@@ -1,8 +1,8 @@
 import http from "http";
-import app from "./app.js";
-import { connectDB, getDB } from "./config/db.js";
-import { createIndexes } from "./database/indexes.js";
-import "./config/env.js";
+import app from "./src/app.js";
+import { connectDB, getDB } from "./src/config/db.js";
+import { createIndexes } from "./src/database/indexes.js";
+import "./src/config/env.js";
 
 const PORT = process.env.PORT || 5000;
 
