@@ -2,11 +2,13 @@ import { nowDate } from "./date.js";
 
 export const writeAuditLog = async ({
   db,
-  userId,
+  userId = null,
   action,
-  collection,
-  documentId,
+  collection = "auth",
+  documentId = null,
   payload = {},
+  ipAddress = null,
+  userAgent = null
 }) => {
   await db.collection("audit_logs").insertOne({
     userId,
@@ -14,6 +16,8 @@ export const writeAuditLog = async ({
     collection,
     documentId,
     payload,
-    createdAt: nowDate(),
+    ipAddress,
+    userAgent,
+    createdAt: nowDate()
   });
 };

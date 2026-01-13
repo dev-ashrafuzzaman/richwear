@@ -3,37 +3,56 @@ import jwt from "jsonwebtoken";
 import { ObjectId } from "mongodb";
 import { getDB } from "../../config/db.js";
 import { AppError } from "../../utils/AppError.js";
+import { writeAuditLog } from "../../utils/logger.js";
+import { AUDIT_ACTIONS } from "../../config/constants/audit.constants.js";
 
 const generateAccessToken = (user) =>
   jwt.sign(
     {
       id: user._id,
       branchId: user.branchId,
-      permissions: user.permissions
+      permissions: user.permissions,
     },
     process.env.JWT_SECRET,
     { expiresIn: "15m" }
   );
 
 const generateRefreshToken = (user) =>
-  jwt.sign(
-    { id: user._id },
-    process.env.JWT_REFRESH_SECRET,
-    { expiresIn: "7d" }
-  );
-
+  jwt.sign({ id: user._id }, process.env.JWT_REFRESH_SECRET, {
+    expiresIn: "7d",
+  });
 
 export const login = async ({ email, password }) => {
   const db = getDB();
 
   const user = await db.collection("users").findOne({ email });
-  if (!user) throw new AppError("Invalid email or password", 401);
+
+  if (!user) {
+    await writeAuditLog({
+      db,
+      action: AUDIT_ACTIONS.LOGIN_FAILED,
+      payload: { email },
+      ipAddress: req.ip,
+      userAgent: req.headers["user-agent"],
+    });
+    throw new AppError("Invalid email or password", 401);
+  }
+
   if (user.status !== "active")
     throw new AppError("User account inactive", 403);
 
   const match = await bcrypt.compare(password, user.password);
-  if (!match) throw new AppError("Invalid email or password", 401);
-
+  if (!match) {
+    await writeAuditLog({
+      db,
+      userId: user._id,
+      action: AUDIT_ACTIONS.LOGIN_FAILED,
+      payload: { email },
+      ipAddress: req.ip,
+      userAgent: req.headers["user-agent"],
+    });
+    throw new AppError("Invalid email or password", 401);
+  }
   const accessToken = generateAccessToken(user);
   const refreshToken = generateRefreshToken(user);
 
@@ -44,10 +63,20 @@ export const login = async ({ email, password }) => {
     {
       $set: {
         refreshToken: hashedRefresh,
-        updatedAt: new Date()
-      }
+        updatedAt: new Date(),
+      },
     }
   );
+
+  await writeAuditLog({
+    db,
+    userId: user._id,
+    action: AUDIT_ACTIONS.LOGIN,
+    documentId: user._id,
+    payload: { email },
+    ipAddress: req.ip,
+    userAgent: req.headers["user-agent"],
+  });
 
   return {
     accessToken,
@@ -59,8 +88,8 @@ export const login = async ({ email, password }) => {
       roleName: user.roleName,
       branchId: user.branchId,
       permissions: user.permissions,
-      isSuperAdmin: user.isSuperAdmin || false
-    }
+      isSuperAdmin: user.isSuperAdmin || false,
+    },
   };
 };
 
@@ -75,7 +104,7 @@ export const refreshToken = async (token) => {
   }
 
   const user = await db.collection("users").findOne({
-    _id: new ObjectId(decoded.id)
+    _id: new ObjectId(decoded.id),
   });
 
   if (!user || !user.refreshToken) {
@@ -91,18 +120,24 @@ export const refreshToken = async (token) => {
   return { accessToken: newAccessToken };
 };
 
-
 export const logout = async (userId) => {
   const db = getDB();
 
-  await db.collection("users").updateOne(
-    { _id: userId },
-    { $unset: { refreshToken: "" } }
-  );
+  await db
+    .collection("users")
+    .updateOne({ _id: userId }, { $unset: { refreshToken: "" } });
+
+  await writeAuditLog({
+    db,
+    userId,
+    action: AUDIT_ACTIONS.LOGOUT,
+    documentId: userId,
+    ipAddress: req.ip,
+    userAgent: req.headers["user-agent"],
+  });
 
   return true;
 };
-
 
 export const changePassword = async (userId, payload) => {
   const db = getDB();
@@ -121,11 +156,20 @@ export const changePassword = async (userId, payload) => {
     {
       $set: {
         password: hashed,
-        updatedAt: new Date()
+        updatedAt: new Date(),
       },
-      $unset: { refreshToken: "" } 
+      $unset: { refreshToken: "" },
     }
   );
+
+  await writeAuditLog({
+    db,
+    userId,
+    action: AUDIT_ACTIONS.CHANGE_PASSWORD,
+    documentId: userId,
+    ipAddress: req.ip,
+    userAgent: req.headers["user-agent"],
+  });
 
   return true;
 };
