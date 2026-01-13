@@ -4,7 +4,7 @@ import { ObjectId } from "mongodb";
 import { getDB } from "../../config/db.js";
 import { AppError } from "../../utils/AppError.js";
 import { writeAuditLog } from "../../utils/logger.js";
-import { AUDIT_ACTIONS } from "../../config/constants/audit.constants.js";
+import { AUDIT_ACTIONS, LOGIN_SECURITY } from "../../config/constants/index.js";
 
 const generateAccessToken = (user) =>
   jwt.sign(
@@ -22,7 +22,7 @@ const generateRefreshToken = (user) =>
     expiresIn: "7d",
   });
 
-export const login = async ({ email, password }) => {
+export const login = async ({ email, password }, req) => {
   const db = getDB();
 
   const user = await db.collection("users").findOne({ email });
@@ -41,8 +41,26 @@ export const login = async ({ email, password }) => {
   if (user.status !== "active")
     throw new AppError("User account inactive", 403);
 
+  if (user.lockUntil && user.lockUntil > new Date()) {
+    throw new AppError("Account temporarily locked. Try again later.", 423);
+  }
+
   const match = await bcrypt.compare(password, user.password);
   if (!match) {
+    const attempts = (user.loginAttempts || 0) + 1;
+
+    const update = {
+      loginAttempts: attempts,
+    };
+
+    // 🔐 LOCK ACCOUNT
+    if (attempts >= LOGIN_SECURITY.MAX_ATTEMPTS) {
+      update.lockUntil = new Date(
+        Date.now() + LOGIN_SECURITY.LOCK_MINUTES * 60 * 1000
+      );
+    }
+
+    await db.collection("users").updateOne({ _id: user._id }, { $set: update });
     await writeAuditLog({
       db,
       userId: user._id,
@@ -62,6 +80,8 @@ export const login = async ({ email, password }) => {
     { _id: user._id },
     {
       $set: {
+        loginAttempts: 0,
+        lockUntil: null,
         refreshToken: hashedRefresh,
         updatedAt: new Date(),
       },
@@ -120,7 +140,7 @@ export const refreshToken = async (token) => {
   return { accessToken: newAccessToken };
 };
 
-export const logout = async (userId) => {
+export const logout = async (userId, req) => {
   const db = getDB();
 
   await db
@@ -139,7 +159,7 @@ export const logout = async (userId) => {
   return true;
 };
 
-export const changePassword = async (userId, payload) => {
+export const changePassword = async (userId, payload, req) => {
   const db = getDB();
   const { oldPassword, newPassword } = payload;
 

@@ -2,7 +2,6 @@ export const AUDIT_ACTIONS = Object.freeze({
   CREATE: "create",
   UPDATE: "update",
   DELETE: "delete",
-
   LOGIN: "login",
   LOGIN_FAILED: "login_failed",
   LOGOUT: "logout",

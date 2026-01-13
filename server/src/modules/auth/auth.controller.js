@@ -3,10 +3,10 @@ import { successResponse } from "../../utils/apiResponse.js";
 
 export const login = async (req, res, next) => {
   try {
-    const data = await authService.login(req.body);
+    const data = await authService.login(req.body, req);
     successResponse(res, {
       message: "Login successful",
-      data
+      data,
     });
   } catch (err) {
     next(err);
@@ -20,7 +20,7 @@ export const refreshToken = async (req, res, next) => {
 
     successResponse(res, {
       message: "Token refreshed",
-      data
+      data,
     });
   } catch (err) {
     next(err);
@@ -29,9 +29,9 @@ export const refreshToken = async (req, res, next) => {
 
 export const logout = async (req, res, next) => {
   try {
-    await authService.logout(req.user.id);
+    await authService.logout(req.user.id, req);
     successResponse(res, {
-      message: "Logged out successfully"
+      message: "Logged out successfully",
     });
   } catch (err) {
     next(err);
@@ -40,9 +40,9 @@ export const logout = async (req, res, next) => {
 
 export const changePassword = async (req, res, next) => {
   try {
-    await authService.changePassword(req.user.id, req.body);
+    await authService.changePassword(req.user.id, req.body, req);
     successResponse(res, {
-      message: "Password changed successfully"
+      message: "Password changed successfully",
     });
   } catch (err) {
     next(err);

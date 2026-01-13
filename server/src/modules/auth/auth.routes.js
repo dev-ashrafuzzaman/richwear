@@ -4,13 +4,14 @@ import { validate } from "../../validations/validate.middleware.js";
 import {
   loginSchema,
   refreshTokenSchema,
-  changePasswordSchema
+  changePasswordSchema,
 } from "./auth.validation.js";
 import { authenticate } from "../../middlewares/auth.middleware.js";
+import { loginRateLimit } from "../../middlewares/loginRateLimit.middleware.js";
 
 const router = Router();
 
-router.post("/login", validate(loginSchema), controller.login);
+router.post("/login", loginRateLimit, validate(loginSchema), controller.login);
 
 router.post(
   "/refresh-token",
@@ -18,11 +19,7 @@ router.post(
   controller.refreshToken
 );
 
-router.post(
-  "/logout",
-  authenticate,
-  controller.logout
-);
+router.post("/logout", authenticate, controller.logout);
 
 router.post(
   "/change-password",
