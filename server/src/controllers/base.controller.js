@@ -1,9 +1,6 @@
 import { ObjectId } from "mongodb";
 import { writeAuditLog } from "../utils/logger.js";
 
-/* ======================================================
-   CREATE
-====================================================== */
 export const createOne = ({
   collection,
   schema
@@ -11,7 +8,6 @@ export const createOne = ({
   return async (req, res, next) => {
     try {
       const db = req.app.locals.db;
-
       const { error, value } = schema.validate(req.body);
       if (error) throw error;
 
@@ -23,10 +19,10 @@ export const createOne = ({
 
       const result = await db.collection(collection).insertOne(doc);
 
-      // Audit log
+
       await writeAuditLog({
         db,
-        userId: req.user?._id,
+        userId: req.user?.id,
         action: "CREATE",
         collection,
         documentId: result.insertedId,
@@ -43,9 +39,7 @@ export const createOne = ({
   };
 };
 
-/* ======================================================
-   GET ALL (Pagination + Filter + Search + Sort)
-====================================================== */
+
 export const getAll = ({
   collection,
   searchableFields = [],
@@ -107,9 +101,7 @@ export const getAll = ({
   };
 };
 
-/* ======================================================
-   GET ONE
-====================================================== */
+
 export const getOneById = ({ collection, projection = {} }) => {
   return async (req, res, next) => {
     try {
@@ -136,9 +128,7 @@ export const getOneById = ({ collection, projection = {} }) => {
   };
 };
 
-/* ======================================================
-   UPDATE
-====================================================== */
+
 export const updateOne = ({
   collection,
   schema
@@ -171,7 +161,7 @@ export const updateOne = ({
 
       await writeAuditLog({
         db,
-        userId: req.user?._id,
+        userId: req.user?.id,
         action: "UPDATE",
         collection,
         documentId: id,
@@ -185,9 +175,7 @@ export const updateOne = ({
   };
 };
 
-/* ======================================================
-   DELETE
-====================================================== */
+
 export const deleteOne = ({ collection }) => {
   return async (req, res, next) => {
     try {
@@ -208,7 +196,7 @@ export const deleteOne = ({ collection }) => {
 
       await writeAuditLog({
         db,
-        userId: req.user?._id,
+        userId: req.user?.id,
         action: "DELETE",
         collection,
         documentId: id

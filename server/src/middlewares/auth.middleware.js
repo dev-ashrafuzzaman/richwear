@@ -8,7 +8,6 @@ export const authenticate = (req, res, next) => {
   if (!authHeader || !authHeader.startsWith(`${AUTH.TOKEN_TYPE} `)) {
     return next(new AppError("Unauthorized", 401));
   }
-console.log("ll",process.env.JWT_SECRET)
   const token = authHeader.split(" ")[1];
 
   try {
