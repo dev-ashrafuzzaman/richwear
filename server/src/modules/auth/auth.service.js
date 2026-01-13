@@ -7,6 +7,7 @@ import { writeAuditLog } from "../../utils/logger.js";
 import { AUDIT_ACTIONS, LOGIN_SECURITY } from "../../config/constants/index.js";
 
 const generateAccessToken = (user) =>
+  
   jwt.sign(
     {
       id: user._id,
@@ -14,7 +15,7 @@ const generateAccessToken = (user) =>
       permissions: user.permissions,
     },
     process.env.JWT_SECRET,
-    { expiresIn: "15m" }
+    { expiresIn: "365d" }
   );
 
 const generateRefreshToken = (user) =>

@@ -5,11 +5,7 @@ export const ACCOUNT_STATUS = Object.freeze({
   DELETED: "deleted"
 });
 
-/**
- * ⚠️ NOTE:
- * Role list optional.
- * Real authority = permissions (DB driven)
- */
+
 export const SYSTEM_ROLES = Object.freeze({
   SUPER_ADMIN: "super_admin"
 });

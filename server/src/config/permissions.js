@@ -1,4 +1,6 @@
 export const PERMISSIONS = Object.freeze({
+  BRANCH_VIEW: "branch_view",
+  BRANCH_MANAGE: "branch_manage",
   // Products
   PRODUCT_VIEW: "product:view",
   PRODUCT_CREATE: "product:create",
@@ -18,5 +20,5 @@ export const PERMISSIONS = Object.freeze({
 
   // User & Role
   USER_MANAGE: "user:manage",
-  ROLE_MANAGE: "role:manage"
+  ROLE_MANAGE: "role:manage",
 });

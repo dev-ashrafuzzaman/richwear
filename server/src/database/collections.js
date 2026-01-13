@@ -1,4 +1,5 @@
 export const COLLECTIONS = {
+  BRANCHES: "branches",
   PRODUCTS: "products",
   VARIANTS: "product_variants",
   STOCKS: "stocks",

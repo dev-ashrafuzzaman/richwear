@@ -19,9 +19,10 @@ import {
 
 import { permit } from "../../middlewares/permission.middleware.js";
 import { PERMISSIONS } from "../../config/permissions.js";
+import { COLLECTIONS } from "../../database/collections.js";
 
 const router = Router();
-const COLLECTION = "users";
+const COLLECTION = COLLECTIONS.USERS;
 
 
 router.post(
