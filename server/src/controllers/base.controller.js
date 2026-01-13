@@ -1,10 +1,24 @@
 import { ObjectId } from "mongodb";
 import { writeAuditLog } from "../utils/logger.js";
+import { formatBD } from "../utils/date.js";
 
-export const createOne = ({
-  collection,
-  schema
-}) => {
+const formatDocuments = (data, dateFields = ["createdAt", "updatedAt"]) => {
+  if (!data) return data;
+
+  return data.map((doc) => {
+    const formatted = { ...doc };
+
+    dateFields.forEach((field) => {
+      if (formatted[field]) {
+        formatted[field] = formatBD(formatted[field]);
+      }
+    });
+
+    return formatted;
+  });
+};
+
+export const createOne = ({ collection, schema }) => {
   return async (req, res, next) => {
     try {
       const db = req.app.locals.db;
@@ -14,11 +28,10 @@ export const createOne = ({
       const doc = {
         ...value,
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       };
 
       const result = await db.collection(collection).insertOne(doc);
-
 
       await writeAuditLog({
         db,
@@ -26,12 +39,12 @@ export const createOne = ({
         action: "CREATE",
         collection,
         documentId: result.insertedId,
-        payload: doc
+        payload: doc,
       });
 
       res.status(201).json({
         success: true,
-        data: { _id: result.insertedId }
+        data: { _id: result.insertedId },
       });
     } catch (err) {
       next(err);
@@ -39,12 +52,12 @@ export const createOne = ({
   };
 };
 
-
 export const getAll = ({
   collection,
   searchableFields = [],
   filterableFields = [],
-  projection = {}
+  projection = {},
+  dateFields = ["createdAt", "updatedAt"],
 }) => {
   return async (req, res, next) => {
     try {
@@ -61,7 +74,7 @@ export const getAll = ({
 
       /* ---------- Filtering ---------- */
       const filter = {};
-      filterableFields.forEach(field => {
+      filterableFields.forEach((field) => {
         if (req.query[field]) {
           filter[field] = req.query[field];
         }
@@ -69,8 +82,8 @@ export const getAll = ({
 
       /* ---------- Searching ---------- */
       if (req.query.search && searchableFields.length) {
-        filter.$or = searchableFields.map(field => ({
-          [field]: { $regex: req.query.search, $options: "i" }
+        filter.$or = searchableFields.map((field) => ({
+          [field]: { $regex: req.query.search, $options: "i" },
         }));
       }
 
@@ -91,16 +104,15 @@ export const getAll = ({
           total,
           page,
           limit,
-          totalPages: Math.ceil(total / limit)
+          totalPages: Math.ceil(total / limit),
         },
-        data
+        data: formatDocuments(data, dateFields),
       });
     } catch (err) {
       next(err);
     }
   };
 };
-
 
 export const getOneById = ({ collection, projection = {} }) => {
   return async (req, res, next) => {
@@ -112,10 +124,9 @@ export const getOneById = ({ collection, projection = {} }) => {
         return res.status(400).json({ success: false, message: "Invalid ID" });
       }
 
-      const data = await db.collection(collection).findOne(
-        { _id: new ObjectId(id) },
-        { projection }
-      );
+      const data = await db
+        .collection(collection)
+        .findOne({ _id: new ObjectId(id) }, { projection });
 
       if (!data) {
         return res.status(404).json({ success: false, message: "Not found" });
@@ -128,11 +139,7 @@ export const getOneById = ({ collection, projection = {} }) => {
   };
 };
 
-
-export const updateOne = ({
-  collection,
-  schema
-}) => {
+export const updateOne = ({ collection, schema }) => {
   return async (req, res, next) => {
     try {
       const db = req.app.locals.db;
@@ -150,8 +157,8 @@ export const updateOne = ({
         {
           $set: {
             ...value,
-            updatedAt: new Date()
-          }
+            updatedAt: new Date(),
+          },
         }
       );
 
@@ -165,7 +172,7 @@ export const updateOne = ({
         action: "UPDATE",
         collection,
         documentId: id,
-        payload: value
+        payload: value,
       });
 
       res.json({ success: true, message: "Updated successfully" });
@@ -174,7 +181,6 @@ export const updateOne = ({
     }
   };
 };
-
 
 export const deleteOne = ({ collection }) => {
   return async (req, res, next) => {
@@ -187,7 +193,7 @@ export const deleteOne = ({ collection }) => {
       }
 
       const result = await db.collection(collection).deleteOne({
-        _id: new ObjectId(id)
+        _id: new ObjectId(id),
       });
 
       if (!result.deletedCount) {
@@ -199,7 +205,7 @@ export const deleteOne = ({ collection }) => {
         userId: req.user?.id,
         action: "DELETE",
         collection,
-        documentId: id
+        documentId: id,
       });
 
       res.json({ success: true, message: "Deleted successfully" });

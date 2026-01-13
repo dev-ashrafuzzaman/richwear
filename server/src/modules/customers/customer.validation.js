@@ -1,0 +1,17 @@
+import Joi from "joi";
+
+export const createCustomerSchema = Joi.object({
+  name: Joi.string().trim().min(2).max(100).required(),
+  phone: Joi.string().trim().required(),
+  email: Joi.string().email().optional(),
+  address: Joi.string().trim().optional(),
+  status: Joi.string().valid("active", "inactive").default("active")
+});
+
+export const updateCustomerSchema = Joi.object({
+  name: Joi.string().trim().optional(),
+  phone: Joi.string().trim().optional(),
+  email: Joi.string().email().optional(),
+  address: Joi.string().trim().optional(),
+  status: Joi.string().valid("active", "inactive").optional()
+}).min(1);

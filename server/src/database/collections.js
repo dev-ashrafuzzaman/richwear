@@ -1,12 +1,13 @@
 export const COLLECTIONS = {
+  USERS: "users",
   BRANCHES: "branches",
-  PRODUCTS: "products",
-  VARIANTS: "product_variants",
-  STOCKS: "stocks",
-  PURCHASES: "purchases",
-  SALES: "sales",
   CUSTOMERS: "customers",
+  CUSTOMER_BRANCHES: "customer_branches",
   SUPPLIERS: "suppliers",
+  VARIANTS: "product_variants",
+  PRODUCTS: "products",
+  PURCHASES: "purchases",
+  STOCKS: "stocks",
+  SALES: "sales",
   TRANSACTIONS: "transactions",
-  USERS: "users"
 };
