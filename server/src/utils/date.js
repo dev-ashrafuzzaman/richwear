@@ -6,9 +6,7 @@ export const nowDate = () => {
 
 export const formatBD = (date) => {
   if (!date) return null;
-
   const d = new Date(date);
-
   const utcMs = d.getTime() + d.getTimezoneOffset() * 60000;
 
   const bdDate = new Date(utcMs + 6 * 60 * 60000);
