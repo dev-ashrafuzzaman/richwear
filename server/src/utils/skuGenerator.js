@@ -13,8 +13,7 @@ export const generateSKU = async ({
     { $inc: { seq: 1 } },
     { upsert: true, returnDocument: "after" }
   );
-
-  const seq = String(counter.value.seq).padStart(5, "0");
+  const seq = String(counter?.seq).padStart(5, "0");
 
   return [...prefixParts, seq].join("-");
 };

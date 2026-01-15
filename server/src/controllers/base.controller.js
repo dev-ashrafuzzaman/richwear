@@ -27,6 +27,7 @@ export const createOne = ({ collection, schema }) => {
 
       const doc = {
         ...value,
+        ...(req.generated || {}),
         createdAt: new Date(),
         updatedAt: new Date(),
       };

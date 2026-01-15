@@ -1,22 +1,51 @@
+import { ObjectId } from "mongodb";
 import { generateSKU } from "../../utils/skuGenerator.js";
 
 export const beforeCreateProduct = async (req, res, next) => {
   try {
     const db = req.app.locals.db;
+    const { categoryId, name, brand } = req.body;
 
-    const productCode = req.body.name
-      .replace(/\s+/g, "")
-      .substring(0, 3)
-      .toUpperCase();
+    const categoryObjectId = new ObjectId(categoryId);
 
-    const brandCode = "MN"; 
-    const sku = await generateSKU({
-      db,
-      scope: "PRODUCT",
-      prefixParts: [productCode, brandCode]
+    // category check
+    const category = await db.collection("categories").findOne({
+      _id: categoryObjectId,
+      status: "active"
     });
 
-    req.body.sku = sku;
+    if (!category) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid category"
+      });
+    }
+
+    // duplicate check
+    const exists = await db.collection("products").findOne({
+      name,
+      categoryId: categoryObjectId
+    });
+
+    if (exists) {
+      return res.status(400).json({
+        success: false,
+        message: "Product already exists in this category"
+      });
+    }
+
+    // server-generated fields
+    const productCode = name.replace(/\s+/g, "").substring(0, 3).toUpperCase();
+    const brandCode = brand.substring(0, 2).toUpperCase();
+
+    req.generated = {
+      sku: await generateSKU({
+        db,
+        scope: "PRODUCT",
+        prefixParts: [productCode, brandCode]
+      }),
+      categoryId: categoryObjectId // 👈 move here
+    };
 
     next();
   } catch (err) {

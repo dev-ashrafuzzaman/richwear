@@ -5,7 +5,7 @@ import userRoutes from "./src/modules/users/user.routes.js";
 import branchRoutes from "./src/modules/branches/branch.routes.js";
 import customerRoutes from "./src/modules/customers/customer.routes.js";
 import categoryRoutes from "./src/modules/categories/category.routes.js";
-// import productRoutes from "./src/modules/products/product.routes.js";
+import productRoutes from "./src/modules/products/product.routes.js";
 // import saleRoutes from "./src/modules/sales/sale.routes.js";
 
 import { authenticate } from "./src/middlewares/auth.middleware.js";
@@ -20,7 +20,7 @@ router.use("/users", userRoutes);
 router.use("/branches", branchRoutes);
 router.use("/customers", customerRoutes);
 router.use("/categories", categoryRoutes);
-// router.use("/products", productRoutes);
+router.use("/products", productRoutes);
 // router.use("/sales", saleRoutes);
 
 export default router;
