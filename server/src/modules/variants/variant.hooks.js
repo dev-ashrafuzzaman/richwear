@@ -1,5 +1,4 @@
 import { ObjectId } from "mongodb";
-import { generateSKU } from "../../utils/skuGenerator.js";
 import { COLLECTIONS } from "../../database/collections.js";
 
 export const beforeCreateVariant = async (req, res, next) => {

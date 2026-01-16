@@ -1,8 +1,5 @@
 import { COLLECTIONS } from "../database/collections.js";
 
-/**
- * Generate auto SKU (atomic & scalable)
- */
 export const generateSKU = async ({
   db,
   scope = "PRODUCT",
