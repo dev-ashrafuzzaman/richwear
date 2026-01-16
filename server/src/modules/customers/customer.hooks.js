@@ -1,11 +1,8 @@
-/* ==========================
-   BEFORE CREATE CUSTOMER
-========================== */
+
 export const beforeCreateCustomer = async (req, res, next) => {
   try {
     const db = req.app.locals.db;
 
-    // Prevent duplicate by phone
     const exists = await db.collection("customers").findOne({
       phone: req.body.phone
     });

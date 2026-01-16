@@ -1,5 +1,6 @@
 import { ObjectId } from "mongodb";
 import { generateSKU } from "../../utils/skuGenerator.js";
+import { COLLECTIONS } from "../../database/collections.js";
 
 export const beforeCreateProduct = async (req, res, next) => {
   try {
@@ -9,7 +10,7 @@ export const beforeCreateProduct = async (req, res, next) => {
     const categoryObjectId = new ObjectId(categoryId);
 
     // category check
-    const category = await db.collection("categories").findOne({
+    const category = await db.collection(COLLECTIONS.CATEGORIES).findOne({
       _id: categoryObjectId,
       status: "active"
     });
@@ -22,7 +23,7 @@ export const beforeCreateProduct = async (req, res, next) => {
     }
 
     // duplicate check
-    const exists = await db.collection("products").findOne({
+    const exists = await db.collection(COLLECTIONS.PRODUCTS).findOne({
       name,
       categoryId: categoryObjectId
     });

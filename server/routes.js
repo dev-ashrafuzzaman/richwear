@@ -6,6 +6,7 @@ import branchRoutes from "./src/modules/branches/branch.routes.js";
 import customerRoutes from "./src/modules/customers/customer.routes.js";
 import categoryRoutes from "./src/modules/categories/category.routes.js";
 import productRoutes from "./src/modules/products/product.routes.js";
+import variantRoutes from "./src/modules/variants/variant.routes.js";
 // import saleRoutes from "./src/modules/sales/sale.routes.js";
 
 import { authenticate } from "./src/middlewares/auth.middleware.js";
@@ -21,6 +22,7 @@ router.use("/branches", branchRoutes);
 router.use("/customers", customerRoutes);
 router.use("/categories", categoryRoutes);
 router.use("/products", productRoutes);
+router.use("/variants", variantRoutes);
 // router.use("/sales", saleRoutes);
 
 export default router;
