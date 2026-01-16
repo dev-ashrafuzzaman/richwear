@@ -5,10 +5,12 @@ export const createProductSchema = Joi.object({
 
   categoryId: Joi.string().required(),
 
-  brand: Joi.string().trim().required(),
+  brand: Joi.string()
+    .trim()
+    .default("Richwear"),
 
   unit: Joi.string()
-    .valid("PCS", "METER", "PAIR")
+    .valid("PCS", "COMBO", "PAIR")
     .default("PCS"),
 
   status: Joi.string()

@@ -4,7 +4,7 @@ import { generateSKU } from "../../utils/skuGenerator.js";
 export const beforeCreateProduct = async (req, res, next) => {
   try {
     const db = req.app.locals.db;
-    const { categoryId, name, brand } = req.body;
+    const { categoryId, name, brand = "RichWear" } = req.body;
 
     const categoryObjectId = new ObjectId(categoryId);
 

@@ -8,7 +8,7 @@ export const generateSKU = async ({
   scope = "PRODUCT",
   prefixParts = []
 }) => {
-  const counter = await db.collection("sku_counters").findOneAndUpdate(
+  const counter = await db.collection("counters").findOneAndUpdate(
     { _id: scope },
     { $inc: { seq: 1 } },
     { upsert: true, returnDocument: "after" }
