@@ -2,9 +2,7 @@ import { COLLECTIONS } from "./collections.js";
 
 export const createIndexes = async (db) => {
 
-  /* ===========================
-     BRANCHES
-  ============================ */
+
   await db.collection(COLLECTIONS.BRANCHES)
     .createIndex({ code: 1 }, { unique: true });
 
