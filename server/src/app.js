@@ -4,7 +4,7 @@ import morgan from "morgan";
 
 import routes from "../routes.js";
 import { errorHandler } from "./middlewares/error.middleware.js";
-
+import seedRoutes from "./database/seeders/seed.routes.js";
 const app = express();
 
 app.use(cors());
@@ -14,6 +14,8 @@ app.use(express.urlencoded({ extended: true }));
 if (process.env.NODE_ENV === "development") {
   app.use(morgan("dev"));
 }
+
+app.use("/api/seed", seedRoutes);
 
 app.get("/health", (req, res) => {
   res.status(200).json({

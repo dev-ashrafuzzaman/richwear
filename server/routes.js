@@ -8,6 +8,7 @@ import categoryRoutes from "./src/modules/categories/category.routes.js";
 import productRoutes from "./src/modules/products/product.routes.js";
 import variantRoutes from "./src/modules/variants/variant.routes.js";
 import supplierRoutes from "./src/modules/suppliers/supplier.routes.js";
+import purchaseRoutes from "./src/modules/purchases/purchase.routes.js";
 // import saleRoutes from "./src/modules/sales/sale.routes.js";
 
 import { authenticate } from "./src/middlewares/auth.middleware.js";
@@ -25,6 +26,7 @@ router.use("/categories", categoryRoutes);
 router.use("/products", productRoutes);
 router.use("/variants", variantRoutes);
 router.use("/suppliers", supplierRoutes);
+router.use("/purchases", purchaseRoutes);
 // router.use("/sales", saleRoutes);
 
 export default router;

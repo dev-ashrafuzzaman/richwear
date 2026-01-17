@@ -1,16 +1,17 @@
-import { ObjectId } from "mongodb";
+import { toObjectId } from "../../utils/safeObjectId.js";
 import { generateCode } from "../../utils/codeGenerator.js";
-import { nowBD } from "../../utils/date.js";
+import { nowDate } from "../../utils/date.js";
 import { writeAuditLog } from "../../utils/logger.js";
+import { COLLECTIONS } from "../../database/collections.js";
 
-export const createPurchase = async ({ db, body }) => {
+export const createPurchase = async ({ db, body, req }) => {
     const session = db.client.startSession();
 
     try {
         session.startTransaction();
 
-        const branchId = new ObjectId(body.branchId);
-        const supplierId = new ObjectId(body.supplierId);
+        const branchId = toObjectId(body.branchId, "branchId");
+        const supplierId = toObjectId(body.supplierId, "supplierId");
 
         const purchaseNo = await generateCode({
             db,
@@ -22,46 +23,46 @@ export const createPurchase = async ({ db, body }) => {
         let totalAmount = 0;
 
         for (const item of body.items) {
-            const variantId = new ObjectId(item.variantId);
+            const variantId = toObjectId(item.variantId, "variantId");
 
-            const variant = await db.collection("variants").findOne(
-                { _id: variantId },
-                { session }
-            );
-            if (!variant) throw new Error("Invalid variant");
+            const variant = await db
+                .collection(COLLECTIONS.VARIANTS)
+                .findOne({ _id: variantId }, { session });
+
+            if (!variant) throw new Error("Variant not found");
 
             /* =====================
                1️⃣ STOCK UPDATE
             ====================== */
-            const stock = await db.collection("stocks").findOne(
-                { branchId, variantId },
-                { session }
-            );
+            const stock = await db
+                .collection(COLLECTIONS.STOCKS)
+                .findOne({ branchId, variantId }, { session });
 
             if (!stock) {
-                await db.collection("stocks").insertOne(
+                await db.collection(COLLECTIONS.STOCKS).insertOne(
                     {
                         branchId,
                         variantId,
                         sku: variant.sku,
                         qty: item.qty,
                         avgCost: item.costPrice,
-                        updatedAt: nowBD()
+                        updatedAt: nowDate()
                     },
                     { session }
                 );
             } else {
                 const newQty = stock.qty + item.qty;
                 const newAvg =
-                    (stock.qty * stock.avgCost + item.qty * item.costPrice) / newQty;
+                    (stock.qty * stock.avgCost + item.qty * item.costPrice) /
+                    newQty;
 
-                await db.collection("stocks").updateOne(
+                await db.collection(COLLECTIONS.STOCKS).updateOne(
                     { _id: stock._id },
                     {
                         $set: {
                             qty: newQty,
                             avgCost: Number(newAvg.toFixed(2)),
-                            updatedAt: nowBD()
+                            updatedAt: nowDate()
                         }
                     },
                     { session }
@@ -72,13 +73,13 @@ export const createPurchase = async ({ db, body }) => {
                2️⃣ VARIANT PRICE UPDATE (OPTIONAL)
             ====================== */
             if (item.salePrice) {
-                await db.collection("variants").updateOne(
+                await db.collection(COLLECTIONS.VARIANTS).updateOne(
                     { _id: variantId },
                     {
                         $set: {
                             mrp: item.salePrice,
                             salePrice: item.salePrice,
-                            updatedAt: nowBD()
+                            updatedAt: nowDate()
                         }
                     },
                     { session }
@@ -92,7 +93,7 @@ export const createPurchase = async ({ db, body }) => {
         /* =====================
            3️⃣ PURCHASE DOCUMENT
         ====================== */
-        await db.collection("purchases").insertOne(
+        await db.collection(COLLECTIONS.PURCHASES).insertOne(
             {
                 purchaseNo,
                 branchId,
@@ -100,33 +101,34 @@ export const createPurchase = async ({ db, body }) => {
                 items: body.items,
                 totalQty,
                 totalAmount,
-                createdAt: nowBD()
+                createdAt: nowDate()
             },
             { session }
         );
 
         await session.commitTransaction();
+
         await writeAuditLog({
             db,
-            userId: req.user?._id,
+            userId: req?.user?._id,
             action: "PURCHASE_CREATE",
-            collection: "purchases",
+            collection: COLLECTIONS.PURCHASES,
             documentId: purchaseNo,
             payload: {
                 totalQty,
                 totalAmount,
-                supplierId: body.supplierId
+                supplierId
             },
-            ipAddress: req.ip,
-            userAgent: req.headers["user-agent"]
+            ipAddress: req?.ip,
+            userAgent: req?.headers?.["user-agent"]
         });
+
         return { purchaseNo };
 
-
-    } catch (err) {
+    } catch (error) {
         await session.abortTransaction();
-        throw err;
+        throw error;
     } finally {
-        session.endSession();
+        await session.endSession();
     }
 };

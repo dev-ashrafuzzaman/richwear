@@ -1,3 +1,5 @@
+import Joi from "joi";
+
 export const createPurchaseSchema = Joi.object({
   branchId: Joi.string().required(),
   supplierId: Joi.string().required(),
