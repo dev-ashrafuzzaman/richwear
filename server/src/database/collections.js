@@ -6,6 +6,7 @@ export const COLLECTIONS = {
   PRODUCTS: "products",
   VARIANTS: "product_variants",
   CUSTOMERS: "customers",
+  EMPLOYEES: "employees",
   CUSTOMER_BRANCHES: "customer_branches",
   SUPPLIERS: "suppliers",
   PURCHASES: "purchases",

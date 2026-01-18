@@ -7,6 +7,8 @@ export const PERMISSIONS = Object.freeze({
 
   CATEGORY_VIEW: "category_view",
   CATEGORY_MANAGE: "category_manage",
+  EMPLOYEE_VIEW: "employee_view",
+  EMPLOYEE_MANAGE: "employee_manage",
   // Products
   PRODUCT_VIEW: "product:view",
   PRODUCT_CREATE: "product:create",
