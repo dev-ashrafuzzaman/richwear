@@ -4,7 +4,7 @@ export const seedBranches = async (db) => {
     code: "WH-MAIN",
     name: "Central Warehouse",
     address: "Jhikargachha, Jashore, Bangladesh",
-    status: "ACTIVE",   
+    status: "active",   
     isMain: true,
     createdAt: new Date(),
     updatedAt: new Date(),

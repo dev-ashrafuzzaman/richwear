@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createPurchaseController } from "./purchase.controller.js";
+import { createPurchaseController, createPurchaseReturnController } from "./purchase.controller.js";
 
 import { authenticate } from "../../middlewares/auth.middleware.js";
 import { permit } from "../../middlewares/permission.middleware.js";
@@ -13,6 +13,11 @@ router.post(
   "/",
   permit(PERMISSIONS.PURCHASE_MANAGE),
   createPurchaseController
+);
+router.post(
+  "/return",
+  permit(PERMISSIONS.PURCHASE_MANAGE),
+  createPurchaseReturnController
 );
 
 export default router;
