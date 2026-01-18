@@ -4,9 +4,12 @@ import { toObjectId } from "../../utils/safeObjectId.js";
 export const beforeCreateCategory = async (req, res, next) => {
   try {
     const db = req.app.locals.db;
-    let { level, name } = req.body;
+
+    const { name } = req.body;
+    const level = Number(req.body.level);
     const parentId = toObjectId(req.body.parentId, "parentId");
 
+    /* ---------- Basic checks ---------- */
     if (!name || typeof name !== "string") {
       return res.status(400).json({
         success: false,
@@ -14,16 +17,13 @@ export const beforeCreateCategory = async (req, res, next) => {
       });
     }
 
-    level = Number(level);
-
-    if (!Number.isInteger(level) || level < 1) {
+    if (!Number.isInteger(level) || level < 1 || level > 3) {
       return res.status(400).json({
         success: false,
         message: "Invalid category level"
       });
     }
 
-  
     if (level === 1 && parentId) {
       return res.status(400).json({
         success: false,
@@ -38,12 +38,9 @@ export const beforeCreateCategory = async (req, res, next) => {
       });
     }
 
-
-    let parent = null;
-
+    /* ---------- Parent validation ---------- */
     if (parentId) {
-
-      parent = await db.collection("categories").findOne({
+      const parent = await db.collection("categories").findOne({
         _id: parentId
       });
 
@@ -62,33 +59,38 @@ export const beforeCreateCategory = async (req, res, next) => {
       }
     }
 
+    /* ---------- Duplicate check (DB only) ---------- */
     const duplicateQuery = {
-      name: name.trim(),
-      level
+      name,
+      level,
+      parentId: parentId ?? null
     };
 
-    if (level === 1) {
-      duplicateQuery.parentId = null;
-    } else {
-      duplicateQuery.parentId = parentId;
-    }
-
-    const exists = await db.collection("categories").findOne(duplicateQuery);
+    const exists = await db.collection("categories").findOne(
+      duplicateQuery,
+      { projection: { _id: 1 } }
+    );
 
     if (exists) {
       return res.status(409).json({
         success: false,
-        message: "Category with same name already exists under this parent"
+        message: "Category already exists under this parent"
       });
     }
 
-
+    /* ---------- Final assign ---------- */
     req.body.level = level;
-    req.body.name = name.trim();
-    req.body.parentId = parentId ? parentId : null;
+    req.body.parentId = parentId;
+    req.body.status = req.body.status ?? "active";
 
     next();
   } catch (err) {
+    if (err.message?.startsWith("Invalid")) {
+      return res.status(400).json({
+        success: false,
+        message: err.message
+      });
+    }
     next(err);
   }
 };

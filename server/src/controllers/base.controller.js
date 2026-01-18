@@ -75,9 +75,17 @@ export const getAll = ({
 
       /* ---------- Filtering ---------- */
       const filter = {};
+      const castValue = (value) => {
+        if (!isNaN(value)) return Number(value);
+        if (value === "true" || value === "false") return value === "true";
+        if (/^[0-9a-fA-F]{24}$/.test(value)) return new ObjectId(value);
+        if (value.includes(",")) return { $in: value.split(",") };
+        return value;
+      };
+
       filterableFields.forEach((field) => {
-        if (req.query[field]) {
-          filter[field] = req.query[field];
+        if (req.query[field] !== undefined) {
+          filter[field] = castValue(req.query[field]);
         }
       });
 
@@ -160,7 +168,7 @@ export const updateOne = ({ collection, schema }) => {
             ...value,
             updatedAt: new Date(),
           },
-        }
+        },
       );
 
       if (!result.matchedCount) {
