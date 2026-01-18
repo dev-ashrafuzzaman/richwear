@@ -35,13 +35,12 @@ export const beforeCreateProduct = async (req, res, next) => {
 
 
     const productCode = name.replace(/\s+/g, "").substring(0, 3).toUpperCase();
-    const brandCode = brand.substring(0, 2).toUpperCase();
 
     req.generated = {
       sku: await generateSKU({
         db,
         module: "PRODUCT",
-        prefixParts: [productCode, brandCode]
+        prefixParts: [productCode]
       }),
       categoryId: categoryObjectId
     };
