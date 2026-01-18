@@ -25,7 +25,6 @@ const COLLECTION = COLLECTIONS.VARIANTS;
 
 router.use(authenticate);
 
-/* CREATE VARIANT */
 router.post(
   "/",
   permit(PERMISSIONS.PRODUCT_MANAGE),
@@ -36,7 +35,6 @@ router.post(
   })
 );
 
-/* GET ALL VARIANTS */
 router.get(
   "/",
   permit(PERMISSIONS.PRODUCT_VIEW),
@@ -47,14 +45,14 @@ router.get(
   })
 );
 
-/* GET ONE */
+
 router.get(
   "/:id",
   permit(PERMISSIONS.PRODUCT_VIEW),
   getOneById({ collection: COLLECTION })
 );
 
-/* UPDATE */
+
 router.put(
   "/:id",
   permit(PERMISSIONS.PRODUCT_MANAGE),
@@ -64,7 +62,7 @@ router.put(
   })
 );
 
-/* DELETE */
+
 router.delete(
   "/:id",
   permit(PERMISSIONS.PRODUCT_MANAGE),
