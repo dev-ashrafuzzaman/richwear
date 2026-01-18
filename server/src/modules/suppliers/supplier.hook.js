@@ -17,7 +17,7 @@ export const beforeCreateSupplier = async (req, res, next) => {
     req.generated = {
       code: await generateCode({
         db,
-        scope: "SUPPLIER",
+        module: "SUPPLIER",
         prefix: "SUP",
       }),
     };

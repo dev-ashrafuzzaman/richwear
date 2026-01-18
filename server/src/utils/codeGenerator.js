@@ -4,7 +4,7 @@ export const generateCode = async ({
   module,           // CUSTOMER | SUPPLIER | PRODUCT | SALE | PURCHASE
   prefix,           // CUS | SUP | PRD | SAL | PUR
   padding = 5,      // 00001
-  scope = "YEAR",   // YEAR | MONTH | NONE
+  scope = "NONE",   // YEAR | MONTH | NONE
   branch = null     // DHK | CTG | null
 }) => {
 

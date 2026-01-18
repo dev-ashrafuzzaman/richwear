@@ -95,27 +95,10 @@ await db.collection(COLLECTIONS.CATEGORIES).createIndex({ level: 1 });
 
   await db.collection(COLLECTIONS.CUSTOMERS).createIndex({ status: 1 });
 
-  await db.collection(COLLECTIONS.SUPPLIERS).createIndexes([
-    {
-      key: { code: 1 },
-      name: "uniq_supplier_code",
-      unique: true,
-    },
-    {
-      key: { "contact.phone": 1 },
-      name: "uniq_supplier_contact_phone",
-      unique: true,
-      sparse: true, // optional but smart
-    },
-    {
-      key: { status: 1 },
-      name: "idx_supplier_status",
-    },
-    {
-      key: { name: 1 },
-      name: "idx_supplier_name",
-    },
-  ]);
+  await db.collection(COLLECTIONS.SUPPLIERS).createIndex(
+  { "contacts.phone": 1 },
+  { unique: true, sparse: true }
+);
 
   /* ===========================
      USERS
