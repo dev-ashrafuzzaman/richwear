@@ -1,5 +1,6 @@
 export const COLLECTIONS = {
   USERS: "users",
+  COUNTERS: "counters",
   BRANCHES: "branches",
   CUSTOMERS: "customers",
   CUSTOMER_BRANCHES: "customer_branches",

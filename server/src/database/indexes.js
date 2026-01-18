@@ -7,6 +7,9 @@ export const createIndexes = async (db) => {
 
   await db.collection(COLLECTIONS.BRANCHES).createIndex({ status: 1 });
 
+  // await db.collection(COLLECTIONS.COUNTERS).createIndex({ _id: 1 }, { unique: true });
+
+
 await db.collection(COLLECTIONS.CATEGORIES).createIndex({ parentId: 1 });
 await db.collection(COLLECTIONS.CATEGORIES).createIndex({ level: 1 });
 
