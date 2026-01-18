@@ -15,4 +15,5 @@ export const COLLECTIONS = {
   SALES: "sales",
   TRANSACTIONS: "transactions",
   SUPPLIER_LEDGER: "supplier_ledger",
+  ATTENDANCES: "attendances",
 };
