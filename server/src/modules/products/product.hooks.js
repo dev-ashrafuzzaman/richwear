@@ -40,7 +40,7 @@ export const beforeCreateProduct = async (req, res, next) => {
     req.generated = {
       sku: await generateSKU({
         db,
-        scope: "PRODUCT",
+        module: "PRODUCT",
         prefixParts: [productCode, brandCode]
       }),
       categoryId: categoryObjectId

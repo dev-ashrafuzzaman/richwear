@@ -8,17 +8,15 @@ export const createSupplierSchema = Joi.object({
     phone: Joi.string()
       .pattern(/^(01)[0-9]{9}$/)
       .required(),
-    email: Joi.string().email().optional()
+    email: Joi.string().email().optional(),
   }).required(),
 
   address: Joi.string().optional(),
 
   account: Joi.object({
     openingBalance: Joi.number().min(0).default(0),
-    balanceType: Joi.string()
-      .valid("payable", "receivable")
-      .default("payable")
-  }).default()
+    balanceType: Joi.string().valid("payable", "receivable").default("payable"),
+  }).default(),
 });
 
 export const updateSupplierSchema = Joi.object({
@@ -26,5 +24,5 @@ export const updateSupplierSchema = Joi.object({
   phone: Joi.string().trim().optional(),
   email: Joi.string().email().optional(),
   address: Joi.string().trim().optional(),
-  status: Joi.string().valid("active", "inactive").optional()
+  status: Joi.string().valid("active", "inactive").optional(),
 }).min(1);
