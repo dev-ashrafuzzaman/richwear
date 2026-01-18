@@ -9,7 +9,6 @@ export const beforeCreateProduct = async (req, res, next) => {
 
     const categoryObjectId = new ObjectId(categoryId);
 
-    // category check
     const category = await db.collection(COLLECTIONS.CATEGORIES).findOne({
       _id: categoryObjectId,
       status: "active"
@@ -22,7 +21,6 @@ export const beforeCreateProduct = async (req, res, next) => {
       });
     }
 
-    // duplicate check
     const exists = await db.collection(COLLECTIONS.PRODUCTS).findOne({
       name,
       categoryId: categoryObjectId
@@ -35,7 +33,7 @@ export const beforeCreateProduct = async (req, res, next) => {
       });
     }
 
-    // server-generated fields
+
     const productCode = name.replace(/\s+/g, "").substring(0, 3).toUpperCase();
     const brandCode = brand.substring(0, 2).toUpperCase();
 
@@ -45,7 +43,7 @@ export const beforeCreateProduct = async (req, res, next) => {
         scope: "PRODUCT",
         prefixParts: [productCode, brandCode]
       }),
-      categoryId: categoryObjectId // 👈 move here
+      categoryId: categoryObjectId
     };
 
     next();
