@@ -5,13 +5,13 @@ export const beforeCreateCustomer = async (req, res, next) => {
     const db = req.app.locals.db;
 
     const exists = await db.collection("customers").findOne({
-      phone: req.body.phone,
+      phone: req.body.phone
     });
 
     if (exists) {
       return res.status(400).json({
         success: false,
-        message: "Customer already exists with this phone",
+        message: "Customer already exists with this phone"
       });
     }
 
@@ -21,9 +21,10 @@ export const beforeCreateCustomer = async (req, res, next) => {
         module: "CUSTOMER",
         prefix: "CUST",
         scope: "YEAR",
-        branch: "JG",
-      }),
+        branch: req.user.branchCode || "JG"
+      })
     };
+
     next();
   } catch (err) {
     next(err);

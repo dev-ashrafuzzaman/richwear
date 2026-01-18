@@ -1,73 +1,26 @@
-import { Router } from "express";
-
-import {
-  createOne,
-  getAll,
-  getOneById,
-  updateOne,
-  deleteOne
-} from "../../controllers/base.controller.js";
-
+import express from "express";
+import {validate} from "../../middlewares/validate.middleware.js";
+import * as controller from "./customer.controller.js";
+import { beforeCreateCustomer } from "./customer.hooks.js";
 import {
   createCustomerSchema,
   updateCustomerSchema
-} from "./customer.validation.js";
+} from "./customer.schema.js";
 
-import { beforeCreateCustomer } from "./customer.hooks.js";
-
-import { authenticate } from "../../middlewares/auth.middleware.js";
-import { permit } from "../../middlewares/permission.middleware.js";
-import { PERMISSIONS } from "../../config/permissions.js";
-import { COLLECTIONS } from "../../database/collections.js";
-
-const router = Router();
-const COLLECTION = COLLECTIONS.CUSTOMERS;
-
-router.use(authenticate);
+const router = express.Router();
 
 router.post(
   "/",
-  permit(PERMISSIONS.CUSTOMER_MANAGE),
+  validate(createCustomerSchema),
   beforeCreateCustomer,
-  createOne({
-    collection: COLLECTION,
-    schema: createCustomerSchema
-  })
+  controller.create
 );
 
-router.get(
-  "/",
-  permit(PERMISSIONS.CUSTOMER_VIEW),
-  getAll({
-    collection: COLLECTION,
-    searchableFields: ["name", "phone", "email"],
-    filterableFields: ["status"]
-  })
-);
-
-router.get(
+router.get("/:id", controller.getById);
+router.patch(
   "/:id",
-  permit(PERMISSIONS.CUSTOMER_VIEW),
-  getOneById({
-    collection: COLLECTION
-  })
-);
-
-router.put(
-  "/:id",
-  permit(PERMISSIONS.CUSTOMER_MANAGE),
-  updateOne({
-    collection: COLLECTION,
-    schema: updateCustomerSchema
-  })
-);
-
-router.delete(
-  "/:id",
-  permit(PERMISSIONS.CUSTOMER_MANAGE),
-  deleteOne({
-    collection: COLLECTION
-  })
+  validate(updateCustomerSchema),
+  controller.update
 );
 
 export default router;
