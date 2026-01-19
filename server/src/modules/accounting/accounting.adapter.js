@@ -9,7 +9,7 @@ export const salesAccounting = async ({
   cash,
   due,
   accounts,
-  branchId
+  branchId,
 }) => {
   const entries = [];
 
@@ -23,7 +23,7 @@ export const salesAccounting = async ({
 
   entries.push({
     accountId: accounts.salesIncome,
-    credit: total
+    credit: total,
   });
 
   return postJournalEntry({
@@ -34,19 +34,19 @@ export const salesAccounting = async ({
     refId: saleId,
     narration: "Sales Invoice",
     entries,
-    branchId
+    branchId,
   });
 };
 
-
 export const salesReturnAccounting = async ({
   db,
+  session,
   salesReturnId,
   returnAmount,
   cashRefund = 0,
   dueAdjust = 0,
   accounts,
-  branchId
+  branchId,
 }) => {
   if (cashRefund + dueAdjust !== returnAmount) {
     throw new Error("Sales return amount mismatch");
@@ -56,43 +56,44 @@ export const salesReturnAccounting = async ({
 
   entries.push({
     accountId: accounts.salesIncome,
-    debit: returnAmount
+    debit: returnAmount,
   });
 
   if (cashRefund > 0) {
     entries.push({
       accountId: accounts.cash,
-      credit: cashRefund
+      credit: cashRefund,
     });
   }
 
   if (dueAdjust > 0) {
     entries.push({
       accountId: accounts.customer,
-      credit: dueAdjust
+      credit: dueAdjust,
     });
   }
 
   return postJournalEntry({
     db,
+    session,
     date: nowDate(),
     refType: "SALE_RETURN",
     refId: salesReturnId,
     narration: "Sales Return",
     entries,
-    branchId
+    branchId,
   });
 };
 
-
 export const purchaseAccounting = async ({
   db,
+  session,
   purchaseId,
   totalAmount,
   cashPaid = 0,
   dueAmount = 0,
   accounts,
-  branchId
+  branchId,
 }) => {
   /**
    * Safety check
@@ -106,14 +107,14 @@ export const purchaseAccounting = async ({
   // 📦 Inventory increase
   entries.push({
     accountId: accounts.inventory,
-    debit: totalAmount
+    debit: totalAmount,
   });
 
   // 💸 Cash payment
   if (cashPaid > 0) {
     entries.push({
       accountId: accounts.cash,
-      credit: cashPaid
+      credit: cashPaid,
     });
   }
 
@@ -121,30 +122,31 @@ export const purchaseAccounting = async ({
   if (dueAmount > 0) {
     entries.push({
       accountId: accounts.supplier,
-      credit: dueAmount
+      credit: dueAmount,
     });
   }
 
   return postJournalEntry({
     db,
+    session,
     date: nowDate(),
     refType: "PURCHASE",
     refId: purchaseId,
     narration: "Purchase Invoice",
     entries,
-    branchId
+    branchId,
   });
 };
 
-
 export const purchaseReturnAccounting = async ({
   db,
+  session,
   purchaseReturnId,
   returnAmount,
   cashRefund = 0,
   dueAdjust = 0,
   accounts,
-  branchId
+  branchId,
 }) => {
   /**
    * Safety validation
@@ -158,14 +160,14 @@ export const purchaseReturnAccounting = async ({
   // 📉 Reduce inventory
   entries.push({
     accountId: accounts.inventory,
-    credit: returnAmount
+    credit: returnAmount,
   });
 
   // 💰 Cash received back
   if (cashRefund > 0) {
     entries.push({
       accountId: accounts.cash,
-      debit: cashRefund
+      debit: cashRefund,
     });
   }
 
@@ -173,28 +175,30 @@ export const purchaseReturnAccounting = async ({
   if (dueAdjust > 0) {
     entries.push({
       accountId: accounts.supplier,
-      debit: dueAdjust
+      debit: dueAdjust,
     });
   }
 
   return postJournalEntry({
     db,
+    session,
     date: nowDate(),
     refType: "PURCHASE_RETURN",
     refId: purchaseReturnId,
     narration: "Purchase Return",
     entries,
-    branchId
+    branchId,
   });
 };
 
 export const supplierPaymentAccounting = async ({
   db,
+  session,
   paymentId,
   amount,
-  paymentMethod,           // "CASH" | "BANK"
+  paymentMethod, // "CASH" | "BANK"
   accounts,
-  branchId
+  branchId,
 }) => {
   if (!["CASH", "BANK"].includes(paymentMethod)) {
     throw new Error("Invalid payment method for supplier payment");
@@ -205,37 +209,35 @@ export const supplierPaymentAccounting = async ({
   // 🧾 Reduce supplier payable
   entries.push({
     accountId: accounts.supplier,
-    debit: amount
+    debit: amount,
   });
 
   // 💸 Payment source
   entries.push({
-    accountId:
-      paymentMethod === "CASH"
-        ? accounts.cash
-        : accounts.bank,
-    credit: amount
+    accountId: paymentMethod === "CASH" ? accounts.cash : accounts.bank,
+    credit: amount,
   });
 
   return postJournalEntry({
     db,
+    session,
     date: nowDate(),
     refType: "SUPPLIER_PAYMENT",
     refId: paymentId,
     narration: "Supplier Payment",
     entries,
-    branchId
+    branchId,
   });
 };
 
-
 export const customerPaymentAccounting = async ({
   db,
+  session,
   paymentId,
   amount,
-  paymentMethod,            // "CASH" | "BANK"
+  paymentMethod, // "CASH" | "BANK"
   accounts,
-  branchId
+  branchId,
 }) => {
   if (!["CASH", "BANK"].includes(paymentMethod)) {
     throw new Error("Invalid payment method for customer payment");
@@ -245,37 +247,36 @@ export const customerPaymentAccounting = async ({
 
   // 💰 Receive payment
   entries.push({
-    accountId:
-      paymentMethod === "CASH"
-        ? accounts.cash
-        : accounts.bank,
-    debit: amount
+    accountId: paymentMethod === "CASH" ? accounts.cash : accounts.bank,
+    debit: amount,
   });
 
   // 📉 Reduce customer due
   entries.push({
     accountId: accounts.customer,
-    credit: amount
+    credit: amount,
   });
 
   return postJournalEntry({
     db,
+    session,
     date: nowDate(),
     refType: "CUSTOMER_PAYMENT",
     refId: paymentId,
     narration: "Customer Payment",
     entries,
-    branchId
+    branchId,
   });
 };
 
 export const salaryPaymentAccounting = async ({
   db,
+  session,
   salaryPaymentId,
   amount,
-  paymentMethod,           // "CASH" | "BANK"
+  paymentMethod, // "CASH" | "BANK"
   accounts,
-  branchId
+  branchId,
 }) => {
   if (!["CASH", "BANK"].includes(paymentMethod)) {
     throw new Error("Invalid payment method for salary payment");
@@ -286,16 +287,13 @@ export const salaryPaymentAccounting = async ({
   // 💼 Salary expense
   entries.push({
     accountId: accounts.salaryExpense,
-    debit: amount
+    debit: amount,
   });
 
   // 💸 Payment source
   entries.push({
-    accountId:
-      paymentMethod === "CASH"
-        ? accounts.cash
-        : accounts.bank,
-    credit: amount
+    accountId: paymentMethod === "CASH" ? accounts.cash : accounts.bank,
+    credit: amount,
   });
 
   return postJournalEntry({
@@ -305,18 +303,18 @@ export const salaryPaymentAccounting = async ({
     refId: salaryPaymentId,
     narration: "Salary Payment",
     entries,
-    branchId
+    branchId,
   });
 };
 
-
 export const commissionAccounting = async ({
   db,
+  session,
   commissionId,
   amount,
-  paymentMethod,             // "CASH" | "BANK"
+  paymentMethod, // "CASH" | "BANK"
   accounts,
-  branchId
+  branchId,
 }) => {
   if (!["CASH", "BANK"].includes(paymentMethod)) {
     throw new Error("Invalid payment method for commission");
@@ -327,38 +325,36 @@ export const commissionAccounting = async ({
   // 📊 Commission expense
   entries.push({
     accountId: accounts.commissionExpense,
-    debit: amount
+    debit: amount,
   });
 
   // 💸 Payment source
   entries.push({
-    accountId:
-      paymentMethod === "CASH"
-        ? accounts.cash
-        : accounts.bank,
-    credit: amount
+    accountId: paymentMethod === "CASH" ? accounts.cash : accounts.bank,
+    credit: amount,
   });
 
   return postJournalEntry({
     db,
+    session,
     date: nowDate(),
     refType: "COMMISSION_PAYMENT",
     refId: commissionId,
     narration: "Commission Payment",
     entries,
-    branchId
+    branchId,
   });
 };
 
-
 export const inventoryAdjustmentAccounting = async ({
   db,
+  session,
   adjustmentId,
-  adjustmentType,          // "INCREASE" | "DECREASE"
+  adjustmentType, // "INCREASE" | "DECREASE"
   amount,
   reason,
   accounts,
-  branchId
+  branchId,
 }) => {
   if (!["INCREASE", "DECREASE"].includes(adjustmentType)) {
     throw new Error("Invalid inventory adjustment type");
@@ -370,13 +366,13 @@ export const inventoryAdjustmentAccounting = async ({
     // 📦 Inventory increase
     entries.push({
       accountId: accounts.inventory,
-      debit: amount
+      debit: amount,
     });
 
     // 📈 Adjustment gain
     entries.push({
       accountId: accounts.adjustmentIncome,
-      credit: amount
+      credit: amount,
     });
   }
 
@@ -384,34 +380,35 @@ export const inventoryAdjustmentAccounting = async ({
     // 📉 Adjustment loss
     entries.push({
       accountId: accounts.adjustmentExpense,
-      debit: amount
+      debit: amount,
     });
 
     // 📦 Inventory decrease
     entries.push({
       accountId: accounts.inventory,
-      credit: amount
+      credit: amount,
     });
   }
 
   return postJournalEntry({
     db,
+    session,
     date: nowDate(),
     refType: "INVENTORY_ADJUSTMENT",
     refId: adjustmentId,
     narration: reason || "Inventory Adjustment",
     entries,
-    branchId
+    branchId,
   });
 };
 
-
 export const openingBalanceAccounting = async ({
   db,
+  session,
   openingDate,
-  balances,                 // [{ accountId, amount, type }]
-  openingOffsetAccountId,   // system equity account
-  branchId
+  balances, // [{ accountId, amount, type }]
+  openingOffsetAccountId, // system equity account
+  branchId,
 }) => {
   if (!openingDate) {
     throw new Error("Opening date is required");
@@ -433,7 +430,7 @@ export const openingBalanceAccounting = async ({
     if (b.type === "ASSET") {
       entries.push({
         accountId: b.accountId,
-        debit: b.amount
+        debit: b.amount,
       });
       totalDebit += b.amount;
     }
@@ -442,7 +439,7 @@ export const openingBalanceAccounting = async ({
     if (["LIABILITY", "EQUITY"].includes(b.type)) {
       entries.push({
         accountId: b.accountId,
-        credit: b.amount
+        credit: b.amount,
       });
       totalCredit += b.amount;
     }
@@ -455,7 +452,7 @@ export const openingBalanceAccounting = async ({
     // Excess debit → credit offset
     entries.push({
       accountId: openingOffsetAccountId,
-      credit: diff
+      credit: diff,
     });
   }
 
@@ -463,17 +460,18 @@ export const openingBalanceAccounting = async ({
     // Excess credit → debit offset
     entries.push({
       accountId: openingOffsetAccountId,
-      debit: Math.abs(diff)
+      debit: Math.abs(diff),
     });
   }
 
   return postJournalEntry({
     db,
+    session,
     date: openingDate,
     refType: "OPENING_BALANCE",
     refId: null,
     narration: `Opening Balance as of ${openingDate.toISOString().slice(0, 10)}`,
     entries,
-    branchId
+    branchId,
   });
-}
+};

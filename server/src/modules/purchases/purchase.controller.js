@@ -1,5 +1,8 @@
 import { createPurchase, createPurchaseReturn } from "./purchase.service.js";
-import { createPurchaseReturnSchema, createPurchaseSchema } from "./purchase.validation.js";
+import {
+  createPurchaseReturnSchema,
+  createPurchaseSchema,
+} from "./purchase.validation.js";
 
 export const createPurchaseController = async (req, res, next) => {
   try {
@@ -8,7 +11,7 @@ export const createPurchaseController = async (req, res, next) => {
       return res.status(400).json({
         success: false,
         message: "Validation error",
-        errors: error.details.map(d => d.message)
+        errors: error.details.map((d) => d.message),
       });
     }
 
@@ -16,13 +19,13 @@ export const createPurchaseController = async (req, res, next) => {
 
     const result = await createPurchase({
       db,
-      body: value
+      body: value,
     });
 
     res.status(201).json({
       success: true,
       message: "Purchase created successfully",
-      data: result
+      data: result,
     });
   } catch (err) {
     next(err);
@@ -35,7 +38,7 @@ export const createPurchaseReturnController = async (req, res, next) => {
       return res.status(400).json({
         success: false,
         message: "Validation error",
-        errors: error.details.map(d => d.message)
+        errors: error.details.map((d) => d.message),
       });
     }
 
@@ -43,13 +46,13 @@ export const createPurchaseReturnController = async (req, res, next) => {
 
     const result = await createPurchaseReturn({
       db,
-      body: value
+      body: value,
     });
 
     res.status(201).json({
       success: true,
       message: "Purchase return created successfully",
-      data: result
+      data: result,
     });
   } catch (err) {
     next(err);

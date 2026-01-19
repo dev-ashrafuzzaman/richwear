@@ -6,6 +6,8 @@ export const createPurchaseSchema = Joi.object({
   invoiceNumber: Joi.string().required(),
   invoiceDate: Joi.date().required(),
 
+  paidAmount: Joi.number().min(0).default(0),
+
   items: Joi.array()
     .items(
       Joi.object({
@@ -20,6 +22,7 @@ export const createPurchaseSchema = Joi.object({
 
   notes: Joi.string().optional()
 });
+
 
 
 export const createPurchaseReturnSchema = Joi.object({

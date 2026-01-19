@@ -4,7 +4,7 @@ export const createSaleSchema = Joi.object({
   invoiceNo: Joi.string().required(),
   type: Joi.string().valid("RETAIL", "WHOLESALE").required(),
   branchId: Joi.string().required(),
-  customerId: Joi.string().allow(null),
+  customerId: Joi.string().required(),
 
   items: Joi.array()
     .items(

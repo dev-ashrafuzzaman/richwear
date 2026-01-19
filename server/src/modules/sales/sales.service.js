@@ -82,7 +82,7 @@ export const createSaleService = async ({ db, payload, user, accounts }) => {
         saleId: null,
         productId: variant.productId,
         variantId: variant._id,
-        sku: variant.sku, // ✅ backend resolved
+        sku: variant.sku,
         qty,
         salePrice: price,
         discountType: item.discountType || null,
@@ -94,20 +94,26 @@ export const createSaleService = async ({ db, payload, user, accounts }) => {
       });
     }
 
-    const billDiscount = Number(payload.billDiscount || 0);
-    const grandTotal = subTotal - itemDiscount - billDiscount + taxAmount;
+    const billDiscount = roundMoney(payload.billDiscount);
+
+    subTotal = roundMoney(subTotal);
+    itemDiscount = roundMoney(itemDiscount);
+    taxAmount = roundMoney(taxAmount);
+
+    const grandTotal = roundMoney(
+      subTotal - itemDiscount - billDiscount + taxAmount,
+    );
 
     /* ---------------- Payments ---------------- */
-    const paidAmount = payload.payments.reduce(
-      (sum, p) => sum + Number(p.amount),
-      0,
+    const paidAmount = roundMoney(
+      payload.payments.reduce((sum, p) => sum + Number(p.amount), 0),
     );
 
     if (paidAmount > grandTotal) {
       throw new Error("Paid amount cannot exceed grand total");
     }
 
-    const dueAmount = grandTotal - paidAmount;
+    const dueAmount = roundMoney(grandTotal - paidAmount);
 
     /* ---------------- Sale ---------------- */
     const saleDoc = {
@@ -188,7 +194,7 @@ export const createSaleService = async ({ db, payload, user, accounts }) => {
       session,
       saleId,
       total: grandTotal,
-      cash: paidAmount - dueAmount,
+      cash: roundMoney(paidAmount - dueAmount),
       due: dueAmount,
       accounts: {
         cash: accounts.CASH,
@@ -208,9 +214,11 @@ export const createSaleService = async ({ db, payload, user, accounts }) => {
       refId: saleId,
       branchId: branch._id,
       payload: {
-        saleId,
-        refundAmount: totalRefund,
-        refundMethod: payload.refundMethod,
+        invoiceNo,
+        grandTotal,
+        paidAmount,
+        dueAmount,
+        itemCount: saleItems.length,
       },
       ipAddress: user.ip || null,
       userAgent: user.userAgent || null,
@@ -220,11 +228,72 @@ export const createSaleService = async ({ db, payload, user, accounts }) => {
     await session.commitTransaction();
 
     return {
-      saleId,
-      invoiceNo,
-      grandTotal,
-      paidAmount,
-      dueAmount,
+      success: true,
+      message: "Sale completed successfully",
+
+      data: {
+        sale: {
+          saleId,
+          invoiceNo,
+          type: payload.type,
+          status: SALE_STATUS.COMPLETED,
+          date: nowDate(),
+          createdBy: user.name || user.username,
+        },
+
+        branch: {
+          branchId: branch._id,
+          code: branch.code,
+          name: branch.name,
+          phone: branch.phone || null,
+          address: branch.address || null,
+        },
+
+        customer: payload.customerId
+          ? {
+              customerId: payload.customerId,
+              name: payload.customerName || null,
+              phone: payload.customerPhone || null,
+              address: payload.customerAddress || null,
+            }
+          : {
+              customerId: null,
+              name: "Walk-in Customer",
+              phone: null,
+              address: null,
+            },
+
+        items: saleItems.map((i) => ({
+          sku: i.sku,
+          qty: i.qty,
+          unitPrice: i.salePrice,
+          discount: i.discountAmount,
+          vat: i.taxAmount,
+          lineTotal: i.lineTotal,
+        })),
+
+        summary: {
+          subTotal,
+          itemDiscount,
+          billDiscount,
+          taxAmount,
+          grandTotal,
+          paidAmount,
+          dueAmount,
+        },
+
+        payments: payload.payments.map((p) => ({
+          method: p.method,
+          amount: p.amount,
+          reference: p.reference || null,
+        })),
+
+        print: {
+          currency: "BDT",
+          vatRate,
+          footerNote: "Thank you for shopping with us!",
+        },
+      },
     };
   } catch (err) {
     await session.abortTransaction();

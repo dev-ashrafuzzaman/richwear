@@ -4,6 +4,8 @@ import { nowDate } from "../../utils/date.js";
 import { writeAuditLog } from "../../utils/logger.js";
 import { COLLECTIONS } from "../../database/collections.js";
 import { getMainBranch } from "../../utils/getMainWarehouse.js";
+import { purchaseAccounting } from "../accounting/accounting.adapter.js";
+import { roundMoney } from "../../utils/money.js";
 
 export const createPurchase = async ({ db, body, req }) => {
   const session = db.client.startSession();
@@ -16,20 +18,33 @@ export const createPurchase = async ({ db, body, req }) => {
   try {
     session.startTransaction();
 
+    /* =====================
+       1️⃣ MAIN WAREHOUSE
+    ====================== */
     mainBranch = await getMainBranch(db, session);
     const branchId = mainBranch._id;
 
+    /* =====================
+       2️⃣ CORE DATA
+    ====================== */
     const supplierId = toObjectId(body.supplierId, "supplierId");
+    const paidAmount = Number(body.paidAmount || 0);
 
+    /* =====================
+       3️⃣ PURCHASE NO
+    ====================== */
     purchaseNo = await generateCode({
       db,
       module: "PURCHASE",
       prefix: "PUR",
       scope: "YEAR",
       branch: mainBranch.code,
-      session
+      session,
     });
 
+    /* =====================
+       4️⃣ ITEM LOOP
+    ====================== */
     for (const item of body.items) {
       const variantId = toObjectId(item.variantId, "variantId");
 
@@ -50,29 +65,30 @@ export const createPurchase = async ({ db, body, req }) => {
             variantId,
             sku: variant.sku,
             qty: item.qty,
-            avgCost: item.costPrice,
-            createdAt: nowDate()
+            avgCost: roundMoney(item.costPrice),
+            createdAt: nowDate(),
           },
-          { session }
+          { session },
         );
       } else {
         const newQty = stock.qty + item.qty;
         const newAvg =
           (stock.qty * stock.avgCost + item.qty * item.costPrice) / newQty;
-
+        const roundedAvg = roundMoney(newAvg);
         await db.collection(COLLECTIONS.STOCKS).updateOne(
           { _id: stock._id },
           {
             $set: {
               qty: newQty,
-              avgCost: Number(newAvg.toFixed(2)),
-              updatedAt: nowDate()
-            }
+              avgCost: roundedAvg,
+              updatedAt: nowDate(),
+            },
           },
-          { session }
+          { session },
         );
       }
 
+      /* ---------- SALE PRICE UPDATE ---------- */
       if (item.salePrice && item.salePrice !== variant.salePrice) {
         await db.collection(COLLECTIONS.VARIANTS).updateOne(
           { _id: variantId },
@@ -80,18 +96,18 @@ export const createPurchase = async ({ db, body, req }) => {
             $set: {
               salePrice: item.salePrice,
               mrp: item.salePrice,
-              updatedAt: nowDate()
+              updatedAt: nowDate(),
             },
             $push: {
               priceHistory: {
                 oldPrice: variant.salePrice,
                 newPrice: item.salePrice,
                 source: "PURCHASE",
-                date: nowDate()
-              }
-            }
+                date: nowDate(),
+              },
+            },
           },
-          { session }
+          { session },
         );
       }
 
@@ -99,30 +115,63 @@ export const createPurchase = async ({ db, body, req }) => {
       totalAmount += item.qty * item.costPrice;
     }
 
-    const insertResult = await db
-      .collection(COLLECTIONS.PURCHASES)
-      .insertOne(
-        {
-          purchaseNo,
-          supplierId,
-          branchId,
+    totalAmount = roundMoney(totalAmount);
 
-          invoiceNumber: body.invoiceNumber,
-          invoiceDate: body.invoiceDate,
+    /* =====================
+       5️⃣ PAYMENT CALCULATION
+    ====================== */
+    const dueAmount = roundMoney(Math.max(totalAmount - paidAmount, 0), 2);
 
-          items: body.items,
-          totalQty,
-          totalAmount,
-          notes: body.notes || null,
-          createdAt: nowDate()
-        },
-        { session }
-      );
+    const paidRounded = roundMoney(paidAmount, 2);
 
-    await session.commitTransaction();
+    const paymentStatus =
+      dueAmount === 0 ? "PAID" : paidRounded > 0 ? "PARTIAL" : "DUE";
 
+    /* =====================
+       6️⃣ PURCHASE INSERT
+    ====================== */
+    const insertResult = await db.collection(COLLECTIONS.PURCHASES).insertOne(
+      {
+        purchaseNo,
+        supplierId,
+        branchId,
+
+        invoiceNumber: body.invoiceNumber,
+        invoiceDate: body.invoiceDate,
+
+        items: body.items,
+        totalQty,
+        totalAmount,
+
+        paidAmount,
+        dueAmount,
+        paymentStatus,
+
+        notes: body.notes || null,
+        createdAt: nowDate(),
+      },
+      { session },
+    );
+
+    /* =====================
+       7️⃣ ACCOUNTING (TX SAFE)
+    ====================== */
+    await purchaseAccounting({
+      db,
+      session,
+      purchaseId: insertResult.insertedId,
+      totalAmount,
+      paidAmount,
+      dueAmount,
+      branchId,
+    });
+
+    /* =====================
+       8️⃣ AUDIT LOG
+    ====================== */
     await writeAuditLog({
       db,
+      session,
       userId: req?.user?._id,
       action: "PURCHASE_CREATE",
       collection: COLLECTIONS.PURCHASES,
@@ -133,21 +182,25 @@ export const createPurchase = async ({ db, body, req }) => {
         supplierId,
         totalQty,
         totalAmount,
-        invoiceNumber: body.invoiceNumber
+        paidAmount,
+        dueAmount,
       },
       ipAddress: req?.ip,
       userAgent: req?.headers?.["user-agent"],
-      createdAt: nowDate()
+      createdAt: nowDate(),
     });
+
+    await session.commitTransaction();
 
     return {
       purchaseNo,
       branch: mainBranch.code,
       invoiceNumber: body.invoiceNumber,
       totalQty,
-      totalAmount
+      totalAmount,
+      paidAmount,
+      dueAmount,
     };
-
   } catch (error) {
     await session.abortTransaction();
 
@@ -160,16 +213,14 @@ export const createPurchase = async ({ db, body, req }) => {
       payload: { error: error.message },
       ipAddress: req?.ip,
       userAgent: req?.headers?.["user-agent"],
-      createdAt: nowDate()
+      createdAt: nowDate(),
     });
 
     throw error;
-
   } finally {
     await session.endSession();
   }
 };
-
 
 export const createPurchaseReturn = async ({ db, body, req }) => {
   const session = db.client.startSession();
@@ -205,7 +256,7 @@ export const createPurchaseReturn = async ({ db, body, req }) => {
       prefix: "PRT",
       scope: "YEAR",
       branch: mainBranch.code,
-      session
+      session,
     });
 
     /* =====================
@@ -215,7 +266,7 @@ export const createPurchaseReturn = async ({ db, body, req }) => {
       const variantId = toObjectId(item.variantId, "variantId");
 
       const purchaseItem = purchase.items.find(
-        (i) => i.variantId.toString() === variantId.toString()
+        (i) => i.variantId.toString() === variantId.toString(),
       );
 
       if (!purchaseItem) {
@@ -227,10 +278,9 @@ export const createPurchaseReturn = async ({ db, body, req }) => {
       }
 
       /* ---------- STOCK DECREASE ---------- */
-      const stock = await db.collection(COLLECTIONS.STOCKS).findOne(
-        { branchId, variantId },
-        { session }
-      );
+      const stock = await db
+        .collection(COLLECTIONS.STOCKS)
+        .findOne({ branchId, variantId }, { session });
 
       if (!stock || stock.qty < item.qty) {
         throw new Error("Insufficient stock for return");
@@ -240,9 +290,9 @@ export const createPurchaseReturn = async ({ db, body, req }) => {
         { _id: stock._id },
         {
           $inc: { qty: -item.qty },
-          $set: { updatedAt: nowDate() }
+          $set: { updatedAt: nowDate() },
         },
-        { session }
+        { session },
       );
 
       totalQty += item.qty;
@@ -268,9 +318,9 @@ export const createPurchaseReturn = async ({ db, body, req }) => {
           totalQty,
           totalAmount,
 
-          createdAt: nowDate()
+          createdAt: nowDate(),
         },
-        { session }
+        { session },
       );
 
     /* =====================
@@ -283,9 +333,9 @@ export const createPurchaseReturn = async ({ db, body, req }) => {
         referenceId: insertResult.insertedId,
         referenceNo: returnNo,
         credit: totalAmount,
-        date: nowDate()
+        date: nowDate(),
       },
-      { session }
+      { session },
     );
 
     await session.commitTransaction();
@@ -304,19 +354,18 @@ export const createPurchaseReturn = async ({ db, body, req }) => {
         purchaseId,
         supplierId: purchase.supplierId,
         totalQty,
-        totalAmount
+        totalAmount,
       },
       ipAddress: req?.ip,
       userAgent: req?.headers?.["user-agent"],
-      createdAt: nowDate()
+      createdAt: nowDate(),
     });
 
     return {
       returnNo,
       totalQty,
-      totalAmount
+      totalAmount,
     };
-
   } catch (error) {
     await session.abortTransaction();
 
@@ -329,11 +378,10 @@ export const createPurchaseReturn = async ({ db, body, req }) => {
       payload: { error: error.message },
       ipAddress: req?.ip,
       userAgent: req?.headers?.["user-agent"],
-      createdAt: nowDate()
+      createdAt: nowDate(),
     });
 
     throw error;
-
   } finally {
     await session.endSession();
   }
