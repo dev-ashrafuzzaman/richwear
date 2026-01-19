@@ -115,4 +115,9 @@ await db.collection(COLLECTIONS.CATEGORIES).createIndex({ level: 1 });
     .createIndex({ "branches.branchId": 1 });
 
   await db.collection(COLLECTIONS.USERS).createIndex({ status: 1 });
+
+  await db.collection(COLLECTIONS.AUDIT_LOGS).createIndex({ action: 1 });
+  await db.collection(COLLECTIONS.AUDIT_LOGS).createIndex({ refType: 1, refId: 1 });
+  await db.collection(COLLECTIONS.AUDIT_LOGS).createIndex({ branchId: 1, createdAt: -1 });
+  await db.collection(COLLECTIONS.AUDIT_LOGS).createIndex({ userId: 1, createdAt: -1 });
 };

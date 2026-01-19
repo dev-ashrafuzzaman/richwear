@@ -3,6 +3,7 @@ import { generateCode } from "../../utils/codeGenerator.js";
 import { SALE_STATUS } from "./sales.constants.js";
 import { nowDate } from "../../utils/date.js";
 import { salesAccounting } from "../accounting/accounting.adapter.js";
+import { writeAuditLog } from "../../utils/logger.js";
 
 export const createSaleService = async ({ db, payload, user, accounts }) => {
   const session = db.client.startSession();
@@ -11,20 +12,21 @@ export const createSaleService = async ({ db, payload, user, accounts }) => {
     session.startTransaction();
 
     /* ---------------- Branch ---------------- */
-    const branch = await db.collection("branches").findOne(
-      { _id: new ObjectId(payload.branchId), status: "active" },
-      { session },
-    );
+    const branch = await db
+      .collection("branches")
+      .findOne(
+        { _id: new ObjectId(payload.branchId), status: "active" },
+        { session },
+      );
 
     if (!branch) {
       throw new Error("Branch not found or inactive");
     }
 
     /* ---------------- VAT ---------------- */
-    const vatConfig = await db.collection("tax_configs").findOne(
-      { appliesTo: "SALE", status: "active" },
-      { session },
-    );
+    const vatConfig = await db
+      .collection("tax_configs")
+      .findOne({ appliesTo: "SALE", status: "active" }, { session });
     const vatRate = vatConfig ? Number(vatConfig.rate) : 0;
 
     /* ---------------- Invoice ---------------- */
@@ -49,10 +51,12 @@ export const createSaleService = async ({ db, payload, user, accounts }) => {
       const qty = Number(item.qty);
       const price = Number(item.salePrice);
 
-      const variant = await db.collection("variants").findOne(
-        { _id: new ObjectId(item.variantId), status: "active" },
-        { session },
-      );
+      const variant = await db
+        .collection("variants")
+        .findOne(
+          { _id: new ObjectId(item.variantId), status: "active" },
+          { session },
+        );
 
       if (!variant) {
         throw new Error("Invalid variant");
@@ -110,9 +114,7 @@ export const createSaleService = async ({ db, payload, user, accounts }) => {
       invoiceNo,
       type: payload.type,
       branchId: branch._id,
-      customerId: payload.customerId
-        ? new ObjectId(payload.customerId)
-        : null,
+      customerId: payload.customerId ? new ObjectId(payload.customerId) : null,
 
       subTotal,
       itemDiscount,
@@ -170,9 +172,7 @@ export const createSaleService = async ({ db, payload, user, accounts }) => {
         {
           branchId: branch._id,
           variantId: new ObjectId(item.variantId),
-          sku: saleItems.find(si =>
-            si.variantId.equals(item.variantId)
-          )?.sku,
+          sku: saleItems.find((si) => si.variantId.equals(item.variantId))?.sku,
           source: "SALE",
           sourceId: saleId,
           qtyOut: item.qty,
@@ -185,6 +185,7 @@ export const createSaleService = async ({ db, payload, user, accounts }) => {
     /* ---------------- 🔥 ACCOUNTING ---------------- */
     await salesAccounting({
       db,
+      session,
       saleId,
       total: grandTotal,
       cash: paidAmount - dueAmount,
@@ -195,6 +196,25 @@ export const createSaleService = async ({ db, payload, user, accounts }) => {
         salesIncome: accounts.SALES_INCOME,
       },
       branchId: branch._id,
+    });
+
+    await writeAuditLog({
+      db,
+      userId: user._id,
+      action: "SALE_CREATE",
+      collection: "sales",
+      documentId: saleId,
+      refType: "SALE",
+      refId: saleId,
+      branchId: branch._id,
+      payload: {
+        saleId,
+        refundAmount: totalRefund,
+        refundMethod: payload.refundMethod,
+      },
+      ipAddress: user.ip || null,
+      userAgent: user.userAgent || null,
+      session,
     });
 
     await session.commitTransaction();

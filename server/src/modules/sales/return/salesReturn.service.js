@@ -1,6 +1,8 @@
 import { ObjectId } from "mongodb";
 import { RETURN_STATUS } from "./salesReturn.constants.js";
 import { nowDate } from "../../../utils/date.js";
+import { salesReturnAccounting } from "../../accounting/accounting.adapter.js";
+import { roundMoney } from "../../../utils/money.js";
 
 export const createSalesReturnService = async ({
   db,
@@ -13,26 +15,19 @@ export const createSalesReturnService = async ({
   try {
     session.startTransaction();
 
-    /* -------------------------------------------------
-     * 1. Validate Sale
-     * ------------------------------------------------- */
-    const sale = await db.collection("sales").findOne(
-      { _id: new ObjectId(saleId) },
-      { session },
-    );
+    /* -------------------- 1. Validate Sale -------------------- */
+    const sale = await db
+      .collection("sales")
+      .findOne({ _id: new ObjectId(saleId) }, { session });
 
     if (!sale) throw new Error("Sale not found");
-
     if (sale.status === "CANCELLED") {
       throw new Error("Cancelled sale cannot be returned");
     }
 
-    /* -------------------------------------------------
-     * 2. Fetch Sale Items
-     * ------------------------------------------------- */
     const saleItems = await db
       .collection("sale_items")
-      .find({ saleId: new ObjectId(saleId) })
+      .find({ saleId: sale._id })
       .toArray();
 
     const saleItemMap = {};
@@ -40,46 +35,40 @@ export const createSalesReturnService = async ({
 
     let totalRefund = 0;
 
-    /* -------------------------------------------------
-     * 3. Create Return Header
-     * ------------------------------------------------- */
-    const { insertedId: returnId } = await db
-      .collection("sales_returns")
-      .insertOne(
-        {
-          saleId: new ObjectId(saleId),
-          invoiceNo: sale.invoiceNo,
-          branchId: sale.branchId,
-          refundMethod: payload.refundMethod,
-          createdBy: new ObjectId(user._id),
-          createdAt: nowDate(),
-        },
-        { session },
-      );
+    /* -------------------- 2. Create Return Header -------------------- */
+    const returnDoc = {
+      saleId: sale._id,
+      invoiceNo: sale.invoiceNo,
+      branchId: sale.branchId,
+      refundMethod: payload.refundMethod,
+      createdBy: new ObjectId(user._id),
+      createdAt: nowDate(),
+    };
 
-    /* -------------------------------------------------
-     * 4. Process Each Return Item
-     * ------------------------------------------------- */
+    const { insertedId } = await db
+      .collection("sales_returns")
+      .insertOne(returnDoc, { session });
+
+    returnDoc._id = insertedId;
+
+    /* -------------------- 3. Process Items -------------------- */
     for (const rItem of payload.items) {
       const saleItem = saleItemMap[rItem.saleItemId];
-
-      if (!saleItem) {
-        throw new Error("Invalid saleItemId");
-      }
+      if (!saleItem) throw new Error("Invalid saleItemId");
 
       if (rItem.qty > saleItem.qty) {
         throw new Error("Return qty exceeds sold qty");
       }
 
-      const refundAmount =
-        (saleItem.lineTotal / saleItem.qty) * rItem.qty;
+      const refundAmount = roundMoney(
+        (saleItem.lineTotal / saleItem.qty) * rItem.qty,
+      );
 
       totalRefund += refundAmount;
 
-      /* ---- Save return item ---- */
       await db.collection("sales_return_items").insertOne(
         {
-          returnId,
+          returnId: insertedId,
           saleItemId: saleItem._id,
           productId: saleItem.productId,
           variantId: saleItem.variantId,
@@ -92,7 +81,7 @@ export const createSalesReturnService = async ({
         { session },
       );
 
-      /* ---- Stock back ---- */
+      /* Stock Back */
       await db.collection("stocks").updateOne(
         {
           branchId: sale.branchId,
@@ -105,14 +94,14 @@ export const createSalesReturnService = async ({
         { session },
       );
 
-      /* ---- Stock Ledger ---- */
+      /* Stock Ledger */
       await db.collection("stock_ledgers").insertOne(
         {
           branchId: sale.branchId,
           variantId: saleItem.variantId,
           sku: saleItem.sku,
           source: "SALE_RETURN",
-          sourceId: returnId,
+          sourceId: insertedId,
           qtyIn: rItem.qty,
           createdAt: nowDate(),
         },
@@ -120,9 +109,9 @@ export const createSalesReturnService = async ({
       );
     }
 
-    /* -------------------------------------------------
-     * 5. Update Sale Status
-     * ------------------------------------------------- */
+    totalRefund = roundMoney(totalRefund);
+
+    /* -------------------- 4. Update Sale Status -------------------- */
     const status =
       totalRefund >= sale.grandTotal
         ? RETURN_STATUS.FULL
@@ -139,24 +128,50 @@ export const createSalesReturnService = async ({
       { session },
     );
 
-    /* -------------------------------------------------
-     * 6. Accounting Reverse Queue
-     * ------------------------------------------------- */
-    await db.collection("accounting_queue").insertOne(
-      {
-        source: "SALE_RETURN",
-        sourceId: returnId,
-        saleId: sale._id,
-        amount: totalRefund,
-        createdAt: nowDate(),
+    /* -------------------- 5. Accounting Entry -------------------- */
+    const cashRefund = payload.refundMethod === "CASH" ? totalRefund : 0;
+
+    const dueAdjust = payload.refundMethod === "ADJUST_DUE" ? totalRefund : 0;
+
+    await salesReturnAccounting({
+      db,
+      salesReturnId: insertedId,
+      returnAmount: totalRefund,
+      cashRefund,
+      dueAdjust,
+      accounts: {
+        salesIncome: "SALES_INCOME",
+        cash: "CASH",
+        customer: sale.customerAccountId,
       },
-      { session },
-    );
+      branchId: sale.branchId,
+      session,
+    });
+
+    /* -------------------- 6. Audit Log -------------------- */
+    await writeAuditLog({
+      db,
+      userId: user._id,
+      action: "SALE_RETURN_CREATE",
+      collection: "sales_returns",
+      documentId: insertedId,
+      refType: "SALE_RETURN",
+      refId: insertedId,
+      branchId: sale.branchId,
+      payload: {
+        saleId,
+        refundAmount: totalRefund,
+        refundMethod: payload.refundMethod,
+      },
+      ipAddress: user.ip || null,
+      userAgent: user.userAgent || null,
+      session,
+    });
 
     await session.commitTransaction();
 
     return {
-      returnId,
+      returnId: insertedId,
       refundAmount: totalRefund,
       status,
     };

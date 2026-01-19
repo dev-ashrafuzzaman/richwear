@@ -4,6 +4,7 @@ import { insertLedger } from "../ledgers/ledgers.collection.js";
 
 export const postJournalEntry = async ({
   db,
+  session,
   date,
   refType,
   refId,
@@ -31,7 +32,8 @@ export const postJournalEntry = async ({
     entries,
     totalDebit,
     totalCredit,
-    branchId
+    branchId,
+    session
   });
 
   for (const e of entries) {
@@ -39,6 +41,7 @@ export const postJournalEntry = async ({
       .find({ accountId: new ObjectId(e.accountId), branchId })
       .sort({ createdAt: -1 })
       .limit(1)
+      .session(session)
       .toArray();
 
     const lastBalance = last[0]?.balance || 0;
@@ -54,7 +57,9 @@ export const postJournalEntry = async ({
       refId,
       narration,
       date,
-      branchId
+      branchId,
+      session
+
     });
   }
 };

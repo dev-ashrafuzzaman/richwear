@@ -3,6 +3,7 @@ import { postJournalEntry } from "./journals/journals.service.js";
 
 export const salesAccounting = async ({
   db,
+  session,
   saleId,
   total,
   cash,
@@ -27,6 +28,7 @@ export const salesAccounting = async ({
 
   return postJournalEntry({
     db,
+    session,
     date: nowDate(),
     refType: "SALE",
     refId: saleId,
