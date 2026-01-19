@@ -9,10 +9,8 @@ export const createIndexes = async (db) => {
 
   // await db.collection(COLLECTIONS.COUNTERS).createIndex({ _id: 1 }, { unique: true });
 
-
-await db.collection(COLLECTIONS.CATEGORIES).createIndex({ parentId: 1 });
-await db.collection(COLLECTIONS.CATEGORIES).createIndex({ level: 1 });
-
+  await db.collection(COLLECTIONS.CATEGORIES).createIndex({ parentId: 1 });
+  await db.collection(COLLECTIONS.CATEGORIES).createIndex({ level: 1 });
 
   /* ===========================
      PRODUCTS
@@ -98,10 +96,9 @@ await db.collection(COLLECTIONS.CATEGORIES).createIndex({ level: 1 });
 
   await db.collection(COLLECTIONS.CUSTOMERS).createIndex({ status: 1 });
 
-  await db.collection(COLLECTIONS.SUPPLIERS).createIndex(
-  { "contacts.phone": 1 },
-  { unique: true, sparse: true }
-);
+  await db
+    .collection(COLLECTIONS.SUPPLIERS)
+    .createIndex({ "contacts.phone": 1 }, { unique: true, sparse: true });
 
   /* ===========================
      USERS
@@ -117,8 +114,19 @@ await db.collection(COLLECTIONS.CATEGORIES).createIndex({ level: 1 });
   await db.collection(COLLECTIONS.USERS).createIndex({ status: 1 });
 
   await db.collection(COLLECTIONS.AUDIT_LOGS).createIndex({ action: 1 });
-  await db.collection(COLLECTIONS.AUDIT_LOGS).createIndex({ refType: 1, refId: 1 });
-  await db.collection(COLLECTIONS.AUDIT_LOGS).createIndex({ branchId: 1, createdAt: -1 });
-  await db.collection(COLLECTIONS.AUDIT_LOGS).createIndex({ userId: 1, createdAt: -1 });
-  await db.collection(COLLECTIONS.LEDGERS).createIndex({ branchId: 1, accountId: 1, date: 1 });
+  await db
+    .collection(COLLECTIONS.AUDIT_LOGS)
+    .createIndex({ refType: 1, refId: 1 });
+  await db
+    .collection(COLLECTIONS.AUDIT_LOGS)
+    .createIndex({ branchId: 1, createdAt: -1 });
+  await db
+    .collection(COLLECTIONS.AUDIT_LOGS)
+    .createIndex({ userId: 1, createdAt: -1 });
+  await db
+    .collection(COLLECTIONS.LEDGERS)
+    .createIndex({ branchId: 1, accountId: 1, date: 1 });
+  await db
+    .collection(COLLECTIONS.LEDGERS)
+    .createIndex({ refType: 1, refId: 1 });
 };

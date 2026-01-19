@@ -8,8 +8,8 @@ export const seedAllController = async (req, res, next) => {
         const db = req.app.locals.db;
 
         await seedSuperAdmin(db);
-        await seedChartOfAccounts(db);
         await seedBranches(db);
+        await seedChartOfAccounts(db);
 
         res.status(200).json({
             success: true,

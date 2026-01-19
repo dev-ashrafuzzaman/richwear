@@ -4,7 +4,10 @@ import { nowDate } from "../../utils/date.js";
 import { writeAuditLog } from "../../utils/logger.js";
 import { COLLECTIONS } from "../../database/collections.js";
 import { getMainBranch } from "../../utils/getMainWarehouse.js";
-import { purchaseAccounting } from "../accounting/accounting.adapter.js";
+import {
+  purchaseAccounting,
+  purchaseReturnAccounting,
+} from "../accounting/accounting.adapter.js";
 import { roundMoney } from "../../utils/money.js";
 
 export const createPurchase = async ({ db, body, req }) => {
@@ -95,7 +98,6 @@ export const createPurchase = async ({ db, body, req }) => {
           {
             $set: {
               salePrice: item.salePrice,
-              mrp: item.salePrice,
               updatedAt: nowDate(),
             },
             $push: {
@@ -161,8 +163,9 @@ export const createPurchase = async ({ db, body, req }) => {
       session,
       purchaseId: insertResult.insertedId,
       totalAmount,
-      paidAmount,
+      cashPaid: paidAmount,
       dueAmount,
+      supplierAccountId: supplierId,
       branchId,
     });
 
@@ -172,7 +175,7 @@ export const createPurchase = async ({ db, body, req }) => {
     await writeAuditLog({
       db,
       session,
-      userId: req?.user?._id,
+      userId: toObjectId(req?.user?.id),
       action: "PURCHASE_CREATE",
       collection: COLLECTIONS.PURCHASES,
       documentId: insertResult.insertedId,
@@ -203,10 +206,9 @@ export const createPurchase = async ({ db, body, req }) => {
     };
   } catch (error) {
     await session.abortTransaction();
-
     await writeAuditLog({
       db,
-      userId: req?.user?._id,
+      userId: toObjectId(req?.user?.id),
       action: "PURCHASE_CREATE_FAILED",
       collection: COLLECTIONS.PURCHASES,
       referenceNo: purchaseNo || null,
@@ -214,6 +216,7 @@ export const createPurchase = async ({ db, body, req }) => {
       ipAddress: req?.ip,
       userAgent: req?.headers?.["user-agent"],
       createdAt: nowDate(),
+      status: "ERROR",
     });
 
     throw error;
@@ -233,6 +236,9 @@ export const createPurchaseReturn = async ({ db, body, req }) => {
   try {
     session.startTransaction();
 
+    /* =====================
+       1️⃣ MAIN BRANCH
+    ====================== */
     mainBranch = await getMainBranch(db, session);
     const branchId = mainBranch._id;
 
@@ -273,11 +279,11 @@ export const createPurchaseReturn = async ({ db, body, req }) => {
         throw new Error("Variant not found in purchase");
       }
 
-      if (item.qty > purchaseItem.qty) {
-        throw new Error("Return qty exceeds purchase qty");
+      if (item.qty <= 0 || item.qty > purchaseItem.qty) {
+        throw new Error("Invalid return quantity");
       }
 
-      /* ---------- STOCK DECREASE ---------- */
+      /* ---------- STOCK CHECK ---------- */
       const stock = await db
         .collection(COLLECTIONS.STOCKS)
         .findOne({ branchId, variantId }, { session });
@@ -286,6 +292,7 @@ export const createPurchaseReturn = async ({ db, body, req }) => {
         throw new Error("Insufficient stock for return");
       }
 
+      /* ---------- STOCK UPDATE ---------- */
       await db.collection(COLLECTIONS.STOCKS).updateOne(
         { _id: stock._id },
         {
@@ -299,8 +306,10 @@ export const createPurchaseReturn = async ({ db, body, req }) => {
       totalAmount += item.qty * purchaseItem.costPrice;
     }
 
+    totalAmount = roundMoney(totalAmount);
+
     /* =====================
-       5️⃣ RETURN DOCUMENT
+       5️⃣ PURCHASE RETURN INSERT
     ====================== */
     const insertResult = await db
       .collection(COLLECTIONS.PURCHASE_RETURNS)
@@ -311,8 +320,8 @@ export const createPurchaseReturn = async ({ db, body, req }) => {
           supplierId: purchase.supplierId,
           branchId,
 
-          returnDate: body.returnDate,
-          reason: body.reason,
+          returnDate: body.returnDate || nowDate(),
+          reason: body.reason || null,
 
           items: body.items,
           totalQty,
@@ -324,28 +333,53 @@ export const createPurchaseReturn = async ({ db, body, req }) => {
       );
 
     /* =====================
-       6️⃣ SUPPLIER LEDGER (CREDIT)
+       6️⃣ PURCHASE BALANCE UPDATE
     ====================== */
-    await db.collection(COLLECTIONS.SUPPLIER_LEDGER).insertOne(
+    const newTotalAmount = roundMoney(
+      Math.max(purchase.totalAmount - totalAmount, 0),
+    );
+
+    const newDueAmount = roundMoney(
+      Math.max(newTotalAmount - purchase.paidAmount, 0),
+    );
+
+    const newPaymentStatus =
+      newDueAmount === 0 ? "PAID" : purchase.paidAmount > 0 ? "PARTIAL" : "DUE";
+
+    await db.collection(COLLECTIONS.PURCHASES).updateOne(
+      { _id: purchaseId },
       {
-        supplierId: purchase.supplierId,
-        referenceType: "PURCHASE_RETURN",
-        referenceId: insertResult.insertedId,
-        referenceNo: returnNo,
-        credit: totalAmount,
-        date: nowDate(),
+        $set: {
+          totalAmount: newTotalAmount,
+          dueAmount: newDueAmount,
+          paymentStatus: newPaymentStatus,
+          updatedAt: nowDate(),
+        },
       },
       { session },
     );
 
-    await session.commitTransaction();
+    /* =====================
+       7️⃣ ACCOUNTING (TX SAFE)
+    ====================== */
+    await purchaseReturnAccounting({
+      db,
+      session,
+      purchaseReturnId: insertResult.insertedId,
+      returnAmount: totalAmount,
+      cashRefund: body.cashRefund || 0,
+      dueAdjust: body.dueAdjust || totalAmount,
+      supplierAccountId: purchase.supplierId,
+      branchId,
+    });
 
     /* =====================
-       7️⃣ AUDIT LOG
+       8️⃣ AUDIT LOG
     ====================== */
     await writeAuditLog({
       db,
-      userId: req?.user?._id,
+      session,
+      userId: toObjectId(req?.user?.id),
       action: "PURCHASE_RETURN_CREATE",
       collection: COLLECTIONS.PURCHASE_RETURNS,
       documentId: insertResult.insertedId,
@@ -361,17 +395,21 @@ export const createPurchaseReturn = async ({ db, body, req }) => {
       createdAt: nowDate(),
     });
 
+    await session.commitTransaction();
+
     return {
       returnNo,
+      purchaseId,
       totalQty,
       totalAmount,
+      branch: mainBranch.code,
     };
   } catch (error) {
     await session.abortTransaction();
 
     await writeAuditLog({
       db,
-      userId: req?.user?._id,
+      userId: toObjectId(req?.user?.id),
       action: "PURCHASE_RETURN_FAILED",
       collection: COLLECTIONS.PURCHASE_RETURNS,
       referenceNo: returnNo || null,
@@ -379,6 +417,7 @@ export const createPurchaseReturn = async ({ db, body, req }) => {
       ipAddress: req?.ip,
       userAgent: req?.headers?.["user-agent"],
       createdAt: nowDate(),
+      status: "ERROR",
     });
 
     throw error;

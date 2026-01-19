@@ -38,10 +38,9 @@ export const postJournalEntry = async ({
 
   for (const e of entries) {
     const last = await db.collection("ledgers")
-      .find({ accountId: new ObjectId(e.accountId), branchId })
+      .find({ accountId: new ObjectId(e.accountId), branchId }, { session })
       .sort({ createdAt: -1 })
       .limit(1)
-      .session(session)
       .toArray();
 
     const lastBalance = last[0]?.balance || 0;

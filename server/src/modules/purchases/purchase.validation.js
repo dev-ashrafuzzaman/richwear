@@ -27,16 +27,55 @@ export const createPurchaseSchema = Joi.object({
 
 export const createPurchaseReturnSchema = Joi.object({
   purchaseId: Joi.string().required(),
-  returnDate: Joi.date().required(),
-  reason: Joi.string().required(),
 
+  returnDate: Joi.date().required(),
+
+  reason: Joi.string().trim().min(5).required(),
+
+  /* =====================
+     RETURN ITEMS
+  ====================== */
   items: Joi.array()
     .items(
       Joi.object({
         variantId: Joi.string().required(),
-        qty: Joi.number().positive().required()
-      })
+        qty: Joi.number().positive().precision(2).required(),
+      }),
     )
     .min(1)
-    .required()
-});
+    .required(),
+
+  /* =====================
+     FINANCIALS
+  ====================== */
+  returnAmount: Joi.number()
+    .positive()
+    .precision(2)
+    .required(),
+
+  cashRefund: Joi.number()
+    .min(0)
+    .precision(2)
+    .default(0),
+
+  dueAdjust: Joi.number()
+    .min(0)
+    .precision(2)
+    .default(0),
+})
+  /* =====================
+     CROSS FIELD VALIDATION
+  ====================== */
+  .custom((value, helpers) => {
+    const total = Number(value.returnAmount || 0);
+    const cash = Number(value.cashRefund || 0);
+    const due = Number(value.dueAdjust || 0);
+
+    if (cash + due !== total) {
+      return helpers.message(
+        "cashRefund + dueAdjust must be equal to returnAmount",
+      );
+    }
+
+    return value;
+  });

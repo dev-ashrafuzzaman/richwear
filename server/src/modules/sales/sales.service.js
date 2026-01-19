@@ -5,7 +5,7 @@ import { nowDate } from "../../utils/date.js";
 import { salesAccounting } from "../accounting/accounting.adapter.js";
 import { writeAuditLog } from "../../utils/logger.js";
 
-export const createSaleService = async ({ db, payload, user, accounts }) => {
+export const createSaleService = async ({ db, payload, user }) => {
   const session = db.client.startSession();
 
   try {
@@ -194,14 +194,9 @@ export const createSaleService = async ({ db, payload, user, accounts }) => {
       session,
       saleId,
       total: grandTotal,
-      cash: roundMoney(paidAmount - dueAmount),
-      due: dueAmount,
-      accounts: {
-        cash: accounts.CASH,
-        customer: payload.customerAccountId,
-        salesIncome: accounts.SALES_INCOME,
-      },
+      payments: payload.payments,
       branchId: branch._id,
+      customerAccountId: payload.customerId,
     });
 
     await writeAuditLog({

@@ -20,6 +20,7 @@ export const createPurchaseController = async (req, res, next) => {
     const result = await createPurchase({
       db,
       body: value,
+      req,
     });
 
     res.status(201).json({
@@ -47,6 +48,7 @@ export const createPurchaseReturnController = async (req, res, next) => {
     const result = await createPurchaseReturn({
       db,
       body: value,
+      req,
     });
 
     res.status(201).json({
