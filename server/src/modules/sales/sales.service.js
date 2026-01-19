@@ -1,19 +1,14 @@
 import { ObjectId } from "mongodb";
 import { generateCode } from "../../utils/codeGenerator.js";
 import { SALE_STATUS } from "./sales.constants.js";
+import { nowDate } from "../../utils/date.js";
 
-/**
- * Create Sale (POS / ERP)
- */
 export const createSaleService = async ({ db, payload, user }) => {
   const session = db.client.startSession();
 
   try {
     session.startTransaction();
 
-    /* -------------------------------------------------
-     * 1. Validate Branch (inside transaction)
-     * ------------------------------------------------- */
     const branch = await db.collection("branches").findOne(
       {
         _id: new ObjectId(payload.branchId),
@@ -26,9 +21,27 @@ export const createSaleService = async ({ db, payload, user }) => {
       throw new Error("Branch not found or inactive");
     }
 
-    /* -------------------------------------------------
-     * 2. Generate Invoice No (TRANSACTION SAFE)
-     * ------------------------------------------------- */
+    const vatConfig = await db.collection("tax_configs").findOne(
+      {
+        appliesTo: "SALE",
+        status: "active",
+      },
+      { session },
+    );
+    const vatRate = vatConfig ? Number(vatConfig.rate) : 0;
+
+    const variant = await db.collection("variants").findOne(
+      {
+        _id: new ObjectId(item.variantId),
+        status: "active",
+      },
+      { session },
+    );
+
+    if (!variant) {
+      throw new Error("Invalid variant");
+    }
+
     const invoiceNo = await generateCode({
       db,
       module: "SALE",
@@ -36,12 +49,9 @@ export const createSaleService = async ({ db, payload, user }) => {
       scope: "YEAR",
       branch: branch.code,
       padding: 8,
-      session, // 🔐 VERY IMPORTANT
+      session, 
     });
 
-    /* -------------------------------------------------
-     * 3. Calculate Items, Discount, Tax
-     * ------------------------------------------------- */
     let subTotal = 0;
     let itemDiscount = 0;
     let taxAmount = 0;
@@ -62,17 +72,17 @@ export const createSaleService = async ({ db, payload, user }) => {
       }
 
       const taxableAmount = baseAmount - discountAmount;
-      const vat = taxableAmount * 0.05; // VAT 5%
+      const vat = taxableAmount * (vatRate / 100);
 
       subTotal += baseAmount;
       itemDiscount += discountAmount;
       taxAmount += vat;
 
       saleItems.push({
-        saleId: null, // will set later
+        saleId: null,
         productId: new ObjectId(item.productId),
         variantId: new ObjectId(item.variantId),
-        sku: item.sku,
+        sku: variant.sku,
         qty,
         salePrice: price,
         discountType: item.discountType || null,
@@ -80,18 +90,14 @@ export const createSaleService = async ({ db, payload, user }) => {
         discountAmount,
         taxAmount: vat,
         lineTotal: taxableAmount + vat,
-        createdAt: new Date(),
+        createdAt: nowDate(),
       });
     }
 
     const billDiscount = payload.billDiscount || 0;
 
-    const grandTotal =
-      subTotal - itemDiscount - billDiscount + taxAmount;
+    const grandTotal = subTotal - itemDiscount - billDiscount + taxAmount;
 
-    /* -------------------------------------------------
-     * 4. Payment Calculation
-     * ------------------------------------------------- */
     const paidAmount = payload.payments.reduce(
       (sum, p) => sum + Number(p.amount),
       0,
@@ -103,16 +109,11 @@ export const createSaleService = async ({ db, payload, user }) => {
 
     const dueAmount = grandTotal - paidAmount;
 
-    /* -------------------------------------------------
-     * 5. Insert Sale
-     * ------------------------------------------------- */
     const saleDoc = {
       invoiceNo,
       type: payload.type,
       branchId: new ObjectId(payload.branchId),
-      customerId: payload.customerId
-        ? new ObjectId(payload.customerId)
-        : null,
+      customerId: payload.customerId ? new ObjectId(payload.customerId) : null,
 
       subTotal,
       itemDiscount,
@@ -132,9 +133,6 @@ export const createSaleService = async ({ db, payload, user }) => {
       .collection("sales")
       .insertOne(saleDoc, { session });
 
-    /* -------------------------------------------------
-     * 6. Insert Sale Items
-     * ------------------------------------------------- */
     await db.collection("sale_items").insertMany(
       saleItems.map((i) => ({
         ...i,
@@ -143,29 +141,23 @@ export const createSaleService = async ({ db, payload, user }) => {
       { session },
     );
 
-    /* -------------------------------------------------
-     * 7. Insert Payments
-     * ------------------------------------------------- */
     await db.collection("sale_payments").insertMany(
       payload.payments.map((p) => ({
         saleId,
         method: p.method,
         amount: Number(p.amount),
         reference: p.reference || null,
-        receivedAt: new Date(),
+        receivedAt: nowDate(),
       })),
       { session },
     );
 
-    /* -------------------------------------------------
-     * 8. Reduce Stock (Branch-wise)
-     * ------------------------------------------------- */
     for (const item of payload.items) {
       const result = await db.collection("stocks").updateOne(
         {
           branchId: new ObjectId(payload.branchId),
           variantId: new ObjectId(item.variantId),
-          qty: { $gte: item.qty }, // 🔐 no negative stock
+          qty: { $gte: item.qty },
         },
         {
           $inc: { qty: -item.qty },
@@ -175,12 +167,9 @@ export const createSaleService = async ({ db, payload, user }) => {
       );
 
       if (result.matchedCount === 0) {
-        throw new Error(
-          `Insufficient stock for SKU ${item.sku}`,
-        );
+        throw new Error(`Insufficient stock for SKU ${item.sku}`);
       }
 
-      /* Optional: Stock Ledger */
       await db.collection("stock_ledgers").insertOne(
         {
           branchId: new ObjectId(payload.branchId),
@@ -189,29 +178,23 @@ export const createSaleService = async ({ db, payload, user }) => {
           source: "SALE",
           sourceId: saleId,
           qtyOut: item.qty,
-          createdAt: new Date(),
+          createdAt: nowDate(),
         },
         { session },
       );
     }
 
-    /* -------------------------------------------------
-     * 9. Accounting Queue (Async Posting)
-     * ------------------------------------------------- */
     await db.collection("accounting_queue").insertOne(
       {
         source: "SALE",
         sourceId: saleId,
         invoiceNo,
         amount: grandTotal,
-        createdAt: new Date(),
+        createdAt: nowDate(),
       },
       { session },
     );
 
-    /* -------------------------------------------------
-     * 10. Commit Transaction
-     * ------------------------------------------------- */
     await session.commitTransaction();
 
     return {
@@ -222,7 +205,7 @@ export const createSaleService = async ({ db, payload, user }) => {
       dueAmount,
     };
   } catch (err) {
-    await session.abortTransaction(); // 🔥 rollback counter + stock
+    await session.abortTransaction();
     throw err;
   } finally {
     session.endSession();

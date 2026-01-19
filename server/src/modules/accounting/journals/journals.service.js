@@ -1,6 +1,6 @@
-import { insertJournal } from "./journals.collection.js";
-import { insertLedger } from "./ledgers.collection.js";
 import { ObjectId } from "mongodb";
+import { insertJournal } from "./journals.collection.js";
+import { insertLedger } from "../ledgers/ledgers.collection.js";
 
 export const postJournalEntry = async ({
   db,
@@ -8,40 +8,42 @@ export const postJournalEntry = async ({
   refType,
   refId,
   narration,
-  entries
+  entries,
+  branchId = null
 }) => {
-
   let totalDebit = 0;
   let totalCredit = 0;
 
-  entries.forEach(e => {
+  for (const e of entries) {
     totalDebit += e.debit || 0;
     totalCredit += e.credit || 0;
-  });
-
-  if (totalDebit !== totalCredit) {
-    throw new Error("Debit and Credit mismatch");
   }
 
-  const journalRes = await insertJournal(db, {
+  if (totalDebit !== totalCredit) {
+    throw new Error("Debit & Credit mismatch");
+  }
+
+  await insertJournal(db, {
     date,
     refType,
     refId,
     narration,
     entries,
     totalDebit,
-    totalCredit
+    totalCredit,
+    branchId
   });
 
   for (const e of entries) {
     const last = await db.collection("ledgers")
-      .find({ accountId: new ObjectId(e.accountId) })
+      .find({ accountId: new ObjectId(e.accountId), branchId })
       .sort({ createdAt: -1 })
       .limit(1)
       .toArray();
 
     const lastBalance = last[0]?.balance || 0;
-    const balance = lastBalance + (e.debit || 0) - (e.credit || 0);
+    const balance =
+      lastBalance + (e.debit || 0) - (e.credit || 0);
 
     await insertLedger(db, {
       accountId: e.accountId,
@@ -51,9 +53,8 @@ export const postJournalEntry = async ({
       refType,
       refId,
       narration,
-      date
+      date,
+      branchId
     });
   }
-
-  return journalRes;
 };

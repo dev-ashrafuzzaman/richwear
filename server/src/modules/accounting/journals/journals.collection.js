@@ -1,4 +1,5 @@
 import { ObjectId } from "mongodb";
+import { nowDate } from "../../../utils/date";
 
 export const insertJournal = async (db, journal) => {
   return db.collection("journals").insertOne({
@@ -6,13 +7,14 @@ export const insertJournal = async (db, journal) => {
     refType: journal.refType,
     refId: journal.refId ? new ObjectId(journal.refId) : null,
     narration: journal.narration,
-    entries: journal.entries.map(e => ({
+    branchId: journal.branchId || null,
+    entries: journal.entries.map((e) => ({
       accountId: new ObjectId(e.accountId),
       debit: e.debit || 0,
-      credit: e.credit || 0
+      credit: e.credit || 0,
     })),
     totalDebit: journal.totalDebit,
     totalCredit: journal.totalCredit,
-    createdAt: new Date()
+    createdAt: nowDate(),
   });
 };
