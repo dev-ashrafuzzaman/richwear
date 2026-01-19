@@ -3,6 +3,16 @@ import { postJournalEntry } from "./journals/journals.service.js";
 import { resolveSystemAccounts } from "./account.resolver.js";
 import { roundMoney } from "../../utils/money.js";
 
+
+const resolveAccountByCode = async (db, code) => {
+  const acc = await db.collection("accounts").findOne({ code });
+  if (!acc) {
+    throw new Error(`Account not found: ${code}`);
+  }
+  return acc._id;
+};
+
+
 /* ======================================================
    SALES ACCOUNTING
 ====================================================== */
@@ -11,9 +21,9 @@ export const salesAccounting = async ({
   session,
   saleId,
   total,
-  payments,              // [{ method, amount }]
+  payments, // [{ method, amount }]
   customerAccountId,
-  branchId
+  branchId,
 }) => {
   const SYS = await resolveSystemAccounts(db);
 
@@ -28,7 +38,9 @@ export const salesAccounting = async ({
       entries.push({ accountId: SYS.CASH, debit: p.amount });
     }
 
-    if (["BKASH", "NAGAD", "ROCKET", "UPAY", "BANK", "CARD"].includes(p.method)) {
+    if (
+      ["BKASH", "NAGAD", "ROCKET", "UPAY", "BANK", "CARD"].includes(p.method)
+    ) {
       entries.push({ accountId: SYS.BANK, debit: p.amount });
     }
   }
@@ -48,7 +60,7 @@ export const salesAccounting = async ({
     refId: saleId,
     narration: "Sales Invoice",
     entries,
-    branchId
+    branchId,
   });
 };
 
@@ -63,7 +75,7 @@ export const salesReturnAccounting = async ({
   cashRefund = 0,
   dueAdjust = 0,
   customerAccountId,
-  branchId
+  branchId,
 }) => {
   if (cashRefund + dueAdjust !== returnAmount) {
     throw new Error("Sales return amount mismatch");
@@ -75,20 +87,20 @@ export const salesReturnAccounting = async ({
   // Reverse income
   entries.push({
     accountId: SYS.SALES_INCOME,
-    debit: returnAmount
+    debit: returnAmount,
   });
 
   if (cashRefund > 0) {
     entries.push({
       accountId: SYS.CASH,
-      credit: cashRefund
+      credit: cashRefund,
     });
   }
 
   if (dueAdjust > 0) {
     entries.push({
       accountId: customerAccountId,
-      credit: dueAdjust
+      credit: dueAdjust,
     });
   }
 
@@ -100,7 +112,7 @@ export const salesReturnAccounting = async ({
     refId: salesReturnId,
     narration: "Sales Return",
     entries,
-    branchId
+    branchId,
   });
 };
 
@@ -114,32 +126,45 @@ export const purchaseAccounting = async ({
   totalAmount,
   cashPaid = 0,
   dueAmount = 0,
-  supplierAccountId,
-  branchId
+  supplierId,       
+  branchId,
+  narration
 }) => {
   if (cashPaid + dueAmount !== totalAmount) {
     throw new Error("Purchase amount mismatch");
   }
 
   const SYS = await resolveSystemAccounts(db);
+
+
+  const supplierControlAccountId = await resolveAccountByCode(
+    db,
+    "2001" // Accounts Payable
+  );
+
   const entries = [];
 
+  // Inventory
   entries.push({
     accountId: SYS.INVENTORY,
-    debit: totalAmount
+    debit: totalAmount,
   });
 
+  // Cash
   if (cashPaid > 0) {
     entries.push({
       accountId: SYS.CASH,
-      credit: cashPaid
+      credit: cashPaid,
     });
   }
 
+  // Supplier Due
   if (dueAmount > 0) {
     entries.push({
-      accountId: supplierAccountId,
-      credit: dueAmount
+      accountId: supplierControlAccountId, 
+      credit: dueAmount,
+      partyType: "SUPPLIER",
+      partyId: supplierId,               
     });
   }
 
@@ -149,11 +174,12 @@ export const purchaseAccounting = async ({
     date: nowDate(),
     refType: "PURCHASE",
     refId: purchaseId,
-    narration: "Purchase Invoice",
+    narration,
     entries,
-    branchId
+    branchId,
   });
 };
+
 
 /* ======================================================
    PURCHASE RETURN ACCOUNTING
@@ -234,7 +260,7 @@ export const supplierPaymentAccounting = async ({
   amount,
   paymentMethod,
   supplierAccountId,
-  branchId
+  branchId,
 }) => {
   const SYS = await resolveSystemAccounts(db);
 
@@ -246,8 +272,8 @@ export const supplierPaymentAccounting = async ({
     { accountId: supplierAccountId, debit: amount },
     {
       accountId: paymentMethod === "CASH" ? SYS.CASH : SYS.BANK,
-      credit: amount
-    }
+      credit: amount,
+    },
   ];
 
   return postJournalEntry({
@@ -258,7 +284,7 @@ export const supplierPaymentAccounting = async ({
     refId: paymentId,
     narration: "Supplier Payment",
     entries,
-    branchId
+    branchId,
   });
 };
 
@@ -272,7 +298,7 @@ export const customerPaymentAccounting = async ({
   amount,
   paymentMethod,
   customerAccountId,
-  branchId
+  branchId,
 }) => {
   const SYS = await resolveSystemAccounts(db);
 
@@ -283,9 +309,9 @@ export const customerPaymentAccounting = async ({
   const entries = [
     {
       accountId: paymentMethod === "CASH" ? SYS.CASH : SYS.BANK,
-      debit: amount
+      debit: amount,
     },
-    { accountId: customerAccountId, credit: amount }
+    { accountId: customerAccountId, credit: amount },
   ];
 
   return postJournalEntry({
@@ -296,7 +322,7 @@ export const customerPaymentAccounting = async ({
     refId: paymentId,
     narration: "Customer Payment",
     entries,
-    branchId
+    branchId,
   });
 };
 
@@ -309,7 +335,7 @@ export const salaryPaymentAccounting = async ({
   salaryPaymentId,
   amount,
   paymentMethod,
-  branchId
+  branchId,
 }) => {
   const SYS = await resolveSystemAccounts(db);
 
@@ -317,8 +343,8 @@ export const salaryPaymentAccounting = async ({
     { accountId: SYS.SALARY_EXPENSE, debit: amount },
     {
       accountId: paymentMethod === "CASH" ? SYS.CASH : SYS.BANK,
-      credit: amount
-    }
+      credit: amount,
+    },
   ];
 
   return postJournalEntry({
@@ -329,7 +355,7 @@ export const salaryPaymentAccounting = async ({
     refId: salaryPaymentId,
     narration: "Salary Payment",
     entries,
-    branchId
+    branchId,
   });
 };
 
@@ -342,7 +368,7 @@ export const commissionAccounting = async ({
   commissionId,
   amount,
   paymentMethod,
-  branchId
+  branchId,
 }) => {
   const SYS = await resolveSystemAccounts(db);
 
@@ -350,8 +376,8 @@ export const commissionAccounting = async ({
     { accountId: SYS.COMMISSION_EXPENSE, debit: amount },
     {
       accountId: paymentMethod === "CASH" ? SYS.CASH : SYS.BANK,
-      credit: amount
-    }
+      credit: amount,
+    },
   ];
 
   return postJournalEntry({
@@ -362,7 +388,7 @@ export const commissionAccounting = async ({
     refId: commissionId,
     narration: "Commission Payment",
     entries,
-    branchId
+    branchId,
   });
 };
 
@@ -376,7 +402,7 @@ export const inventoryAdjustmentAccounting = async ({
   adjustmentType,
   amount,
   reason,
-  branchId
+  branchId,
 }) => {
   const SYS = await resolveSystemAccounts(db);
   const entries = [];
@@ -384,14 +410,14 @@ export const inventoryAdjustmentAccounting = async ({
   if (adjustmentType === "INCREASE") {
     entries.push(
       { accountId: SYS.INVENTORY, debit: amount },
-      { accountId: SYS.OTHER_INCOME, credit: amount }
+      { accountId: SYS.OTHER_INCOME, credit: amount },
     );
   }
 
   if (adjustmentType === "DECREASE") {
     entries.push(
       { accountId: SYS.PURCHASE_EXPENSE, debit: amount },
-      { accountId: SYS.INVENTORY, credit: amount }
+      { accountId: SYS.INVENTORY, credit: amount },
     );
   }
 
@@ -403,7 +429,7 @@ export const inventoryAdjustmentAccounting = async ({
     refId: adjustmentId,
     narration: reason || "Inventory Adjustment",
     entries,
-    branchId
+    branchId,
   });
 };
 
@@ -416,7 +442,7 @@ export const openingBalanceAccounting = async ({
   openingDate,
   balances,
   openingOffsetAccountId,
-  branchId
+  branchId,
 }) => {
   const entries = [];
   let debit = 0;
@@ -454,6 +480,6 @@ export const openingBalanceAccounting = async ({
     refId: null,
     narration: "Opening Balance",
     entries,
-    branchId
+    branchId,
   });
 };

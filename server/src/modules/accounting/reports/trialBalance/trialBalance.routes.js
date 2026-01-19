@@ -14,7 +14,7 @@ router.use(authenticate);
  * @route   GET /api/accounting/reports/trial-balance
  * @query   from, to, branchId
  */
-router.get("/trial-balance", permit(PERMISSIONS.ACCOUNT_VIEW), getTrialBalance);
+router.get("/", permit(PERMISSIONS.ACCOUNT_VIEW), getTrialBalance);
 
 export default router;
 // GET /api/accounting/reports/trial-balance?from=2026-01-01&to=2026-01-31

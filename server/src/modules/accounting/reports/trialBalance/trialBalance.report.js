@@ -1,14 +1,16 @@
-// modules/accounting/reports/trialBalance.report.js
 import { ObjectId } from "mongodb";
 
 export const trialBalanceReport = async ({
   db,
   fromDate,
   toDate,
-  branchId = null
+  branchId = null,
 }) => {
+  /* =========================
+     MATCH STAGE
+  ========================== */
   const match = {
-    date: { $lte: toDate }
+    date: { $lte: toDate },
   };
 
   if (fromDate) {
@@ -16,76 +18,81 @@ export const trialBalanceReport = async ({
   }
 
   if (branchId) {
-    match.branchId = branchId;
+    match.branchId = new ObjectId(branchId);
   }
 
-  const data = await db.collection("ledgers").aggregate([
+  /* =========================
+     AGGREGATION
+  ========================== */
+  const rows = await db.collection("ledgers").aggregate([
     { $match: match },
+
+    /* --- group ledger by account --- */
     {
       $group: {
         _id: "$accountId",
         totalDebit: { $sum: "$debit" },
         totalCredit: { $sum: "$credit" },
-        balance: { $last: "$balance" }
-      }
+      },
     },
+
+    /* --- join chart of accounts --- */
     {
       $lookup: {
         from: "accounts",
         localField: "_id",
         foreignField: "_id",
-        as: "account"
-      }
+        as: "account",
+      },
     },
     { $unwind: "$account" },
+
+    /* --- net balance calculation --- */
+    {
+      $addFields: {
+        net: { $subtract: ["$totalDebit", "$totalCredit"] },
+      },
+    },
+
+    /* --- closing side placement (ACCOUNTING RULE) --- */
     {
       $project: {
         accountId: "$_id",
         code: "$account.code",
         name: "$account.name",
         type: "$account.type",
+
         totalDebit: 1,
         totalCredit: 1,
-        balance: 1
-      }
+
+        closingDebit: {
+          $cond: [{ $gt: ["$net", 0] }, "$net", 0],
+        },
+
+        closingCredit: {
+          $cond: [{ $lt: ["$net", 0] }, { $abs: "$net" }, 0],
+        },
+      },
     },
-    { $sort: { code: 1 } }
+
+    { $sort: { code: 1 } },
   ]).toArray();
 
-  let grandDebit = 0;
-  let grandCredit = 0;
+  /* =========================
+     GRAND TOTAL
+  ========================== */
+  let totalDebit = 0;
+  let totalCredit = 0;
 
-  const rows = data.map(row => {
-    const debitBalance =
-      row.balance > 0 &&
-      ["ASSET", "EXPENSE"].includes(row.type)
-        ? row.balance
-        : 0;
-
-    const creditBalance =
-      row.balance > 0 &&
-      ["LIABILITY", "INCOME", "EQUITY"].includes(row.type)
-        ? row.balance
-        : 0;
-
-    grandDebit += debitBalance;
-    grandCredit += creditBalance;
-
-    return {
-      accountId: row.accountId,
-      code: row.code,
-      name: row.name,
-      totalDebit: row.totalDebit,
-      totalCredit: row.totalCredit,
-      closingDebit: debitBalance,
-      closingCredit: creditBalance
-    };
-  });
+  for (const row of rows) {
+    totalDebit += row.closingDebit;
+    totalCredit += row.closingCredit;
+  }
 
   return {
     rows,
-    totalDebit: grandDebit,
-    totalCredit: grandCredit,
-    isBalanced: grandDebit === grandCredit
+    totalDebit,
+    totalCredit,
+    isBalanced: totalDebit === totalCredit,
   };
 };

@@ -165,8 +165,9 @@ export const createPurchase = async ({ db, body, req }) => {
       totalAmount,
       cashPaid: paidAmount,
       dueAmount,
-      supplierAccountId: supplierId,
+      supplierId,
       branchId,
+      narration: `Purchase #${purchaseNo}`,
     });
 
     /* =====================

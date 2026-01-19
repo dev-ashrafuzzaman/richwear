@@ -19,6 +19,7 @@ import ledgerRoutes from "./src/modules/accounting/reports/ledger/ledger.routes.
 import balanceSheetRoutes from "./src/modules/accounting/reports/balanceSheet/balanceSheet.routes.js";
 import closingRoutes from "./src/modules/accounting/reports/closing/yearClosing.routes.js";
 import customerStatementRoutes from "./src/modules/accounting/reports/customerStatement/customerStatement.routes.js";
+import trialBalanceRoutes from "./src/modules/accounting/reports/trialBalance/trialBalance.routes.js";
 
 
 import { authenticate } from "./src/middlewares/auth.middleware.js";
@@ -47,6 +48,7 @@ router.use("/accounting/reports/ledgers", ledgerRoutes);
 router.use("/accounting/reports/balance-sheet", balanceSheetRoutes);
 router.use("/accounting/reports/close-year", closingRoutes);
 router.use("/accounting/reports/customer-statement", customerStatementRoutes);
+router.use("/accounting/reports/trial-balance", trialBalanceRoutes);
 
 
 export default router;
