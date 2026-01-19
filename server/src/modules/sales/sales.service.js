@@ -2,18 +2,17 @@ import { ObjectId } from "mongodb";
 import { generateCode } from "../../utils/codeGenerator.js";
 import { SALE_STATUS } from "./sales.constants.js";
 import { nowDate } from "../../utils/date.js";
+import { salesAccounting } from "../accounting/accounting.adapter.js";
 
-export const createSaleService = async ({ db, payload, user }) => {
+export const createSaleService = async ({ db, payload, user, accounts }) => {
   const session = db.client.startSession();
 
   try {
     session.startTransaction();
 
+    /* ---------------- Branch ---------------- */
     const branch = await db.collection("branches").findOne(
-      {
-        _id: new ObjectId(payload.branchId),
-        status: "active",
-      },
+      { _id: new ObjectId(payload.branchId), status: "active" },
       { session },
     );
 
@@ -21,27 +20,14 @@ export const createSaleService = async ({ db, payload, user }) => {
       throw new Error("Branch not found or inactive");
     }
 
+    /* ---------------- VAT ---------------- */
     const vatConfig = await db.collection("tax_configs").findOne(
-      {
-        appliesTo: "SALE",
-        status: "active",
-      },
+      { appliesTo: "SALE", status: "active" },
       { session },
     );
     const vatRate = vatConfig ? Number(vatConfig.rate) : 0;
 
-    const variant = await db.collection("variants").findOne(
-      {
-        _id: new ObjectId(item.variantId),
-        status: "active",
-      },
-      { session },
-    );
-
-    if (!variant) {
-      throw new Error("Invalid variant");
-    }
-
+    /* ---------------- Invoice ---------------- */
     const invoiceNo = await generateCode({
       db,
       module: "SALE",
@@ -49,7 +35,7 @@ export const createSaleService = async ({ db, payload, user }) => {
       scope: "YEAR",
       branch: branch.code,
       padding: 8,
-      session, 
+      session,
     });
 
     let subTotal = 0;
@@ -58,17 +44,27 @@ export const createSaleService = async ({ db, payload, user }) => {
 
     const saleItems = [];
 
+    /* ---------------- Items ---------------- */
     for (const item of payload.items) {
       const qty = Number(item.qty);
       const price = Number(item.salePrice);
+
+      const variant = await db.collection("variants").findOne(
+        { _id: new ObjectId(item.variantId), status: "active" },
+        { session },
+      );
+
+      if (!variant) {
+        throw new Error("Invalid variant");
+      }
 
       const baseAmount = qty * price;
 
       let discountAmount = 0;
       if (item.discountType === "PERCENT") {
-        discountAmount = (baseAmount * item.discountValue) / 100;
+        discountAmount = (baseAmount * Number(item.discountValue || 0)) / 100;
       } else if (item.discountType === "FIXED") {
-        discountAmount = item.discountValue;
+        discountAmount = Number(item.discountValue || 0);
       }
 
       const taxableAmount = baseAmount - discountAmount;
@@ -80,9 +76,9 @@ export const createSaleService = async ({ db, payload, user }) => {
 
       saleItems.push({
         saleId: null,
-        productId: new ObjectId(item.productId),
-        variantId: new ObjectId(item.variantId),
-        sku: variant.sku,
+        productId: variant.productId,
+        variantId: variant._id,
+        sku: variant.sku, // ✅ backend resolved
         qty,
         salePrice: price,
         discountType: item.discountType || null,
@@ -94,10 +90,10 @@ export const createSaleService = async ({ db, payload, user }) => {
       });
     }
 
-    const billDiscount = payload.billDiscount || 0;
-
+    const billDiscount = Number(payload.billDiscount || 0);
     const grandTotal = subTotal - itemDiscount - billDiscount + taxAmount;
 
+    /* ---------------- Payments ---------------- */
     const paidAmount = payload.payments.reduce(
       (sum, p) => sum + Number(p.amount),
       0,
@@ -109,11 +105,14 @@ export const createSaleService = async ({ db, payload, user }) => {
 
     const dueAmount = grandTotal - paidAmount;
 
+    /* ---------------- Sale ---------------- */
     const saleDoc = {
       invoiceNo,
       type: payload.type,
-      branchId: new ObjectId(payload.branchId),
-      customerId: payload.customerId ? new ObjectId(payload.customerId) : null,
+      branchId: branch._id,
+      customerId: payload.customerId
+        ? new ObjectId(payload.customerId)
+        : null,
 
       subTotal,
       itemDiscount,
@@ -125,22 +124,21 @@ export const createSaleService = async ({ db, payload, user }) => {
 
       status: SALE_STATUS.COMPLETED,
       createdBy: new ObjectId(user._id),
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: nowDate(),
+      updatedAt: nowDate(),
     };
 
     const { insertedId: saleId } = await db
       .collection("sales")
       .insertOne(saleDoc, { session });
 
+    /* ---------------- Sale Items ---------------- */
     await db.collection("sale_items").insertMany(
-      saleItems.map((i) => ({
-        ...i,
-        saleId,
-      })),
+      saleItems.map((i) => ({ ...i, saleId })),
       { session },
     );
 
+    /* ---------------- Payments ---------------- */
     await db.collection("sale_payments").insertMany(
       payload.payments.map((p) => ({
         saleId,
@@ -152,29 +150,29 @@ export const createSaleService = async ({ db, payload, user }) => {
       { session },
     );
 
+    /* ---------------- Stock ---------------- */
     for (const item of payload.items) {
       const result = await db.collection("stocks").updateOne(
         {
-          branchId: new ObjectId(payload.branchId),
+          branchId: branch._id,
           variantId: new ObjectId(item.variantId),
           qty: { $gte: item.qty },
         },
-        {
-          $inc: { qty: -item.qty },
-          $set: { updatedAt: new Date() },
-        },
+        { $inc: { qty: -item.qty }, $set: { updatedAt: nowDate() } },
         { session },
       );
 
-      if (result.matchedCount === 0) {
-        throw new Error(`Insufficient stock for SKU ${item.sku}`);
+      if (!result.matchedCount) {
+        throw new Error("Insufficient stock");
       }
 
       await db.collection("stock_ledgers").insertOne(
         {
-          branchId: new ObjectId(payload.branchId),
+          branchId: branch._id,
           variantId: new ObjectId(item.variantId),
-          sku: item.sku,
+          sku: saleItems.find(si =>
+            si.variantId.equals(item.variantId)
+          )?.sku,
           source: "SALE",
           sourceId: saleId,
           qtyOut: item.qty,
@@ -184,16 +182,20 @@ export const createSaleService = async ({ db, payload, user }) => {
       );
     }
 
-    await db.collection("accounting_queue").insertOne(
-      {
-        source: "SALE",
-        sourceId: saleId,
-        invoiceNo,
-        amount: grandTotal,
-        createdAt: nowDate(),
+    /* ---------------- 🔥 ACCOUNTING ---------------- */
+    await salesAccounting({
+      db,
+      saleId,
+      total: grandTotal,
+      cash: paidAmount - dueAmount,
+      due: dueAmount,
+      accounts: {
+        cash: accounts.CASH,
+        customer: payload.customerAccountId,
+        salesIncome: accounts.SALES_INCOME,
       },
-      { session },
-    );
+      branchId: branch._id,
+    });
 
     await session.commitTransaction();
 

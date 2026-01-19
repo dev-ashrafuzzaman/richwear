@@ -1,5 +1,6 @@
 import { ObjectId } from "mongodb";
 import { RETURN_STATUS } from "./salesReturn.constants.js";
+import { nowDate } from "../../../utils/date.js";
 
 export const createSalesReturnService = async ({
   db,
@@ -51,7 +52,7 @@ export const createSalesReturnService = async ({
           branchId: sale.branchId,
           refundMethod: payload.refundMethod,
           createdBy: new ObjectId(user._id),
-          createdAt: new Date(),
+          createdAt: nowDate(),
         },
         { session },
       );
@@ -86,7 +87,7 @@ export const createSalesReturnService = async ({
           qty: rItem.qty,
           refundAmount,
           reason: rItem.reason || null,
-          createdAt: new Date(),
+          createdAt: nowDate(),
         },
         { session },
       );
@@ -99,7 +100,7 @@ export const createSalesReturnService = async ({
         },
         {
           $inc: { qty: rItem.qty },
-          $set: { updatedAt: new Date() },
+          $set: { updatedAt: nowDate() },
         },
         { session },
       );
@@ -113,7 +114,7 @@ export const createSalesReturnService = async ({
           source: "SALE_RETURN",
           sourceId: returnId,
           qtyIn: rItem.qty,
-          createdAt: new Date(),
+          createdAt: nowDate(),
         },
         { session },
       );
@@ -132,7 +133,7 @@ export const createSalesReturnService = async ({
       {
         $set: {
           status: status === RETURN_STATUS.FULL ? "RETURNED" : "PARTIAL_RETURN",
-          updatedAt: new Date(),
+          updatedAt: nowDate(),
         },
       },
       { session },
@@ -147,7 +148,7 @@ export const createSalesReturnService = async ({
         sourceId: returnId,
         saleId: sale._id,
         amount: totalRefund,
-        createdAt: new Date(),
+        createdAt: nowDate(),
       },
       { session },
     );

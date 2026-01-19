@@ -1,5 +1,5 @@
 import { ObjectId } from "mongodb";
-import { nowDate } from "../../../utils/date";
+import { nowDate } from "../../../utils/date.js";
 
 export const insertLedger = async (db, payload) => {
   return db.collection("ledgers").insertOne({
