@@ -1,8 +1,8 @@
 // modules/accounting/reports/balanceSheet.routes.js
 import { Router } from "express";
-import { authenticate } from "../../../middlewares/auth.middleware.js";
-import { permit } from "../../../middlewares/permission.middleware.js";
-import { PERMISSIONS } from "../../../config/permissions.js";
+import { authenticate } from "../../../../middlewares/auth.middleware.js";
+import { permit } from "../../../../middlewares/permission.middleware.js";
+import { PERMISSIONS } from "../../../../config/permissions.js";
 
 import { getBalanceSheet } from "./balanceSheet.controller.js";
 
@@ -15,7 +15,7 @@ router.use(authenticate);
  * @query   to, branchId
  */
 router.get(
-  "/balance-sheet",
+  "/",
   permit(PERMISSIONS.ACCOUNT_VIEW),
   getBalanceSheet
 );
