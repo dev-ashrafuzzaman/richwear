@@ -1,5 +1,5 @@
-// modules/accounting/closing/yearClosing.service.js
-import { postJournalEntry } from "../journals/journals.service.js";
+import { postJournalEntry } from "../../journals/journals.service.js";
+
 
 export const yearClosingService = async ({
   db,

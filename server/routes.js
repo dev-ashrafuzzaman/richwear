@@ -17,6 +17,8 @@ import saleReturnRoutes from "./src/modules/sales/return/salesReturn.routes.js";
 // REPORTS ROUTES
 import ledgerRoutes from "./src/modules/accounting/reports/ledger/ledger.routes.js";
 import balanceSheetRoutes from "./src/modules/accounting/reports/balanceSheet/balanceSheet.routes.js";
+import closingRoutes from "./src/modules/accounting/reports/closing/yearClosing.routes.js";
+import customerStatementRoutes from "./src/modules/accounting/reports/customerStatement/customerStatement.routes.js";
 
 
 import { authenticate } from "./src/middlewares/auth.middleware.js";
@@ -43,6 +45,8 @@ router.use("/sales", saleReturnRoutes);
 // REPORTS ROUTES
 router.use("/accounting/reports/ledgers", ledgerRoutes);
 router.use("/accounting/reports/balance-sheet", balanceSheetRoutes);
+router.use("/accounting/reports/close-year", closingRoutes);
+router.use("/accounting/reports/customer-statement", customerStatementRoutes);
 
 
 export default router;
