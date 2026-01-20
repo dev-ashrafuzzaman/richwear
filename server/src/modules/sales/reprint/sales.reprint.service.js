@@ -1,15 +1,8 @@
 import { ObjectId } from "mongodb";
-import { nowDate } from "../../../utils/date.js";
 
-export const reprintSaleService = async ({
-  db,
-  saleId,
-  invoiceNo,
-}) => {
+export const reprintSaleService = async ({ db, saleId, invoiceNo }) => {
   /* ---------------- Sale ---------------- */
-  const saleQuery = saleId
-    ? { _id: new ObjectId(saleId) }
-    : { invoiceNo };
+  const saleQuery = saleId ? { _id: new ObjectId(saleId) } : { invoiceNo };
 
   const sale = await db.collection("sales").findOne(saleQuery);
 
@@ -116,7 +109,7 @@ export const reprintSaleService = async ({
         currency: "BDT",
         vatRate,
         footerNote: "Thank you for shopping with us!",
-        printedAt: nowDate(),
+        printedAt: new Date(),
       },
     },
   };

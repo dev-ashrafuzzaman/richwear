@@ -9,9 +9,9 @@ export const getPartyStatement = async (req, res, next) => {
       partyId: req.params.partyId,
       fromDate: req.query.from ? new Date(req.query.from) : null,
       toDate: req.query.to ? new Date(req.query.to) : null,
-      branchId: req.query.branchId || null
+      branchId: req.query.branchId || null,
+      user: req.user
     });
-
     res.json({ success: true, data });
   } catch (err) {
     next(err);

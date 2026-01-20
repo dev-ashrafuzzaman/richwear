@@ -10,7 +10,7 @@ export const postJournalEntry = async ({
   refId,
   narration,
   entries,
-  branchId = null
+  branchId = null,
 }) => {
   let totalDebit = 0;
   let totalCredit = 0;
@@ -24,7 +24,7 @@ export const postJournalEntry = async ({
     throw new Error("Debit & Credit mismatch");
   }
 
-  await insertJournal(db, {
+  const journalRes = await insertJournal(db, {
     date,
     refType,
     refId,
@@ -33,32 +33,39 @@ export const postJournalEntry = async ({
     totalDebit,
     totalCredit,
     branchId,
-    session
+    session,
   });
 
+  const journalId = journalRes.insertedId;
+
   for (const e of entries) {
-    const last = await db.collection("ledgers")
+    const last = await db
+      .collection("ledgers")
       .find({ accountId: new ObjectId(e.accountId), branchId }, { session })
-      .sort({ createdAt: -1 })
+      .sort({ date: -1, createdAt: -1 }) // ✅ safer
       .limit(1)
       .toArray();
 
     const lastBalance = last[0]?.balance || 0;
-    const balance =
-      lastBalance + (e.debit || 0) - (e.credit || 0);
+    const balance = lastBalance + (e.debit || 0) - (e.credit || 0);
 
     await insertLedger(db, {
       accountId: e.accountId,
       debit: e.debit,
       credit: e.credit,
       balance,
+
       refType,
       refId,
       narration,
       date,
       branchId,
-      session
 
+      partyType: e.partyType,
+      partyId: e.partyId,
+      journalId,
+
+      session,
     });
   }
 };

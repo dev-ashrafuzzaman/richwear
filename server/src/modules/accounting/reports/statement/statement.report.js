@@ -1,75 +1,158 @@
-// partyStatement.report.js
 import { ObjectId } from "mongodb";
 
-/**
- * Party Statement
- * Customer | Supplier | Employee | Bank
- */
+/* ---------- Helpers ---------- */
+const formatDate = (d) =>
+  new Date(d).toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+
+const formatTime = (d) =>
+  new Date(d).toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+
+const formatBalance = (v) => ({
+  amount: Math.abs(v),
+  type: v >= 0 ? "DR" : "CR",
+});
+
+/* ---------- MAIN ---------- */
 export const partyStatementReport = async ({
   db,
   partyId,
   fromDate,
   toDate,
-  branchId
+  branchId,
+  user,
 }) => {
+  const partyObjectId = new ObjectId(partyId);
 
+  /* ---------- USERS ---------- */
+  const userInfo = await db
+    .collection("users")
+    .findOne({ _id: new ObjectId(user.id) });
+  /* ---------- PARTY ---------- */
+  const party = await db
+    .collection("suppliers")
+    .findOne(
+      { _id: partyObjectId },
+      { projection: { name: 1, code: 1, contact: 1 } },
+    );
+
+  /* ---------- OPENING BALANCE ---------- */
+  let openingBalance = 0;
+
+  if (fromDate) {
+    const openingAgg = await db
+      .collection("ledgers")
+      .aggregate([
+        {
+          $match: {
+            partyId: partyObjectId,
+            ...(branchId && { branchId: new ObjectId(branchId) }),
+            date: { $lt: new Date(fromDate) },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            balance: { $sum: { $subtract: ["$debit", "$credit"] } },
+          },
+        },
+      ])
+      .toArray();
+
+    openingBalance = openingAgg[0]?.balance || 0;
+  }
+
+  let runningBalance = openingBalance;
+
+  /* ---------- ROW MATCH ---------- */
   const match = {
-    refId: new ObjectId(partyId)
+    partyId: partyObjectId,
+    ...(branchId && { branchId: new ObjectId(branchId) }),
   };
-
-  if (branchId) match.branchId = new ObjectId(branchId);
 
   if (fromDate || toDate) {
     match.date = {};
-    if (fromDate) match.date.$gte = fromDate;
-    if (toDate) match.date.$lte = toDate;
+    if (fromDate) match.date.$gte = new Date(fromDate);
+    if (toDate) match.date.$lte = new Date(toDate);
   }
 
-  /* ---------- OPENING BALANCE ---------- */
-  const opening = await db.collection("ledgers").aggregate([
-    {
-      $match: {
-        refId: new ObjectId(partyId),
-        ...(branchId && { branchId: new ObjectId(branchId) }),
-        ...(fromDate && { date: { $lt: fromDate } })
-      }
-    },
-    {
-      $group: {
-        _id: null,
-        balance: { $sum: { $subtract: ["$debit", "$credit"] } }
-      }
-    }
-  ]).toArray();
-
-  let runningBalance = opening[0]?.balance || 0;
-
-  /* ---------- STATEMENT ROWS ---------- */
-  const rows = await db.collection("ledgers")
+  /* ---------- ROWS ---------- */
+  const rows = await db
+    .collection("ledgers")
     .find(match)
     .sort({ date: 1, createdAt: 1 })
     .toArray();
 
-  const statement = rows.map(r => {
+  let totalDebit = 0;
+  let totalCredit = 0;
+
+  const statementRows = rows.map((r, i) => {
+    totalDebit += r.debit || 0;
+    totalCredit += r.credit || 0;
+
     runningBalance += (r.debit || 0) - (r.credit || 0);
 
     return {
-      date: r.date,
-      refType: r.refType,
+      sl: i + 1,
+      date: formatDate(r.date),
+      time: formatTime(r.date),
+      voucherType: r.refType,
       voucherNo: r.narration,
-      accountId: r.accountId,
+      description: r.narration,
       debit: r.debit || 0,
       credit: r.credit || 0,
-      balance: runningBalance
+      runningBalance: formatBalance(runningBalance),
     };
   });
 
+  /* ---------- FINAL ---------- */
   return {
-    partyId,
-    openingBalance: opening[0]?.balance || 0,
-    closingBalance: runningBalance,
-    totalDebit: statement.reduce((s, r) => s + r.debit, 0),
-    totalCredit: statement.reduce((s, r) => s + r.credit, 0),
-    rows: statement
+    success: true,
+
+    meta: {
+      statementType: "PARTY_STATEMENT",
+      printable: true,
+      generatedAt: new Date().toLocaleString("en-GB"),
+      generatedBy: {
+        id: userInfo?._id || null,
+        name: userInfo?.name || "System",
+      },
+      currency: "BDT",
+      timezone: "Asia/Dhaka",
+    },
+
+    party: {
+      partyType: "SUPPLIER",
+      partyId,
+      code: party?.code,
+      name: party?.name,
+      contact: party?.contact,
+    },
+
+    period: {
+      from: fromDate ? formatDate(fromDate) : "Beginning",
+      to: toDate ? formatDate(toDate) : "Till Date",
+    },
+
+    summary: {
+      openingBalance: formatBalance(openingBalance),
+      totalDebit,
+      totalCredit,
+      closingBalance: formatBalance(runningBalance),
+    },
+
+    rows: statementRows,
+
+    footer: {
+      note: "System generated statement. No signature required.",
+      preparedBy: "ERP Accounting Engine",
+    },
   };
 };

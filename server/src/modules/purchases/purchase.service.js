@@ -1,6 +1,6 @@
 import { toObjectId } from "../../utils/safeObjectId.js";
 import { generateCode } from "../../utils/codeGenerator.js";
-import { nowDate } from "../../utils/date.js";
+
 import { writeAuditLog } from "../../utils/logger.js";
 import { COLLECTIONS } from "../../database/collections.js";
 import { getMainBranch } from "../../utils/getMainWarehouse.js";
@@ -69,7 +69,7 @@ export const createPurchase = async ({ db, body, req }) => {
             sku: variant.sku,
             qty: item.qty,
             avgCost: roundMoney(item.costPrice),
-            createdAt: nowDate(),
+            createdAt: new Date(),
           },
           { session },
         );
@@ -84,7 +84,7 @@ export const createPurchase = async ({ db, body, req }) => {
             $set: {
               qty: newQty,
               avgCost: roundedAvg,
-              updatedAt: nowDate(),
+              updatedAt: new Date(),
             },
           },
           { session },
@@ -98,14 +98,14 @@ export const createPurchase = async ({ db, body, req }) => {
           {
             $set: {
               salePrice: item.salePrice,
-              updatedAt: nowDate(),
+              updatedAt: new Date(),
             },
             $push: {
               priceHistory: {
                 oldPrice: variant.salePrice,
                 newPrice: item.salePrice,
                 source: "PURCHASE",
-                date: nowDate(),
+                date: new Date(),
               },
             },
           },
@@ -150,7 +150,7 @@ export const createPurchase = async ({ db, body, req }) => {
         paymentStatus,
 
         notes: body.notes || null,
-        createdAt: nowDate(),
+        createdAt: new Date(),
       },
       { session },
     );
@@ -180,9 +180,11 @@ export const createPurchase = async ({ db, body, req }) => {
       action: "PURCHASE_CREATE",
       collection: COLLECTIONS.PURCHASES,
       documentId: insertResult.insertedId,
-      referenceNo: purchaseNo,
+      refType: "PURCHASE",
+      refId: insertResult.insertedId,
       payload: {
-        branch: mainBranch.code,
+        purchaseNo,
+        branchCode: mainBranch.code,
         supplierId,
         totalQty,
         totalAmount,
@@ -191,7 +193,7 @@ export const createPurchase = async ({ db, body, req }) => {
       },
       ipAddress: req?.ip,
       userAgent: req?.headers?.["user-agent"],
-      createdAt: nowDate(),
+      status: "SUCCESS",
     });
 
     await session.commitTransaction();
@@ -212,12 +214,15 @@ export const createPurchase = async ({ db, body, req }) => {
       userId: toObjectId(req?.user?.id),
       action: "PURCHASE_CREATE_FAILED",
       collection: COLLECTIONS.PURCHASES,
-      referenceNo: purchaseNo || null,
-      payload: { error: error.message },
+      refType: "PURCHASE",
+      refId: null,
+      payload: {
+        purchaseNo: purchaseNo || null,
+        error: error.message,
+      },
       ipAddress: req?.ip,
       userAgent: req?.headers?.["user-agent"],
-      createdAt: nowDate(),
-      status: "ERROR",
+      status: "FAILED",
     });
 
     throw error;
@@ -298,7 +303,7 @@ export const createPurchaseReturn = async ({ db, body, req }) => {
         { _id: stock._id },
         {
           $inc: { qty: -item.qty },
-          $set: { updatedAt: nowDate() },
+          $set: { updatedAt: new Date() },
         },
         { session },
       );
@@ -321,14 +326,14 @@ export const createPurchaseReturn = async ({ db, body, req }) => {
           supplierId: purchase.supplierId,
           branchId,
 
-          returnDate: body.returnDate || nowDate(),
+          returnDate: body.returnDate || new Date(),
           reason: body.reason || null,
 
           items: body.items,
           totalQty,
           totalAmount,
 
-          createdAt: nowDate(),
+          createdAt: new Date(),
         },
         { session },
       );
@@ -354,7 +359,7 @@ export const createPurchaseReturn = async ({ db, body, req }) => {
           totalAmount: newTotalAmount,
           dueAmount: newDueAmount,
           paymentStatus: newPaymentStatus,
-          updatedAt: nowDate(),
+          updatedAt: new Date(),
         },
       },
       { session },
@@ -368,10 +373,11 @@ export const createPurchaseReturn = async ({ db, body, req }) => {
       session,
       purchaseReturnId: insertResult.insertedId,
       returnAmount: totalAmount,
-      cashRefund: body.cashRefund || 0,
-      dueAdjust: body.dueAdjust || totalAmount,
-      supplierAccountId: purchase.supplierId,
+      cashRefund: Number(body.cashRefund || 0),
+      dueAdjust: Number(body.dueAdjust || 0),
+      supplierId: purchase.supplierId,
       branchId,
+      narration: `Purchase Return #${returnNo}`,
     });
 
     /* =====================
@@ -384,8 +390,11 @@ export const createPurchaseReturn = async ({ db, body, req }) => {
       action: "PURCHASE_RETURN_CREATE",
       collection: COLLECTIONS.PURCHASE_RETURNS,
       documentId: insertResult.insertedId,
-      referenceNo: returnNo,
+      refType: "PURCHASE_RETURN",
+      refId: purchase._id,
+      branchId,
       payload: {
+        returnNo,
         purchaseId,
         supplierId: purchase.supplierId,
         totalQty,
@@ -393,7 +402,6 @@ export const createPurchaseReturn = async ({ db, body, req }) => {
       },
       ipAddress: req?.ip,
       userAgent: req?.headers?.["user-agent"],
-      createdAt: nowDate(),
     });
 
     await session.commitTransaction();
@@ -413,12 +421,15 @@ export const createPurchaseReturn = async ({ db, body, req }) => {
       userId: toObjectId(req?.user?.id),
       action: "PURCHASE_RETURN_FAILED",
       collection: COLLECTIONS.PURCHASE_RETURNS,
-      referenceNo: returnNo || null,
-      payload: { error: error.message },
+      refType: "PURCHASE_RETURN",
+      refId: purchase._id || null,
+      payload: {
+        returnNo: returnNo || null,
+        error: error.message,
+      },
       ipAddress: req?.ip,
       userAgent: req?.headers?.["user-agent"],
-      createdAt: nowDate(),
-      status: "ERROR",
+      status: "FAILED",
     });
 
     throw error;

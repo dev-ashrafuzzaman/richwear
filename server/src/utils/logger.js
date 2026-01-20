@@ -1,18 +1,17 @@
-import { nowDate } from "./date.js";
 
 export const writeAuditLog = async ({
   db,
   userId = null,
-  action,                // e.g. SALE_RETURN_CREATE
-  collection,            // e.g. sales_returns
-  documentId = null,     // ObjectId
-  refType = null,        // SALE_RETURN
-  refId = null,          // returnId / saleId
-  payload = {},          // sanitized payload
+  action, // e.g. SALE_RETURN_CREATE
+  collection, // e.g. sales_returns
+  documentId = null, // ObjectId
+  refType = null, // SALE_RETURN
+  refId = null, // returnId / saleId
+  payload = {}, // sanitized payload
   branchId = null,
   ipAddress = null,
   userAgent = null,
-  status = "SUCCESS",    // SUCCESS | FAILED
+  status = "SUCCESS", // SUCCESS | FAILED
   session = null,
 }) => {
   await db.collection("audit_logs").insertOne(
@@ -28,7 +27,7 @@ export const writeAuditLog = async ({
       ipAddress,
       userAgent,
       status,
-      createdAt: nowDate(),
+      createdAt: new Date(),
     },
     session ? { session } : {},
   );

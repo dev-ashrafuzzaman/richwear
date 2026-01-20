@@ -1,7 +1,6 @@
 import { ObjectId } from "mongodb";
 import { COLLECTIONS } from "../../../database/collections.js";
 import { calculateAttendance } from "./attendance.utils.js";
-import { nowDate } from "../../../utils/date.js";
 
 export const smartAttendance = async (req, res, next) => {
   try {
@@ -33,7 +32,7 @@ export const smartAttendance = async (req, res, next) => {
       });
 
     /* 📅 Today normalize */
-    const today = nowDate();
+    const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     const attendanceCol = db.collection(COLLECTIONS.ATTENDANCES);
@@ -84,7 +83,7 @@ export const smartAttendance = async (req, res, next) => {
             ...calc,
             updatedAt: new Date(),
           },
-        }
+        },
       );
 
       return res.json({

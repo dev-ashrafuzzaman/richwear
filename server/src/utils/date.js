@@ -1,9 +1,3 @@
-export const nowDate = () => {
-  const now = new Date();
-  const utcMs = now.getTime() + now.getTimezoneOffset() * 60000;
-  return new Date(utcMs + 6 * 60 * 60000);
-};
-
 export const formatBD = (date) => {
   if (!date) return null;
   const d = new Date(date);

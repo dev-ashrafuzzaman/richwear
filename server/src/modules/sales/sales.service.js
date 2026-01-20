@@ -1,7 +1,6 @@
 import { ObjectId } from "mongodb";
 import { generateCode } from "../../utils/codeGenerator.js";
 import { SALE_STATUS } from "./sales.constants.js";
-import { nowDate } from "../../utils/date.js";
 import { salesAccounting } from "../accounting/accounting.adapter.js";
 import { writeAuditLog } from "../../utils/logger.js";
 
@@ -90,7 +89,7 @@ export const createSaleService = async ({ db, payload, user }) => {
         discountAmount,
         taxAmount: vat,
         lineTotal: taxableAmount + vat,
-        createdAt: nowDate(),
+        createdAt: new Date(),
       });
     }
 
@@ -132,8 +131,8 @@ export const createSaleService = async ({ db, payload, user }) => {
 
       status: SALE_STATUS.COMPLETED,
       createdBy: new ObjectId(user._id),
-      createdAt: nowDate(),
-      updatedAt: nowDate(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
     };
 
     const { insertedId: saleId } = await db
@@ -153,7 +152,7 @@ export const createSaleService = async ({ db, payload, user }) => {
         method: p.method,
         amount: Number(p.amount),
         reference: p.reference || null,
-        receivedAt: nowDate(),
+        receivedAt: new Date(),
       })),
       { session },
     );
@@ -166,7 +165,7 @@ export const createSaleService = async ({ db, payload, user }) => {
           variantId: new ObjectId(item.variantId),
           qty: { $gte: item.qty },
         },
-        { $inc: { qty: -item.qty }, $set: { updatedAt: nowDate() } },
+        { $inc: { qty: -item.qty }, $set: { updatedAt: new Date() } },
         { session },
       );
 
@@ -182,7 +181,7 @@ export const createSaleService = async ({ db, payload, user }) => {
           source: "SALE",
           sourceId: saleId,
           qtyOut: item.qty,
-          createdAt: nowDate(),
+          createdAt: new Date(),
         },
         { session },
       );
@@ -232,7 +231,7 @@ export const createSaleService = async ({ db, payload, user }) => {
           invoiceNo,
           type: payload.type,
           status: SALE_STATUS.COMPLETED,
-          date: nowDate(),
+          date: new Date(),
           createdBy: user.name || user.username,
         },
 

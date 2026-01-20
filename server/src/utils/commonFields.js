@@ -1,20 +1,15 @@
-import { nowDate } from "./date.js";
 
 /**
  * Build operation context safely
  */
 const buildMeta = (prevMeta = {}, context = {}) => {
-  const {
-    ipAddress = null,
-    device = null,
-    source = "system"
-  } = context;
+  const { ipAddress = null, device = null, source = "system" } = context;
 
   return {
     ...prevMeta,
     ipAddress,
     device,
-    source
+    source,
   };
 };
 
@@ -26,12 +21,9 @@ const buildMeta = (prevMeta = {}, context = {}) => {
  * @param {Object} context - request context
  */
 export const withCreateFields = (payload = {}, context = {}) => {
-  const {
-    userId = null,
-    branchId = null
-  } = context;
+  const { userId = null, branchId = null } = context;
 
-  const now = nowDate();
+  const now = new Date();
 
   return {
     ...payload,
@@ -44,7 +36,7 @@ export const withCreateFields = (payload = {}, context = {}) => {
     createdBy: userId,
     updatedBy: userId,
 
-    meta: buildMeta({}, context)
+    meta: buildMeta({}, context),
   };
 };
 
@@ -56,34 +48,27 @@ export const withCreateFields = (payload = {}, context = {}) => {
  * @param {Object} context - request context
  * @param {Object} prevDoc - existing document (optional)
  */
-export const withUpdateFields = (
-  payload = {},
-  context = {},
-  prevDoc = {}
-) => {
+export const withUpdateFields = (payload = {}, context = {}, prevDoc = {}) => {
   return {
     ...payload,
 
-    updatedAt: nowDate(),
+    updatedAt: new Date(),
     updatedBy: context.userId || null,
 
-    meta: buildMeta(prevDoc.meta, context)
+    meta: buildMeta(prevDoc.meta, context),
   };
 };
 
 /* ======================================================
    DELETE FIELDS (SOFT DELETE)
 ====================================================== */
-export const withDeleteFields = (
-  context = {},
-  prevDoc = {}
-) => {
+export const withDeleteFields = (context = {}, prevDoc = {}) => {
   return {
     status: "deleted",
 
-    updatedAt: nowDate(),
+    updatedAt: new Date(),
     updatedBy: context.userId || null,
 
-    meta: buildMeta(prevDoc.meta, context)
+    meta: buildMeta(prevDoc.meta, context),
   };
 };

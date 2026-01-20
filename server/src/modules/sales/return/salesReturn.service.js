@@ -1,6 +1,5 @@
 import { ObjectId } from "mongodb";
 import { RETURN_STATUS } from "./salesReturn.constants.js";
-import { nowDate } from "../../../utils/date.js";
 import { salesReturnAccounting } from "../../accounting/accounting.adapter.js";
 import { roundMoney } from "../../../utils/money.js";
 
@@ -42,7 +41,7 @@ export const createSalesReturnService = async ({
       branchId: sale.branchId,
       refundMethod: payload.refundMethod,
       createdBy: new ObjectId(user._id),
-      createdAt: nowDate(),
+      createdAt: new Date(),
     };
 
     const { insertedId } = await db
@@ -76,7 +75,7 @@ export const createSalesReturnService = async ({
           qty: rItem.qty,
           refundAmount,
           reason: rItem.reason || null,
-          createdAt: nowDate(),
+          createdAt: new Date(),
         },
         { session },
       );
@@ -89,7 +88,7 @@ export const createSalesReturnService = async ({
         },
         {
           $inc: { qty: rItem.qty },
-          $set: { updatedAt: nowDate() },
+          $set: { updatedAt: new Date() },
         },
         { session },
       );
@@ -103,7 +102,7 @@ export const createSalesReturnService = async ({
           source: "SALE_RETURN",
           sourceId: insertedId,
           qtyIn: rItem.qty,
-          createdAt: nowDate(),
+          createdAt: new Date(),
         },
         { session },
       );
@@ -122,7 +121,7 @@ export const createSalesReturnService = async ({
       {
         $set: {
           status: status === RETURN_STATUS.FULL ? "RETURNED" : "PARTIAL_RETURN",
-          updatedAt: nowDate(),
+          updatedAt: new Date(),
         },
       },
       { session },

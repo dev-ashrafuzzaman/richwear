@@ -1,8 +1,6 @@
-import { nowDate } from "../../utils/date.js";
 import { postJournalEntry } from "./journals/journals.service.js";
 import { resolveSystemAccounts } from "./account.resolver.js";
 import { roundMoney } from "../../utils/money.js";
-
 
 const resolveAccountByCode = async (db, code) => {
   const acc = await db.collection("accounts").findOne({ code });
@@ -11,7 +9,6 @@ const resolveAccountByCode = async (db, code) => {
   }
   return acc._id;
 };
-
 
 /* ======================================================
    SALES ACCOUNTING
@@ -55,7 +52,7 @@ export const salesAccounting = async ({
   return postJournalEntry({
     db,
     session,
-    date: nowDate(),
+    date: new Date(),
     refType: "SALE",
     refId: saleId,
     narration: "Sales Invoice",
@@ -107,7 +104,7 @@ export const salesReturnAccounting = async ({
   return postJournalEntry({
     db,
     session,
-    date: nowDate(),
+    date: new Date(),
     refType: "SALE_RETURN",
     refId: salesReturnId,
     narration: "Sales Return",
@@ -117,7 +114,7 @@ export const salesReturnAccounting = async ({
 };
 
 /* ======================================================
-   PURCHASE ACCOUNTING
+   PURCHASE ACCOUNTING V0.1
 ====================================================== */
 export const purchaseAccounting = async ({
   db,
@@ -126,9 +123,9 @@ export const purchaseAccounting = async ({
   totalAmount,
   cashPaid = 0,
   dueAmount = 0,
-  supplierId,       
+  supplierId,
   branchId,
-  narration
+  narration,
 }) => {
   if (cashPaid + dueAmount !== totalAmount) {
     throw new Error("Purchase amount mismatch");
@@ -136,10 +133,9 @@ export const purchaseAccounting = async ({
 
   const SYS = await resolveSystemAccounts(db);
 
-
   const supplierControlAccountId = await resolveAccountByCode(
     db,
-    "2001" // Accounts Payable
+    "2001", // Accounts Payable
   );
 
   const entries = [];
@@ -161,17 +157,17 @@ export const purchaseAccounting = async ({
   // Supplier Due
   if (dueAmount > 0) {
     entries.push({
-      accountId: supplierControlAccountId, 
+      accountId: supplierControlAccountId,
       credit: dueAmount,
       partyType: "SUPPLIER",
-      partyId: supplierId,               
+      partyId: supplierId,
     });
   }
 
   return postJournalEntry({
     db,
     session,
-    date: nowDate(),
+    date: new Date(),
     refType: "PURCHASE",
     refId: purchaseId,
     narration,
@@ -179,7 +175,6 @@ export const purchaseAccounting = async ({
     branchId,
   });
 };
-
 
 /* ======================================================
    PURCHASE RETURN ACCOUNTING
@@ -191,8 +186,9 @@ export const purchaseReturnAccounting = async ({
   returnAmount,
   cashRefund = 0,
   dueAdjust = 0,
-  supplierAccountId,
+  supplierId,
   branchId,
+  narration = "Purchase Return",
 }) => {
   const total = roundMoney(returnAmount);
   const cash = roundMoney(cashRefund);
@@ -205,11 +201,20 @@ export const purchaseReturnAccounting = async ({
     throw new Error("Purchase return amount mismatch");
   }
 
+  /* =====================
+     2️⃣ SYSTEM ACCOUNTS
+  ====================== */
   const SYS = await resolveSystemAccounts(db);
+
+  const supplierControlAccountId = await resolveAccountByCode(
+    db,
+    "2001", // Accounts Payable (Supplier Control)
+  );
+
   const entries = [];
 
   /* =====================
-     2️⃣ INVENTORY DECREASE
+     3️⃣ INVENTORY DECREASE
   ====================== */
   entries.push({
     accountId: SYS.INVENTORY,
@@ -217,7 +222,7 @@ export const purchaseReturnAccounting = async ({
   });
 
   /* =====================
-     3️⃣ CASH REFUND
+     4️⃣ CASH REFUND
   ====================== */
   if (cash > 0) {
     entries.push({
@@ -227,25 +232,28 @@ export const purchaseReturnAccounting = async ({
   }
 
   /* =====================
-     4️⃣ SUPPLIER DUE ADJUST
+     5️⃣ SUPPLIER DUE ADJUST
+     (AP debit reduces supplier balance)
   ====================== */
   if (due > 0) {
     entries.push({
-      accountId: supplierAccountId,
+      accountId: supplierControlAccountId,
       debit: due,
+      partyType: "SUPPLIER",
+      partyId: supplierId,
     });
   }
 
   /* =====================
-     5️⃣ JOURNAL POST
+     6️⃣ JOURNAL POST
   ====================== */
   return postJournalEntry({
     db,
     session,
-    date: nowDate(),
+    date: new Date(),
     refType: "PURCHASE_RETURN",
     refId: purchaseReturnId,
-    narration: "Purchase Return",
+    narration,
     entries,
     branchId,
   });
@@ -279,7 +287,7 @@ export const supplierPaymentAccounting = async ({
   return postJournalEntry({
     db,
     session,
-    date: nowDate(),
+    date: new Date(),
     refType: "SUPPLIER_PAYMENT",
     refId: paymentId,
     narration: "Supplier Payment",
@@ -317,7 +325,7 @@ export const customerPaymentAccounting = async ({
   return postJournalEntry({
     db,
     session,
-    date: nowDate(),
+    date: new Date(),
     refType: "CUSTOMER_PAYMENT",
     refId: paymentId,
     narration: "Customer Payment",
@@ -350,7 +358,7 @@ export const salaryPaymentAccounting = async ({
   return postJournalEntry({
     db,
     session,
-    date: nowDate(),
+    date: new Date(),
     refType: "SALARY_PAYMENT",
     refId: salaryPaymentId,
     narration: "Salary Payment",
@@ -383,7 +391,7 @@ export const commissionAccounting = async ({
   return postJournalEntry({
     db,
     session,
-    date: nowDate(),
+    date: new Date(),
     refType: "COMMISSION_PAYMENT",
     refId: commissionId,
     narration: "Commission Payment",
@@ -424,7 +432,7 @@ export const inventoryAdjustmentAccounting = async ({
   return postJournalEntry({
     db,
     session,
-    date: nowDate(),
+    date: new Date(),
     refType: "INVENTORY_ADJUSTMENT",
     refId: adjustmentId,
     narration: reason || "Inventory Adjustment",
