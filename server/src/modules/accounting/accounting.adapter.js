@@ -18,36 +18,69 @@ export const salesAccounting = async ({
   session,
   saleId,
   total,
-  payments, // [{ method, amount }]
-  customerAccountId,
+  payments = [],
+  customerId,
   branchId,
+  narration = "Sales Invoice",
 }) => {
+  const amount = roundMoney(total);
+
   const SYS = await resolveSystemAccounts(db);
+
+  const customerControlAccountId = await resolveAccountByCode(
+    db,
+    "1004", // Accounts Receivable
+  );
 
   const entries = [];
   let paidTotal = 0;
 
+  /* =====================
+     PAYMENTS (LEAF ACCOUNTS)
+  ====================== */
   for (const p of payments) {
-    if (p.amount <= 0) continue;
-    paidTotal += p.amount;
+    const payAmount = roundMoney(p.amount || 0);
+    if (payAmount <= 0) continue;
 
-    if (p.method === "CASH") {
-      entries.push({ accountId: SYS.CASH, debit: p.amount });
+    if (!p.accountId) {
+      throw new Error("Payment accountId is required");
     }
 
-    if (
-      ["BKASH", "NAGAD", "ROCKET", "UPAY", "BANK", "CARD"].includes(p.method)
-    ) {
-      entries.push({ accountId: SYS.BANK, debit: p.amount });
-    }
+    paidTotal += payAmount;
+
+    entries.push({
+      accountId: p.accountId, // 🔥 bKash / Nagad / DBBL
+      debit: payAmount,
+    });
   }
 
-  const dueAmount = total - paidTotal;
+  /* =====================
+     SAFETY
+  ====================== */
+  if (paidTotal > amount) {
+    throw new Error("Paid amount exceeds invoice total");
+  }
+
+  /* =====================
+     CUSTOMER DUE (AR)
+  ====================== */
+  const dueAmount = roundMoney(amount - paidTotal);
   if (dueAmount > 0) {
-    entries.push({ accountId: customerAccountId, debit: dueAmount });
+    entries.push({
+      accountId: customerControlAccountId,
+      debit: dueAmount,
+      partyType: "CUSTOMER",
+      partyId: customerId,
+    });
   }
 
-  entries.push({ accountId: SYS.SALES_INCOME, credit: total });
+  /* =====================
+     SALES INCOME
+  ====================== */
+  entries.push({
+    accountId: SYS.SALES_INCOME,
+    credit: amount,
+  });
 
   return postJournalEntry({
     db,
@@ -55,7 +88,7 @@ export const salesAccounting = async ({
     date: new Date(),
     refType: "SALE",
     refId: saleId,
-    narration: "Sales Invoice",
+    narration,
     entries,
     branchId,
   });
@@ -177,7 +210,7 @@ export const purchaseAccounting = async ({
 };
 
 /* ======================================================
-   PURCHASE RETURN ACCOUNTING
+   PURCHASE RETURN ACCOUNTING V0.1
 ====================================================== */
 export const purchaseReturnAccounting = async ({
   db,

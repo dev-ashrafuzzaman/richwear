@@ -1,10 +1,11 @@
 import Joi from "joi";
 
 export const createSaleSchema = Joi.object({
-  invoiceNo: Joi.string().required(),
+  invoiceNo: Joi.string(),
   type: Joi.string().valid("RETAIL", "WHOLESALE").required(),
   branchId: Joi.string().required(),
   customerId: Joi.string().required(),
+  salesmanId: Joi.string().required(),
 
   items: Joi.array()
     .items(
@@ -26,6 +27,7 @@ export const createSaleSchema = Joi.object({
     .items(
       Joi.object({
         method: Joi.string().required(),
+        accountId: Joi.string().required(),
         amount: Joi.number().min(0).required(),
         reference: Joi.string().optional(),
       }),
