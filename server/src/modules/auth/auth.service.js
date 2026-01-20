@@ -10,7 +10,10 @@ const generateAccessToken = (user) =>
   
   jwt.sign(
     {
-      id: user._id,
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      roleName: user.roleName,
       branchId: user.branchId,
       permissions: user.permissions,
     },
@@ -103,7 +106,7 @@ export const login = async ({ email, password }, req) => {
     accessToken,
     refreshToken,
     user: {
-      id: user._id,
+      _id: user._id,
       name: user.name,
       email: user.email,
       roleName: user.roleName,

@@ -1,4 +1,4 @@
-import { partyStatementReport } from "./statement.report.js";
+import { partyInvoiceStatementReport, partyStatementReport } from "./statement.report.js";
 
 export const getPartyStatement = async (req, res, next) => {
   try {
@@ -13,6 +13,26 @@ export const getPartyStatement = async (req, res, next) => {
       user: req.user
     });
     res.json({ success: true, data });
+  } catch (err) {
+    next(err);
+  }
+};
+
+
+export const getPartyInvoiceStatement = async (req, res, next) => {
+  try {
+    const db = req.app.locals.db;
+
+    const report = await partyInvoiceStatementReport({
+      db,
+      partyId: req.params.partyId,
+      fromDate: req.query.from || null,
+      toDate: req.query.to || null,
+      branchId: req.query.branchId || null,
+      user: req.user
+    });
+
+    res.json(report);
   } catch (err) {
     next(err);
   }

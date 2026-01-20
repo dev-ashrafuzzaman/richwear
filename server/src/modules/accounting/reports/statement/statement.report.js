@@ -156,3 +156,125 @@ export const partyStatementReport = async ({
     },
   };
 };
+
+
+export const partyInvoiceStatementReport = async ({
+  db,
+  partyId,
+  fromDate,
+  toDate,
+  branchId,
+  user
+}) => {
+  const partyObjectId = new ObjectId(partyId);
+
+  
+  /* ---------- PARTY ---------- */
+  const party = await db.collection("suppliers").findOne(
+    { _id: partyObjectId },
+    { projection: { name: 1, code: 1, contact: 1 } }
+  );
+
+  /* ---------- MATCH ---------- */
+  const match = {
+    partyId: partyObjectId,
+    ...(branchId && { branchId: new ObjectId(branchId) })
+  };
+
+  if (fromDate || toDate) {
+    match.date = {};
+    if (fromDate) match.date.$gte = new Date(fromDate);
+    if (toDate) match.date.$lte = new Date(toDate);
+  }
+
+  /* ---------- AGGREGATE INVOICE WISE ---------- */
+  const invoices = await db.collection("ledgers").aggregate([
+    { $match: match },
+
+    {
+      $group: {
+        _id: "$refId",
+        invoiceNo: { $first: "$narration" },
+        refType: { $first: "$refType" },
+        invoiceDate: { $min: "$date" },
+        totalDebit: { $sum: "$debit" },
+        totalCredit: { $sum: "$credit" }
+      }
+    },
+
+    {
+      $addFields: {
+        balance: { $subtract: ["$totalDebit", "$totalCredit"] }
+      }
+    },
+
+    { $sort: { invoiceDate: 1 } }
+  ]).toArray();
+
+  /* ---------- TOTALS ---------- */
+  let grandDebit = 0;
+  let grandCredit = 0;
+
+  const rows = invoices.map((inv, i) => {
+    grandDebit += inv.totalDebit;
+    grandCredit += inv.totalCredit;
+
+    return {
+      sl: i + 1,
+      invoiceId: inv._id,
+      invoiceNo: inv.invoiceNo,
+      voucherType: inv.refType,
+      invoiceDate: formatDate(inv.invoiceDate),
+
+      invoiceAmount: inv.totalDebit || inv.totalCredit,
+      debit: inv.totalDebit,
+      credit: inv.totalCredit,
+
+      balance: formatBalance(inv.balance)
+    };
+  });
+
+  /* ---------- FINAL ---------- */
+  return {
+    success: true,
+
+    meta: {
+      statementType: "INVOICE_WISE_PARTY_STATEMENT",
+      printable: true,
+      generatedAt: new Date().toLocaleString("en-GB"),
+      generatedBy: {
+        id: user?._id || null,
+        name: user?.name || "System"
+      },
+      currency: "BDT",
+      timezone: "Asia/Dhaka"
+    },
+
+    party: {
+      partyType: "SUPPLIER",
+      partyId,
+      code: party?.code,
+      name: party?.name,
+      contact: party?.contact
+    },
+
+    period: {
+      from: fromDate ? formatDate(fromDate) : "Beginning",
+      to: toDate ? formatDate(toDate) : "Till Date"
+    },
+
+    summary: {
+      totalInvoices: rows.length,
+      totalDebit: grandDebit,
+      totalCredit: grandCredit,
+      netBalance: formatBalance(grandDebit - grandCredit)
+    },
+
+    rows,
+
+    footer: {
+      note: "Invoice wise system generated statement.",
+      preparedBy: "ERP Accounting Engine"
+    }
+  };
+};

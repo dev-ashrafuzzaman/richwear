@@ -1,6 +1,6 @@
 // statement.routes.js
 import { Router } from "express";
-import { getPartyStatement } from "./statement.controller.js";
+import { getPartyInvoiceStatement, getPartyStatement } from "./statement.controller.js";
 
 const router = Router();
 
@@ -18,6 +18,7 @@ const router = Router();
  * Customer / Supplier / Employee
  */
 router.get("/party/:partyId", getPartyStatement);
+router.get("/party-invoice/:partyId", getPartyInvoiceStatement);
 
 
 export default router;
