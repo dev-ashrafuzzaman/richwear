@@ -13,6 +13,8 @@ export const COLLECTIONS = {
   PURCHASE_RETURNS: "purchase_returns",
   STOCKS: "stocks",
   SALES: "sales",
+  SALES_RETURNS: "sales_returns",
+  SALES_RETURN_ITEMS: "sales_return_items",
   STOCK_LEDGERS: "stock_ledgers",
   SALE_ITEMS: "sale_items",
   SALE_PAYMENTS: "sale_payments",

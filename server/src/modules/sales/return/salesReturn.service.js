@@ -2,6 +2,8 @@ import { ObjectId } from "mongodb";
 import { RETURN_STATUS } from "./salesReturn.constants.js";
 import { salesReturnAccounting } from "../../accounting/accounting.adapter.js";
 import { roundMoney } from "../../../utils/money.js";
+import { writeAuditLog } from "../../../utils/logger.js";
+import { COLLECTIONS } from "../../../database/collections.js";
 
 export const createSalesReturnService = async ({
   db,
@@ -14,27 +16,37 @@ export const createSalesReturnService = async ({
   try {
     session.startTransaction();
 
-    /* -------------------- 1. Validate Sale -------------------- */
-    const sale = await db
-      .collection("sales")
-      .findOne({ _id: new ObjectId(saleId) }, { session });
+    /* ===============================
+       1️⃣ LOAD SALE
+    =============================== */
+    const sale = await db.collection(COLLECTIONS.SALES).findOne(
+      { _id: new ObjectId(saleId) },
+      { session },
+    );
 
     if (!sale) throw new Error("Sale not found");
-    if (sale.status === "CANCELLED") {
-      throw new Error("Cancelled sale cannot be returned");
+    if (["CANCELLED", "FULL_RETURN"].includes(sale.status)) {
+      throw new Error("Sale cannot be returned");
     }
 
+    /* ===============================
+       2️⃣ LOAD SALE ITEMS
+    =============================== */
     const saleItems = await db
-      .collection("sale_items")
-      .find({ saleId: sale._id })
+      .collection(COLLECTIONS.SALE_ITEMS)
+      .find({ saleId: sale._id }, { session })
       .toArray();
 
-    const saleItemMap = {};
-    saleItems.forEach((i) => (saleItemMap[i._id.toString()] = i));
+    const saleItemMap = new Map(
+      saleItems.map((i) => [i._id.toString(), i]),
+    );
 
     let totalRefund = 0;
+    let totalReturnQty = 0;
 
-    /* -------------------- 2. Create Return Header -------------------- */
+    /* ===============================
+       3️⃣ CREATE RETURN HEADER
+    =============================== */
     const returnDoc = {
       saleId: sale._id,
       invoiceNo: sale.invoiceNo,
@@ -44,30 +56,42 @@ export const createSalesReturnService = async ({
       createdAt: new Date(),
     };
 
-    const { insertedId } = await db
-      .collection("sales_returns")
+    const { insertedId: salesReturnId } = await db
+      .collection(COLLECTIONS.SALES_RETURNS)
       .insertOne(returnDoc, { session });
 
-    returnDoc._id = insertedId;
-
-    /* -------------------- 3. Process Items -------------------- */
+    /* ===============================
+       4️⃣ PROCESS RETURN ITEMS
+    =============================== */
     for (const rItem of payload.items) {
-      const saleItem = saleItemMap[rItem.saleItemId];
+      const saleItem = saleItemMap.get(rItem.saleItemId);
       if (!saleItem) throw new Error("Invalid saleItemId");
 
-      if (rItem.qty > saleItem.qty) {
-        throw new Error("Return qty exceeds sold qty");
+      /* 🔒 Remaining qty check (multi-return safe) */
+      const alreadyReturnedQty = await db
+        .collection(COLLECTIONS.SALES_RETURN_ITEMS)
+        .aggregate([
+          { $match: { saleItemId: saleItem._id } },
+          { $group: { _id: null, qty: { $sum: "$qty" } } },
+        ])
+        .toArray();
+
+      const returnedQty = alreadyReturnedQty[0]?.qty || 0;
+      const remainingQty = saleItem.qty - returnedQty;
+
+      if (rItem.qty > remainingQty) {
+        throw new Error(`Return qty exceeds remaining qty for SKU ${saleItem.sku}`);
       }
 
-      const refundAmount = roundMoney(
-        (saleItem.lineTotal / saleItem.qty) * rItem.qty,
-      );
+      const unitPrice = roundMoney(saleItem.lineTotal / saleItem.qty);
+      const refundAmount = roundMoney(unitPrice * rItem.qty);
 
       totalRefund += refundAmount;
-
-      await db.collection("sales_return_items").insertOne(
+      totalReturnQty += rItem.qty;
+      /* ---- Return Item ---- */
+      await db.collection(COLLECTIONS.SALES_RETURN_ITEMS).insertOne(
         {
-          returnId: insertedId,
+          salesReturnId,
           saleItemId: saleItem._id,
           productId: saleItem.productId,
           variantId: saleItem.variantId,
@@ -80,8 +104,8 @@ export const createSalesReturnService = async ({
         { session },
       );
 
-      /* Stock Back */
-      await db.collection("stocks").updateOne(
+      /* ---- Stock Back ---- */
+      await db.collection(COLLECTIONS.STOCKS).updateOne(
         {
           branchId: sale.branchId,
           variantId: saleItem.variantId,
@@ -93,14 +117,14 @@ export const createSalesReturnService = async ({
         { session },
       );
 
-      /* Stock Ledger */
-      await db.collection("stock_ledgers").insertOne(
+      /* ---- Stock Ledger ---- */
+      await db.collection(COLLECTIONS.STOCK_LEDGERS).insertOne(
         {
           branchId: sale.branchId,
           variantId: saleItem.variantId,
           sku: saleItem.sku,
           source: "SALE_RETURN",
-          sourceId: insertedId,
+          sourceId: salesReturnId,
           qtyIn: rItem.qty,
           createdAt: new Date(),
         },
@@ -110,69 +134,90 @@ export const createSalesReturnService = async ({
 
     totalRefund = roundMoney(totalRefund);
 
-    /* -------------------- 4. Update Sale Status -------------------- */
+    /* ===============================
+       5️⃣ UPDATE SALE STATUS
+    =============================== */
     const status =
-      totalRefund >= sale.grandTotal
+      totalRefund + (sale.returnedAmount || 0) >= sale.grandTotal
         ? RETURN_STATUS.FULL
         : RETURN_STATUS.PARTIAL;
 
-    await db.collection("sales").updateOne(
+    await db.collection(COLLECTIONS.SALES).updateOne(
       { _id: sale._id },
       {
         $set: {
-          status: status === RETURN_STATUS.FULL ? "RETURNED" : "PARTIAL_RETURN",
+          status,
           updatedAt: new Date(),
+        },
+        $inc: {
+          returnedAmount: totalRefund,
         },
       },
       { session },
     );
 
-    /* -------------------- 5. Accounting Entry -------------------- */
-    const cashRefund = payload.refundMethod === "CASH" ? totalRefund : 0;
-
-    const dueAdjust = payload.refundMethod === "ADJUST_DUE" ? totalRefund : 0;
-
+    /* ===============================
+       6️⃣ ACCOUNTING
+    =============================== */
     await salesReturnAccounting({
       db,
-      salesReturnId: insertedId,
-      returnAmount: totalRefund,
-      cashRefund,
-      dueAdjust,
-      accounts: {
-        salesIncome: "SALES_INCOME",
-        cash: "CASH",
-        customer: sale.customerAccountId,
-      },
-      branchId: sale.branchId,
       session,
+      salesReturnId,
+      returnAmount: totalRefund,
+      cashRefund: payload.refundMethod === "CASH" ? totalRefund : 0,
+      dueAdjust: payload.refundMethod === "ADJUST_DUE" ? totalRefund : 0,
+      customerId: sale.customerId,
+      branchId: sale.branchId,
+      narration: `Sales Return - ${sale.invoiceNo}`,
     });
 
-    /* -------------------- 6. Audit Log -------------------- */
+    /* ===============================
+       7️⃣ AUDIT LOG
+    =============================== */
     await writeAuditLog({
       db,
+      session,
       userId: user._id,
       action: "SALE_RETURN_CREATE",
-      collection: "sales_returns",
-      documentId: insertedId,
+      collection: COLLECTIONS.SALES_RETURNS,
+      documentId: salesReturnId,
       refType: "SALE_RETURN",
-      refId: insertedId,
+      refId: salesReturnId,
       branchId: sale.branchId,
       payload: {
         saleId,
+        invoiceNo: sale.invoiceNo,
         refundAmount: totalRefund,
         refundMethod: payload.refundMethod,
+        itemCount: payload.items.length,
+        totalReturnQty,
+        status,
       },
       ipAddress: user.ip || null,
       userAgent: user.userAgent || null,
-      session,
+      status: "SUCCESS",
     });
 
     await session.commitTransaction();
 
+    /* ===============================
+       8️⃣ FINAL RESPONSE (REPRINT-READY)
+    =============================== */
     return {
-      returnId: insertedId,
-      refundAmount: totalRefund,
-      status,
+      success: true,
+      message: "Sales return completed successfully",
+      data: {
+        salesReturnId,
+        saleId,
+        invoiceNo: sale.invoiceNo,
+        refundAmount: totalRefund,
+        refundMethod: payload.refundMethod,
+        status,
+        print: {
+          currency: "BDT",
+          note: "Returned items received in good condition",
+        },
+      },
     };
   } catch (err) {
     await session.abortTransaction();

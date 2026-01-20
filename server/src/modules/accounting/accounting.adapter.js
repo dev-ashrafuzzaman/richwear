@@ -102,45 +102,68 @@ export const salesReturnAccounting = async ({
   session,
   salesReturnId,
   returnAmount,
-  cashRefund = 0,
+  refunds = [], 
   dueAdjust = 0,
-  customerAccountId,
+  customerId,
   branchId,
+  narration = "Sales Return",
 }) => {
-  if (cashRefund + dueAdjust !== returnAmount) {
-    throw new Error("Sales return amount mismatch");
-  }
+  const total = roundMoney(returnAmount);
+  const due = roundMoney(dueAdjust);
 
   const SYS = await resolveSystemAccounts(db);
-  const entries = [];
 
-  // Reverse income
+  const customerControlAccountId = await resolveAccountByCode(
+    db,
+    "1004" // Accounts Receivable
+  );
+
+  const entries = [];
+  let refundTotal = 0;
+
   entries.push({
     accountId: SYS.SALES_INCOME,
-    debit: returnAmount,
+    debit: total,
   });
 
-  if (cashRefund > 0) {
+
+  for (const r of refunds) {
+    const amt = roundMoney(r.amount || 0);
+    if (amt <= 0) continue;
+
+    if (!r.accountId) {
+      throw new Error("Refund accountId is required");
+    }
+
+    refundTotal += amt;
+
     entries.push({
-      accountId: SYS.CASH,
-      credit: cashRefund,
+      accountId: r.accountId,
+      credit: amt,
     });
   }
 
-  if (dueAdjust > 0) {
+  if (due > 0) {
     entries.push({
-      accountId: customerAccountId,
-      credit: dueAdjust,
+      accountId: customerControlAccountId,
+      credit: due,
+      partyType: "CUSTOMER",
+      partyId: customerId,
     });
+  }
+
+
+  if (roundMoney(refundTotal + due) !== total) {
+    throw new Error("Sales return settlement mismatch");
   }
 
   return postJournalEntry({
     db,
     session,
-    date: new Date(),
+    date: new Date(), // UTC
     refType: "SALE_RETURN",
     refId: salesReturnId,
-    narration: "Sales Return",
+    narration,
     entries,
     branchId,
   });
