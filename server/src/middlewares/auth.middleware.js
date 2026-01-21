@@ -1,3 +1,4 @@
+// src/middlewares/auth.middleware.js
 import jwt from "jsonwebtoken";
 import { AppError } from "../utils/AppError.js";
 import { AUTH } from "../config/constants/auth.constants.js";

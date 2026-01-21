@@ -4,37 +4,32 @@ import {
   getAll,
   getOneById,
   updateOne,
-  deleteOne
+  deleteOne,
 } from "../../controllers/base.controller.js";
 
-import {
-  createUserSchema,
-  updateUserSchema
-} from "./user.validation.js";
+import { createUserSchema, updateUserSchema } from "./user.validation.js";
 
-import {
-  beforeCreateUser,
-  beforeUpdateUser
-} from "./user.hooks.js";
+import { beforeCreateUser, beforeUpdateUser } from "./user.hooks.js";
 
 import { permit } from "../../middlewares/permission.middleware.js";
 import { PERMISSIONS } from "../../config/permissions.js";
 import { COLLECTIONS } from "../../database/collections.js";
+import { me } from "./users.controller.js";
+import { authenticate } from "../../middlewares/auth.middleware.js";
 
 const router = Router();
 const COLLECTION = COLLECTIONS.USERS;
 
-
+router.get("/me", authenticate, me);
 router.post(
   "/",
   permit(PERMISSIONS.USER_MANAGE),
   beforeCreateUser,
   createOne({
     collection: COLLECTION,
-    schema: createUserSchema
-  })
+    schema: createUserSchema,
+  }),
 );
-
 
 router.get(
   "/",
@@ -43,18 +38,17 @@ router.get(
     collection: COLLECTION,
     searchableFields: ["name", "email"],
     filterableFields: ["status", "branchId"],
-    projection: { password: 0 }
-  })
+    projection: { password: 0 },
+  }),
 );
-
 
 router.get(
   "/:id",
   permit(PERMISSIONS.USER_MANAGE),
   getOneById({
     collection: COLLECTION,
-    projection: { password: 0 }
-  })
+    projection: { password: 0 },
+  }),
 );
 
 
@@ -64,17 +58,16 @@ router.put(
   beforeUpdateUser,
   updateOne({
     collection: COLLECTION,
-    schema: updateUserSchema
-  })
+    schema: updateUserSchema,
+  }),
 );
-
 
 router.delete(
   "/:id",
   permit(PERMISSIONS.USER_MANAGE),
   deleteOne({
-    collection: COLLECTION
-  })
+    collection: COLLECTION,
+  }),
 );
 
 export default router;

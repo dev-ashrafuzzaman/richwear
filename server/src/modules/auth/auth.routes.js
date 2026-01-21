@@ -1,3 +1,4 @@
+// auth.routes.js
 import { Router } from "express";
 import * as controller from "./auth.controller.js";
 import { validate } from "../../validations/validate.middleware.js";
@@ -13,11 +14,7 @@ const router = Router();
 
 router.post("/login", loginRateLimit, validate(loginSchema), controller.login);
 
-router.post(
-  "/refresh-token",
-  validate(refreshTokenSchema),
-  controller.refreshToken
-);
+router.post("/refresh", controller.refreshToken);
 
 router.post("/logout", authenticate, controller.logout);
 
@@ -25,7 +22,7 @@ router.post(
   "/change-password",
   authenticate,
   validate(changePasswordSchema),
-  controller.changePassword
+  controller.changePassword,
 );
 
 export default router;
