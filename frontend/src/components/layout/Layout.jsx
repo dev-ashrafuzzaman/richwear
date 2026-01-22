@@ -27,7 +27,7 @@ const Layout = () => {
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 text-gray-900">
       {/* Sidebar */}
-      <Sidebar isDrawerOpen={isDrawerOpen} closeDrawer={closeDrawer} />
+    
 
       {/* Main content area */}
       <div className="flex flex-1 flex-col md:ml-64">
@@ -40,6 +40,7 @@ const Layout = () => {
             logout={logout}
           />
         </header>
+          <Sidebar isDrawerOpen={isDrawerOpen} closeDrawer={closeDrawer} />
 
         {/* Main content */}
         <main className="flex-1 p-4 overflow-y-auto">

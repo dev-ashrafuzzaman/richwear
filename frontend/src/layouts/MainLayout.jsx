@@ -36,7 +36,7 @@ export default function MainLayout({ children }) {
           isDrawerOpen={isDrawerOpen}
         />
         <main className="flex-1 p-3 overflow-y-auto">{children}</main>
-        {/* <Footer /> */}
+      <Footer />
       </div>
     </div>
   );

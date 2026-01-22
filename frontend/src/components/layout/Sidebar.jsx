@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
-import logo from "../../assets/logo.png";
 import {
   MessageCircle,
   Youtube,
   Linkedin,
   PhoneCall,
   ShoppingBag,
+  Sparkles,
 } from "lucide-react";
 import { SIDEBAR_MENU } from "../../config/sidebar.config";
 import SidebarItem from "./SidebarItem";
@@ -53,14 +53,18 @@ export default function Sidebar({ isDrawerOpen, closeDrawer }) {
         }`}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-2.5">
-          <div className="flex items-center gap-2">
-            <img
-              src={logo}
-              alt="Logo"
-              className="h-11 mx-auto"
-            />
-            <span className="text-lg font-semibold"></span>
+        <div className="flex items-center gap-3 p-4">
+          <div className={`
+            p-2 rounded-xl
+           bg-linear-to-br from-blue-50 to-indigo-50
+          `}>
+            <Sparkles className="w-6 h-6 text-blue-500" />
+          </div>
+          <div>
+            <p className="font-bold text-lg bg-linear-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+              InventoryPro
+            </p>
+            <p className="text-xs opacity-60">Business Management</p>
           </div>
         </div>
 

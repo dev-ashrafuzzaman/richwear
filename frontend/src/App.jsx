@@ -59,6 +59,9 @@ const JournalVoucher = React.lazy(
 const BranchesPage = React.lazy(
   () => import("./pages/setting/branches/branchesPage"),
 );
+const CategoriesPage = React.lazy(
+  () => import("./pages/products/category/CategoriesPage"),
+);
 
 export default function App() {
   return (
@@ -82,6 +85,7 @@ export default function App() {
           <Route path="/dashboard" element={<Dashboard />} />
 
           <Route path="/branches" element={<BranchesPage />} />
+          <Route path="/products/categories" element={<CategoriesPage />} />
 
           {/* company */}
           <Route

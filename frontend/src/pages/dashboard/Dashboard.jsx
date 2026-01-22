@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback } from "react";
+import React, { useMemo, useState, useCallback, useEffect } from "react";
 import {
   BarChart,
   Bar,
@@ -8,454 +8,860 @@ import {
   ResponsiveContainer,
   CartesianGrid,
   Legend,
+  LineChart,
+  Line,
+  Cell,
+  PieChart,
+  Pie,
+  AreaChart,
+  Area,
 } from "recharts";
+import {
+  TrendingUp,
+  TrendingDown,
+  Package,
+  ShoppingBag,
+  Users,
+  DollarSign,
+  Download,
+  Filter,
+  MoreVertical,
+  RefreshCw,
+  Calendar,
+  ArrowUpRight,
+  AlertCircle,
+  TrendingUp as TrendingUpIcon,
+  TrendingDown as TrendingDownIcon,
+  Sparkles,
+  BarChart3,
+  PieChart as PieChartIcon,
+  Activity,
+} from "lucide-react";
 import Button from "../../components/ui/Button";
-import MainLayout from "../../layouts/MainLayout";
 import { useAuth } from "../../context/useAuth";
 
-/**
- * Mock data: replace with real API calls as needed.
- */
-const SALES_DATA = [
-  { date: "10 Mar", sales: 400, visitors: 240 },
-  { date: "11 Mar", sales: 300, visitors: 200 },
-  { date: "12 Mar", sales: 520, visitors: 160 },
-  { date: "13 Mar", sales: 420, visitors: 300 },
-  { date: "14 Mar", sales: 350, visitors: 140 },
-  { date: "15 Mar", sales: 480, visitors: 320 },
-  { date: "16 Mar", sales: 600, visitors: 240 },
-  { date: "17 Mar", sales: 430, visitors: 310 },
-  { date: "18 Mar", sales: 540, visitors: 360 },
-  { date: "19 Mar", sales: 380, visitors: 190 },
-  { date: "20 Mar", sales: 650, visitors: 420 },
-  { date: "21 Mar", sales: 300, visitors: 180 },
-];
+// Mock API response structure - Replace with actual API calls
+const MOCK_API_RESPONSE = {
+  summary: {
+    revenue: { value: 45280, change: 12.5, trend: "up" },
+    orders: { value: 1243, change: 8.2, trend: "up" },
+    products: { value: 856, change: -3.1, trend: "down" },
+    customers: { value: 2456, change: 15.7, trend: "up" },
+  },
+  salesData: [
+    { date: "Mon", sales: 4200, orders: 45, returns: 3 },
+    { date: "Tue", sales: 5200, orders: 52, returns: 2 },
+    { date: "Wed", sales: 4800, orders: 49, returns: 5 },
+    { date: "Thu", sales: 6100, orders: 58, returns: 4 },
+    { date: "Fri", sales: 7500, orders: 67, returns: 6 },
+    { date: "Sat", sales: 8900, orders: 82, returns: 8 },
+    { date: "Sun", sales: 6800, orders: 61, returns: 5 },
+  ],
+  topCategories: [
+    { name: "T-Shirts", value: 35, color: "#3B82F6", sales: 15800 },
+    { name: "Jeans", value: 25, color: "#10B981", sales: 11200 },
+    { name: "Dresses", value: 20, color: "#8B5CF6", sales: 8900 },
+    { name: "Accessories", value: 15, color: "#F59E0B", sales: 6700 },
+    { name: "Footwear", value: 5, color: "#EF4444", sales: 2800 },
+  ],
+  lowStockProducts: [
+    {
+      id: 1,
+      name: "Classic White Tee",
+      sku: "CT-WHT-M",
+      stock: 3,
+      threshold: 10,
+      category: "T-Shirts",
+    },
+    {
+      id: 2,
+      name: "Slim Fit Jeans",
+      sku: "JEANS-SL-BL",
+      stock: 5,
+      threshold: 15,
+      category: "Jeans",
+    },
+    {
+      id: 3,
+      name: "Summer Dress",
+      sku: "DRESS-SM-FL",
+      stock: 2,
+      threshold: 8,
+      category: "Dresses",
+    },
+    {
+      id: 4,
+      name: "Leather Belt",
+      sku: "BELT-LTH-BK",
+      stock: 4,
+      threshold: 12,
+      category: "Accessories",
+    },
+  ],
+  recentTransactions: [
+    {
+      id: "#INV-2024-001",
+      customer: "John Smith",
+      amount: 249.99,
+      items: 3,
+      status: "completed",
+      time: "10:30 AM",
+    },
+    {
+      id: "#INV-2024-002",
+      customer: "Sarah Johnson",
+      amount: 189.5,
+      items: 2,
+      status: "completed",
+      time: "11:45 AM",
+    },
+    {
+      id: "#INV-2024-003",
+      customer: "Mike Wilson",
+      amount: 425.0,
+      items: 5,
+      status: "pending",
+      time: "1:15 PM",
+    },
+    {
+      id: "#INV-2024-004",
+      customer: "Emma Davis",
+      amount: 99.99,
+      items: 1,
+      status: "completed",
+      time: "2:30 PM",
+    },
+    {
+      id: "#INV-2024-005",
+      customer: "Robert Brown",
+      amount: 312.75,
+      items: 4,
+      status: "refunded",
+      time: "3:45 PM",
+    },
+  ],
+  performance: {
+    conversion: 4.2,
+    avgOrder: 156.8,
+    itemsPerOrder: 2.8,
+  },
+};
 
-const PRODUCTS_MOCK = new Array(8).fill(0).map((_, i) => ({
-  id: i + 1,
-  name: [
-    "Copier",
-    "Clock",
-    "Curling iron",
-    "Headphone",
-    "Keyboard",
-    "Mouse",
-    "Monitor",
-    "Camera",
-  ][i],
-  sku: "SKU" + (1000 + i),
-  category: [
-    "Tablets",
-    "Tablets",
-    "Gaming consoles",
-    "Accessories",
-    "Peripherals",
-    "Peripherals",
-    "Displays",
-    "Cameras",
-  ][i],
-  brand: [
-    "BrandA",
-    "BrandB",
-    "BrandC",
-    "BrandD",
-    "BrandE",
-    "BrandF",
-    "BrandG",
-    "BrandH",
-  ][i],
-  price: (Math.random() * 900 + 50).toFixed(2),
-  stock: Math.round(Math.random() * 200),
-  views: Math.round(Math.random() * 80_000) / 1000 + "k",
-  status: Math.random() > 0.85 ? "Limited" : "Available",
-}));
+/* ---------- StatCard Component ---------- */
+const StatCard = React.memo(
+  ({ title, value, change, trend, icon, color = "blue" }) => {
+    const colors = {
+      blue: "from-blue-500 to-cyan-500",
+      green: "from-emerald-500 to-green-500",
+      purple: "from-purple-500 to-violet-500",
+      orange: "from-orange-500 to-amber-500",
+    };
 
-/* ---------- Small UI pieces ---------- */
+    const bgColors = {
+      blue: "bg-blue-50 dark:bg-blue-900/20",
+      green: "bg-emerald-50 dark:bg-emerald-900/20",
+      purple: "bg-purple-50 dark:bg-purple-900/20",
+      orange: "bg-orange-50 dark:bg-orange-900/20",
+    };
 
-const StatCard = React.memo(({ title, value, accent, trend }) => {
-  const accentBg = {
-    blue: "bg-blue-50 text-blue-700",
-    red: "bg-red-50 text-red-700",
-    green: "bg-emerald-50 text-emerald-700",
-    amber: "bg-amber-50 text-amber-700",
-  }[accent || "blue"];
-
-  return (
-    <div className="group relative rounded-2xl p-5 border border-gray-100 bg-white shadow-sm hover:shadow-md transition-all">
-      <div
-        className={`inline-flex items-center justify-center w-10 h-10 rounded-lg ${accentBg} mb-2`}>
-        <svg
-          width="18"
-          height="18"
-          viewBox="0 0 24 24"
-          fill="none"
-          className="opacity-90">
-          <path
-            d="M4 19h16"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"></path>
-          <path
-            d="M8 12l3 3 6-6"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"></path>
-        </svg>
-      </div>
-
-      <p className="text-sm font-medium text-gray-500">{title}</p>
-      <h3 className="text-2xl font-bold text-gray-900 mt-1">{value}</h3>
-      {trend && <p className="text-xs text-green-500 mt-2">{trend}</p>}
-    </div>
-  );
-});
-
-/* ---------- Chart Component ---------- */
-const SalesChart = ({ data = SALES_DATA }) => {
-  return (
-    <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-      <div className="flex items-center justify-between mb-4">
-        <h4 className="text-lg font-semibold">Sales Report</h4>
-        <div className="flex items-center gap-2">
-          <button className="text-sm px-3 py-1 rounded-md bg-gray-100">
-            Daily
-          </button>
-          <button className="text-sm px-3 py-1 rounded-md bg-gray-200">
-            Monthly
-          </button>
-          <button className="text-sm px-3 py-1 rounded-md bg-gray-100">
-            Yearly
+    return (
+      <div className="group relative bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-lg transition-all duration-300">
+        <div className="flex items-start justify-between">
+          <div>
+            <div
+              className={`inline-flex p-3 rounded-xl ${bgColors[color]} mb-4`}>
+              <div
+                className={`p-2 rounded-lg bg-linear-to-br ${colors[color]}`}>
+                {icon}
+              </div>
+            </div>
+            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+              {title}
+            </p>
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
+              {value}
+            </h3>
+            <div className="flex items-center gap-2 mt-2">
+              {trend === "up" ? (
+                <TrendingUp className="w-4 h-4 text-emerald-500" />
+              ) : (
+                <TrendingDown className="w-4 h-4 text-red-500" />
+              )}
+              <span
+                className={`text-sm font-medium ${trend === "up" ? "text-emerald-600" : "text-red-600"}`}>
+                {change > 0 ? "+" : ""}
+                {change}%
+              </span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                from last month
+              </span>
+            </div>
+          </div>
+          <button className="opacity-0 group-hover:opacity-100 transition-opacity p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+            <MoreVertical className="w-5 h-5 text-gray-400" />
           </button>
         </div>
       </div>
+    );
+  },
+);
 
-      <div style={{ height: 260 }}>
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart
+/* ---------- SalesChart Component ---------- */
+const SalesChart = ({ data }) => {
+  const [timeRange, setTimeRange] = useState("week");
+
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700 shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Sales Overview
+          </h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            Total revenue & order trends
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+            {["day", "week", "month", "year"].map((range) => (
+              <button
+                key={range}
+                onClick={() => setTimeRange(range)}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all capitalize ${
+                  timeRange === range
+                    ? "bg-white dark:bg-gray-600 shadow-sm text-gray-900 dark:text-white"
+                    : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                }`}>
+                {range}
+              </button>
+            ))}
+          </div>
+          <Button variant="outline" size="sm" className="gap-2">
+            <Calendar className="w-4 h-4" />
+            Date Range
+          </Button>
+        </div>
+      </div>
+
+      <div className="relative w-full min-h-75">
+        <ResponsiveContainer width="100%" height={300}>
+          <AreaChart
             data={data}
-            margin={{ top: 8, right: 12, left: -8, bottom: 8 }}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} />
-            <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-            <YAxis />
-            <Tooltip />
-            <Legend />
-            <Bar
+            margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+            <defs>
+              <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.8} />
+                <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid
+              strokeDasharray="3 3"
+              vertical={false}
+              stroke="#E5E7EB"
+            />
+            <XAxis
+              dataKey="date"
+              axisLine={false}
+              tickLine={false}
+              tick={{ fill: "#6B7280", fontSize: 12 }}
+            />
+            <YAxis
+              axisLine={false}
+              tickLine={false}
+              tick={{ fill: "#6B7280", fontSize: 12 }}
+              tickFormatter={(value) => `$${value / 1000}k`}
+            />
+            <Tooltip
+              contentStyle={{
+                backgroundColor: "white",
+                border: "1px solid #E5E7EB",
+                borderRadius: "8px",
+                boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+              }}
+              valueFormatter={(value) => [value, "Sales"]}
+            />
+            <Area
+              type="monotone"
               dataKey="sales"
-              name="Sales"
-              stackId="a"
-              radius={[8, 8, 0, 0]}
-              barSize={18}
+              stroke="#3B82F6"
+              fillOpacity={1}
+              fill="url(#colorSales)"
+              strokeWidth={2}
             />
-            <Bar
-              dataKey="visitors"
-              name="Visitors"
-              stackId="a"
-              radius={[8, 8, 0, 0]}
-              barSize={12}
+            <Line
+              type="monotone"
+              dataKey="orders"
+              stroke="#10B981"
+              strokeWidth={2}
+              dot={{ strokeWidth: 2, r: 4 }}
             />
-          </BarChart>
+          </AreaChart>
         </ResponsiveContainer>
+      </div>
+
+      <div className="flex items-center justify-between mt-6 pt-6 border-t border-gray-100 dark:border-gray-700">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+            <span className="text-sm text-gray-600 dark:text-gray-400">
+              Sales
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
+            <span className="text-sm text-gray-600 dark:text-gray-400">
+              Orders
+            </span>
+          </div>
+        </div>
+        <Button variant="ghost" size="sm" className="gap-2">
+          <Download className="w-4 h-4" />
+          Export Report
+        </Button>
       </div>
     </div>
   );
 };
 
-/* ---------- Widgets Column ---------- */
-const RightWidgets = React.memo(() => {
-  return (
-    <div className="space-y-4">
-      <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm text-gray-500">Earning</p>
-            <h3 className="text-2xl font-bold">$16.4k</h3>
-          </div>
-          <div className="space-y-1">
-            <div className="w-12 h-12 rounded-md bg-gradient-to-br from-blue-400 to-indigo-600"></div>
-          </div>
-        </div>
-        <div className="mt-4 flex gap-2">
-          {[60, 80, 50, 70, 40].map((v, i) => (
-            <div
-              key={i}
-              className="flex-1 h-16 rounded-md bg-gray-100 flex items-end">
-              <div
-                style={{ height: `${(v / 100) * 100}%` }}
-                className="w-full bg-blue-400 rounded-b-md"></div>
-            </div>
-          ))}
-        </div>
-      </div>
+/* ---------- RecentTransactions Component ---------- */
+const RecentTransactions = ({ transactions }) => {
+  const [filter, setFilter] = useState("all");
 
-      <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
+  const statusColors = {
+    completed:
+      "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
+    pending:
+      "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
+    refunded: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
+  };
+
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700 shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <p className="text-sm text-gray-500">Closed Orders</p>
-          <h3 className="text-xl font-bold">45%</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Recent Transactions
+          </h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            Latest sales and returns
+          </p>
         </div>
-        <div className="w-14 h-14 rounded-full border-4 border-green-200 flex items-center justify-center">
-          <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-sm font-semibold">
-            45%
+        <div className="flex items-center gap-3">
+          <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+            {["all", "completed", "pending"].map((status) => (
+              <button
+                key={status}
+                onClick={() => setFilter(status)}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all capitalize ${
+                  filter === status
+                    ? "bg-white dark:bg-gray-600 shadow-sm text-gray-900 dark:text-white"
+                    : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                }`}>
+                {status}
+              </button>
+            ))}
           </div>
-        </div>
-      </div>
-
-      <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
-        <p className="text-sm text-gray-500">Orders</p>
-        <h3 className="text-xl font-bold">22.6k</h3>
-        <div className="mt-3 h-16">
-          <svg viewBox="0 0 200 50" className="w-full h-full">
-            <path
-              d="M0 40 Q40 10 80 30 T200 25"
-              fill="none"
-              stroke="#f59e0b"
-              strokeWidth="2"
-              strokeLinecap="round"
-            />
-          </svg>
-        </div>
-      </div>
-    </div>
-  );
-});
-
-/* ---------- Products Table ---------- */
-const ProductsTable = ({ products = PRODUCTS_MOCK }) => {
-  const [query, setQuery] = useState("");
-  const [sortKey, setSortKey] = useState("name");
-  const [sortDir, setSortDir] = useState("asc");
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    let list = products.filter(
-      (p) =>
-        p.name.toLowerCase().includes(q) ||
-        p.sku.toLowerCase().includes(q) ||
-        p.category.toLowerCase().includes(q)
-    );
-
-    list.sort((a, b) => {
-      const av = String(a[sortKey] ?? "").toLowerCase();
-      const bv = String(b[sortKey] ?? "").toLowerCase();
-      if (av < bv) return sortDir === "asc" ? -1 : 1;
-      if (av > bv) return sortDir === "asc" ? 1 : -1;
-      return 0;
-    });
-
-    return list;
-  }, [products, query, sortKey, sortDir]);
-
-  const toggleSort = useCallback(
-    (key) => {
-      if (key === sortKey) {
-        setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-      } else {
-        setSortKey(key);
-        setSortDir("asc");
-      }
-    },
-    [sortKey]
-  );
-
-  return (
-    <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-      <div className="flex items-center justify-between mb-3">
-        <h4 className="text-lg font-semibold">Products Table</h4>
-        <div className="flex gap-2 items-center">
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search products..."
-            className="px-3 py-2 rounded-md border border-gray-200 focus:ring-2 focus:ring-blue-200"
-          />
-          <Button
-            className="btn-primary"
-            onClick={() => alert("Add product (demo)")}>
-            Add
+          <Button variant="outline" size="sm" className="gap-2">
+            <Filter className="w-4 h-4" />
+            Filter
           </Button>
         </div>
       </div>
 
       <div className="overflow-x-auto">
-        <table className="min-w-full text-left">
-          <thead className="text-xs text-gray-500 uppercase bg-gray-50">
-            <tr>
-              <th className="p-3">
-                <input type="checkbox" />
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-gray-100 dark:border-gray-700">
+              <th className="text-left pb-3 font-medium text-gray-500 dark:text-gray-400">
+                Invoice
               </th>
-              <th
-                className="p-3 cursor-pointer"
-                onClick={() => toggleSort("name")}>
-                Name
+              <th className="text-left pb-3 font-medium text-gray-500 dark:text-gray-400">
+                Customer
               </th>
-              <th
-                className="p-3 cursor-pointer"
-                onClick={() => toggleSort("category")}>
-                Category
+              <th className="text-left pb-3 font-medium text-gray-500 dark:text-gray-400">
+                Amount
               </th>
-              <th className="p-3">Brand</th>
-              <th
-                className="p-3 cursor-pointer"
-                onClick={() => toggleSort("price")}>
-                Price
+              <th className="text-left pb-3 font-medium text-gray-500 dark:text-gray-400">
+                Items
               </th>
-              <th
-                className="p-3 cursor-pointer"
-                onClick={() => toggleSort("stock")}>
-                Stock
+              <th className="text-left pb-3 font-medium text-gray-500 dark:text-gray-400">
+                Status
               </th>
-              <th className="p-3">Views</th>
-              <th className="p-3">Actions</th>
+              <th className="text-left pb-3 font-medium text-gray-500 dark:text-gray-400">
+                Time
+              </th>
             </tr>
           </thead>
-
           <tbody>
-            {filtered.map((p) => (
-              <tr key={p.id} className="border-t">
-                <td className="p-3">
-                  <input type="checkbox" />
+            {transactions.map((transaction) => (
+              <tr
+                key={transaction.id}
+                className="border-b border-gray-50 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30">
+                <td className="py-4">
+                  <p className="font-medium text-gray-900 dark:text-white">
+                    {transaction.id}
+                  </p>
                 </td>
-                <td className="p-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-md bg-gray-100 flex items-center justify-center text-sm">
-                      {p.name.charAt(0)}
+                <td className="py-4">
+                  <p className="font-medium text-gray-900 dark:text-white">
+                    {transaction.customer}
+                  </p>
+                </td>
+                <td className="py-4">
+                  <p className="font-bold text-gray-900 dark:text-white">
+                    {transaction.amount}
+                  </p>
+                </td>
+                <td className="py-4">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-md bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
+                      <span className="text-sm font-medium text-blue-600 dark:text-blue-400">
+                        {transaction.items}
+                      </span>
                     </div>
-                    <div>
-                      <div className="font-medium text-gray-800">{p.name}</div>
-                      <div className="text-xs text-gray-400">{p.sku}</div>
-                    </div>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">
+                      items
+                    </span>
                   </div>
                 </td>
-                <td className="p-3 text-sm text-gray-600">{p.category}</td>
-                <td className="p-3 text-sm">{p.brand}</td>
-                <td className="p-3 font-medium">${p.price}</td>
-                <td className="p-3 text-sm">
-                  <div
-                    className={`${
-                      p.status === "Available"
-                        ? "text-emerald-600"
-                        : "text-orange-500"
-                    }`}>
-                    {p.status === "Available" ? "Available" : "Limited Supply"}
-                    <div className="text-xs text-gray-400">{p.stock} stock</div>
-                  </div>
+                <td className="py-4">
+                  <span
+                    className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${statusColors[transaction.status]}`}>
+                    {transaction.status.charAt(0).toUpperCase() +
+                      transaction.status.slice(1)}
+                  </span>
                 </td>
-                <td className="p-3 text-sm text-gray-600">{p.views}</td>
-                <td className="p-3">
-                  <div className="flex gap-2">
-                    <button className="action-view px-2 py-1 rounded">
-                      View
-                    </button>
-                    <button className="action-edit px-2 py-1 rounded">
-                      Edit
-                    </button>
-                    <button className="action-delete px-2 py-1 rounded">
-                      Delete
-                    </button>
-                  </div>
+                <td className="py-4">
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    {transaction.time}
+                  </p>
                 </td>
               </tr>
             ))}
-            {filtered.length === 0 && (
-              <tr>
-                <td colSpan={8} className="p-6 text-center text-gray-400">
-                  No products found
-                </td>
-              </tr>
-            )}
           </tbody>
         </table>
+      </div>
+
+      <div className="flex items-center justify-between mt-6 pt-6 border-t border-gray-100 dark:border-gray-700">
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          Showing {transactions.length} recent transactions
+        </p>
+        <Button variant="ghost" size="sm">
+          View All Transactions
+          <ArrowUpRight className="w-4 h-4 ml-2" />
+        </Button>
       </div>
     </div>
   );
 };
 
-/* ---------- Main Dashboard Page ---------- */
-
-export default function Dashboard() {
-  const { user } = useAuth?.() ?? {};
-  // compute totals quickly
-  const totals = useMemo(() => {
-    const revenue = 120000;
-    const expenses = 85000;
-    const active = 1254;
-    const pending = 12300;
-    return { revenue, expenses, active, pending };
-  }, []);
-
+/* ---------- CategoryDistribution Component ---------- */
+const CategoryDistribution = ({ data }) => {
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">
-          Welcome back, {user?.username ?? "User"} 👋
-        </h1>
-        <p className="text-gray-500 mt-2">
-          Here’s an overview of your latest financial activity.
-        </p>
+    <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700 shadow-sm">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Category Distribution
+          </h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            Sales by product category
+          </p>
+        </div>
+        <Button variant="ghost" size="sm">
+          <PieChartIcon className="w-4 h-4" />
+        </Button>
       </div>
 
-      {/* Quick stats */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          title="Total Revenue"
-          value={`$${(totals.revenue / 1000).toFixed(1)}k`}
-          accent="blue"
-          trend="↑ 4.3%"
-        />
-        <StatCard
-          title="Total Expenses"
-          value={`$${(totals.expenses / 1000).toFixed(1)}k`}
-          accent="red"
-          trend="↓ 1.4%"
-        />
-        <StatCard
-          title="Active Accounts"
-          value={totals.active.toLocaleString()}
-          accent="green"
-          trend="↑ 7.2%"
-        />
-        <StatCard
-          title="Pending Payments"
-          value={`$${(totals.pending / 1000).toFixed(1)}k`}
-          accent="amber"
-          trend="↑ 3.6%"
-        />
-      </section>
-
-      {/* Main grid */}
-      <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          <SalesChart data={SALES_DATA} />
-
-          <ProductsTable products={PRODUCTS_MOCK} />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="relative w-full min-h-[260px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={data}
+                cx="50%"
+                cy="50%"
+                innerRadius={60}
+                outerRadius={80}
+                paddingAngle={2}
+                dataKey="value">
+                {data.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip formatter={(value) => [`${value}%`, "Share"]} />
+            </PieChart>
+          </ResponsiveContainer>
         </div>
 
-        <aside className="space-y-6">
-          <RightWidgets />
-          <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
-            <h4 className="text-lg font-semibold">Quick Actions</h4>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Button
-                className="btn-primary"
-                onClick={() => alert("Create invoice demo")}>
-                Create Invoice
-              </Button>
-              <Button
-                className="btn-outlined"
-                onClick={() => alert("Export demo")}>
-                Export
-              </Button>
-              <Button
-                className="btn-ghost"
-                onClick={() => alert("Settings demo")}>
-                Settings
-              </Button>
+        <div className="space-y-4">
+          {data.map((category, index) => (
+            <div
+              key={index}
+              className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-3 h-3 rounded-full"
+                  style={{ backgroundColor: category.color }}></div>
+                <div>
+                  <p className="font-medium text-gray-900 dark:text-white">
+                    {category.name}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {category.value}% of total
+                  </p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="font-semibold text-gray-900 dark:text-white">
+                  {category.sales}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Sales
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ---------- LowStockAlert Component ---------- */
+const LowStockAlert = ({ products, onRefresh }) => {
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700 shadow-sm">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-red-50 dark:bg-red-900/20">
+            <AlertCircle className="w-5 h-5 text-red-500" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+              Low Stock Alert
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              Products needing restock
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onRefresh}
+            className="btn gap-2">
+            <RefreshCw className="w-4 h-4" />
+            Refresh
+          </Button>
+          <Button variant="primary" size="sm" className="gap-2">
+            <Package className="w-4 h-4" />
+            Order Stock
+          </Button>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        {products.map((product) => (
+          <div
+            key={product.id}
+            className="flex items-center justify-between p-4 rounded-xl border border-red-100 dark:border-red-900/30 bg-red-50 dark:bg-red-900/10">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-red-100 to-red-50 dark:from-red-900/30 dark:to-red-900/10 flex items-center justify-center">
+                <Package className="w-6 h-6 text-red-500" />
+              </div>
+              <div>
+                <p className="font-medium text-gray-900 dark:text-white">
+                  {product.name}
+                </p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  SKU: {product.sku} • {product.category}
+                </p>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="flex items-center gap-2">
+                <div className="text-2xl font-bold text-red-600 dark:text-red-400">
+                  {product.stock}
+                </div>
+                <div className="text-sm text-gray-500 dark:text-gray-400">
+                  / {product.threshold} min
+                </div>
+              </div>
+              <p className="text-xs text-red-500 dark:text-red-400 mt-1">
+                Low Stock
+              </p>
             </div>
           </div>
-        </aside>
-      </section>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+/* ---------- PerformanceMetrics Component ---------- */
+const PerformanceMetrics = ({ metrics }) => {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 rounded-2xl p-6 border border-blue-100 dark:border-blue-800/30">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+            <Activity className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+          </div>
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            Conversion Rate
+          </span>
+        </div>
+        <div className="text-3xl font-bold text-gray-900 dark:text-white">
+          {metrics.conversion}%
+        </div>
+        <div className="flex items-center gap-2 mt-2">
+          <TrendingUpIcon className="w-4 h-4 text-emerald-500" />
+          <span className="text-sm text-emerald-600 dark:text-emerald-400">
+            +0.8% from last week
+          </span>
+        </div>
+      </div>
+
+      <div className="bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 rounded-2xl p-6 border border-emerald-100 dark:border-emerald-800/30">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
+            <DollarSign className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+          </div>
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            Avg. Order Value
+          </span>
+        </div>
+        <div className="text-3xl font-bold text-gray-900 dark:text-white">
+          {metrics.avgOrder}
+        </div>
+        <div className="flex items-center gap-2 mt-2">
+          <TrendingUpIcon className="w-4 h-4 text-emerald-500" />
+          <span className="text-sm text-emerald-600 dark:text-emerald-400">
+            +2.5% from last week
+          </span>
+        </div>
+      </div>
+
+      <div className="bg-gradient-to-br from-purple-50 to-violet-50 dark:from-purple-900/20 dark:to-violet-900/20 rounded-2xl p-6 border border-purple-100 dark:border-purple-800/30">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
+            <ShoppingBag className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+          </div>
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            Items per Order
+          </span>
+        </div>
+        <div className="text-3xl font-bold text-gray-900 dark:text-white">
+          {metrics.itemsPerOrder}
+        </div>
+        <div className="flex items-center gap-2 mt-2">
+          <TrendingDownIcon className="w-4 h-4 text-red-500" />
+          <span className="text-sm text-red-600 dark:text-red-400">
+            -0.3 from last week
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ---------- API Integration Helper ---------- */
+const useDashboardData = () => {
+  const [data, setData] = useState(MOCK_API_RESPONSE);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      // Replace with actual API call
+      // const response = await fetch('/api/dashboard');
+      // const result = await response.json();
+      // setData(result);
+
+      // Simulating API delay
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      setData(MOCK_API_RESPONSE);
+      setError(null);
+    } catch (err) {
+      setError("Failed to fetch dashboard data");
+      console.error("Dashboard API error:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  return { data, loading, error, refetch: fetchData };
+};
+
+/* ---------- Main Dashboard Component ---------- */
+export default function Dashboard() {
+  const { user } = useAuth?.() ?? {};
+  const { data, loading, error, refetch } = useDashboardData();
+
+  const quickActions = [
+    {
+      label: "New Sale",
+      icon: ShoppingBag,
+      color: "bg-emerald-500",
+      path: "/pos",
+    },
+    {
+      label: "Add Product",
+      icon: Package,
+      color: "bg-blue-500",
+      path: "/products/create",
+    },
+    {
+      label: "View Reports",
+      icon: BarChart3,
+      color: "bg-purple-500",
+      path: "/reports",
+    },
+    {
+      label: "Manage Inventory",
+      icon: Package,
+      color: "bg-amber-500",
+      path: "/inventory",
+    },
+  ];
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <RefreshCw className="w-8 h-8 animate-spin text-blue-500 mx-auto mb-4" />
+          <p className="text-gray-600 dark:text-gray-400">
+            Loading dashboard data...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <p className="text-gray-900 dark:text-white font-medium mb-2">
+            Failed to load data
+          </p>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">{error}</p>
+          <Button onClick={refetch} variant="primary">
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Retry
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 p-1">
+      {/* Header */}
+      <div className="flex bg-white rounded-xl p-4 flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-3 mb-2">
+            <Sparkles className="w-6 h-6 text-blue-500" />
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+              Welcome back, {user?.name || "Admin"}!
+            </h1>
+          </div>
+          <p className="text-gray-600 dark:text-gray-400">
+            Here's what's happening with your store today.
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <Button variant="primary" onClick={refetch} className="gap-2">
+            <RefreshCw className="w-4 h-4" />
+            Refresh
+          </Button>
+          <Button variant="primary" className="gap-2">
+            <Download className="w-4 h-4" />
+            Export Report
+          </Button>
+        </div>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        {quickActions.map((action, index) => (
+          <button
+            key={index}
+            onClick={() => (window.location.href = action.path)}
+            className="group bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 transition-all duration-200 hover:shadow-md">
+            <div className="flex flex-col items-center text-center">
+              <div
+                className={`p-3 rounded-lg ${action.color} mb-3 group-hover:scale-110 transition-transform`}>
+                <action.icon className="w-5 h-5 text-white" />
+              </div>
+              <p className="font-medium text-gray-900 dark:text-white">
+                {action.label}
+              </p>
+            </div>
+          </button>
+        ))}
+      </div>
+
+      {/* Stats Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          title="Total Revenue"
+          value={data.summary.revenue.value}
+          change={data.summary.revenue.change}
+          trend={data.summary.revenue.trend}
+          icon={<DollarSign className="w-5 h-5 text-white" />}
+          color="green"
+        />
+        <StatCard
+          title="Total Orders"
+          value={data.summary.orders.value}
+          change={data.summary.orders.change}
+          trend={data.summary.orders.trend}
+          icon={<ShoppingBag className="w-5 h-5 text-white" />}
+          color="blue"
+        />
+        <StatCard
+          title="Products"
+          value={data.summary.products.value}
+          change={data.summary.products.change}
+          trend={data.summary.products.trend}
+          icon={<Package className="w-5 h-5 text-white" />}
+          color="purple"
+        />
+        <StatCard
+          title="Customers"
+          value={data.summary.customers.value}
+          change={data.summary.customers.change}
+          trend={data.summary.customers.trend}
+          icon={<Users className="w-5 h-5 text-white" />}
+          color="orange"
+        />
+      </div>
+
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 gap-6">
+        {/* Left Column - Charts */}
+        <div className="lg:col-span-2 space-y-6 min-h-0">
+          <SalesChart data={data.salesData} />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <CategoryDistribution data={data.topCategories} />
+            <PerformanceMetrics metrics={data.performance} />
+          </div>
+        </div>
+        <RecentTransactions transactions={data.recentTransactions} />
+        {/* Right Column - Alerts & Transactions */}
+        <div className="space-y-6">
+          <LowStockAlert products={data.lowStockProducts} onRefresh={refetch} />
+        </div>
+      </div>
     </div>
   );
 }

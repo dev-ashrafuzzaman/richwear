@@ -17,6 +17,8 @@ export default function BranchCreateModal({ isOpen, setIsOpen, refetch }) {
     defaultValues: {
       code: "",
       name: "",
+      address: "",
+      phone: "",
     },
   });
 

@@ -9,7 +9,6 @@ export default function Modal({
   subTitle = "",
   children,
   size = "md", // sm | md | lg | xl | full
-  closeOnOverlayClick = true,
   icon = "",
   closeOnEsc = true,
   showCloseButton = true,

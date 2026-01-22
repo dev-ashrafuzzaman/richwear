@@ -8,18 +8,18 @@ const BranchesPage = () => {
   const { modals, openModal, closeModal } = useModalManager();
   const table = useTableManager("/branches");
   return (
-    <Page title="Faces">
-      {modals.addFace?.isOpen && (
+    <Page title="Branches" subTitle="Manage your organization branches">
+      {modals.addBranch?.isOpen && (
         <BranchCreateModal
-          isOpen={modals.addFace.isOpen}
-          setIsOpen={() => closeModal("addFace")}
+          isOpen={modals.addBranch.isOpen}
+          setIsOpen={() => closeModal("addBranch")}
           refetch={table.refetch}
         />
       )}
       <DataTable
         table={table}
         title="Branches"
-        headerActions={[{variant: "gradient", label: "Add Branch", onClick: () => openModal("addFace")}]}
+        headerActions={[{variant: "gradient", label: "Add Branch", onClick: () => openModal("addBranch")}]}
         columns={[
           { key: "code", label: "Code" },
           { key: "name", label: "Name" },
