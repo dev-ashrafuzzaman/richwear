@@ -13,7 +13,6 @@ export default function CategoryCreateModal({ isOpen, setIsOpen, refetch }) {
 
   // fetch level 1 categories for parent
   const parentTable = useTableManager("/categories?level=1");
-  console.log("ff", parentTable);
   const {
     register,
     handleSubmit,

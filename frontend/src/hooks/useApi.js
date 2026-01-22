@@ -7,18 +7,13 @@ import { toast } from "sonner";
 -------------------------------- */
 const cacheStore = new Map();
 
-const getCacheKey = (url, params) =>
-  `${url}:${JSON.stringify(params || {})}`;
+const getCacheKey = (url, params) => `${url}:${JSON.stringify(params || {})}`;
 
 /* -------------------------------
    Error normalizer
 -------------------------------- */
 const normalizeError = (err) => {
-  return (
-    err?.response?.data?.message ||
-    err?.message ||
-    "Something went wrong"
-  );
+  return err?.response?.data?.message || err?.message || "Something went wrong";
 };
 
 export default function useApi() {
@@ -59,7 +54,7 @@ export default function useApi() {
         onError,
         onFinally,
         config = {},
-      } = {}
+      } = {},
     ) => {
       const isGet = method === "GET";
 
@@ -79,7 +74,9 @@ export default function useApi() {
       }
 
       /* ---------- Abort previous ---------- */
-      cancelRequest();
+      if (method !== "GET") {
+        cancelRequest();
+      }
       abortRef.current = new AbortController();
 
       const axiosCall = () =>
@@ -111,9 +108,7 @@ export default function useApi() {
 
           if (useToast) {
             toast.success(
-              successMessage ||
-                resData?.message ||
-                "Operation successful"
+              successMessage || resData?.message || "Operation successful",
             );
           }
 
@@ -127,8 +122,7 @@ export default function useApi() {
           }
 
           if (attempt > retries) {
-            const msg =
-              errorMessage || normalizeError(err);
+            const msg = errorMessage || normalizeError(err);
 
             setError(err);
             if (useToast) toast.error(msg);
@@ -136,9 +130,7 @@ export default function useApi() {
             throw err;
           }
 
-          await new Promise((r) =>
-            setTimeout(r, retryDelay * attempt)
-          );
+          await new Promise((r) => setTimeout(r, retryDelay * attempt));
         } finally {
           if (attempt > retries) {
             setLoading(false);
@@ -147,7 +139,7 @@ export default function useApi() {
         }
       }
     },
-    [axiosSecure]
+    [axiosSecure],
   );
 
   return {

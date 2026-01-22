@@ -80,14 +80,14 @@ export const SIDEBAR_MENU = [
       {
         title: "Categories",
         icon: Boxes,
-        to: "/products/categories",
+        to: "/categories",
       },
       {
         title: "Products",
         icon: Package,
         submenu: [
           { title: "Product Manage", to: "/products" },
-          { title: "Variants", to: "/products/variants" },
+          { title: "Variants Manage", to: "/variants" },
         ],
       },
     ],

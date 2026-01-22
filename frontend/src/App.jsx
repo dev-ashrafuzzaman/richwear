@@ -62,6 +62,24 @@ const BranchesPage = React.lazy(
 const CategoriesPage = React.lazy(
   () => import("./pages/products/category/CategoriesPage"),
 );
+const ProductsPage = React.lazy(
+  () => import("./pages/products/ProductsPage"),
+);
+const VariantsPage = React.lazy(
+  () => import("./pages/products/variant/VariantPage"),
+);
+const PurchaseCreatePage = React.lazy(
+  () => import("./pages/purchase/PurchaseCreatePage"),
+);
+const CustomerPage = React.lazy(
+  () => import("./pages/parties/customer/CustomerPage"),
+);
+const SupplierPage = React.lazy(
+  () => import("./pages/parties/supplier/SupplierPage"),
+);
+const EmployeePage = React.lazy(
+  () => import("./pages/parties/employee/EmployeePage"),
+);
 
 export default function App() {
   return (
@@ -85,7 +103,13 @@ export default function App() {
           <Route path="/dashboard" element={<Dashboard />} />
 
           <Route path="/branches" element={<BranchesPage />} />
-          <Route path="/products/categories" element={<CategoriesPage />} />
+          <Route path="/categories" element={<CategoriesPage />} />
+          <Route path="/products" element={<ProductsPage />} />
+          <Route path="/variants" element={<VariantsPage />} />
+          <Route path="/purchases/create" element={<PurchaseCreatePage />} />
+          <Route path="/customers" element={<CustomerPage />} />
+          <Route path="/suppliers" element={<SupplierPage />} />
+          <Route path="/employees" element={<EmployeePage />} />
 
           {/* company */}
           <Route
