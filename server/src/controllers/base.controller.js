@@ -36,7 +36,7 @@ export const createOne = ({ collection, schema }) => {
 
       await writeAuditLog({
         db,
-        userId: req.user?.id,
+        userId: req.user?._id,
         action: "CREATE",
         collection,
         documentId: result.insertedId,
@@ -177,7 +177,7 @@ export const updateOne = ({ collection, schema }) => {
 
       await writeAuditLog({
         db,
-        userId: req.user?.id,
+        userId: req.user?._id,
         action: "UPDATE",
         collection,
         documentId: id,
@@ -211,7 +211,7 @@ export const deleteOne = ({ collection }) => {
 
       await writeAuditLog({
         db,
-        userId: req.user?.id,
+        userId: req.user?._id,
         action: "DELETE",
         collection,
         documentId: id,
