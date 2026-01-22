@@ -42,8 +42,8 @@ export default function EmployeeCreateModal({ isOpen, setIsOpen, refetch }) {
         role: "",
         designation: "",
         joiningDate: "",
+        branchId: null,
       },
-      branchId: null,
       payroll: {
         salaryType: "monthly",
         baseSalary: "",
