@@ -6,6 +6,7 @@ import {
   getOneById,
   updateOne,
   deleteOne,
+  toggleStatus,
 } from "../../controllers/base.controller.js";
 
 import {
@@ -61,6 +62,15 @@ router.put(
     schema: updateSupplierSchema,
   }),
 );
+
+router.post(
+  "/:id/status",
+  permit(PERMISSIONS.SUPPLIER_MANAGE),
+  toggleStatus({
+    collection: COLLECTION,
+  })
+);
+
 
 router.delete(
   "/:id",

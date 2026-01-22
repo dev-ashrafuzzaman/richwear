@@ -5,7 +5,8 @@ import {
   getAll,
   getOneById,
   updateOne,
-  deleteOne
+  deleteOne,
+  toggleStatus
 } from "../../controllers/base.controller.js";
 
 import {
@@ -19,6 +20,7 @@ import { authenticate } from "../../middlewares/auth.middleware.js";
 import { permit } from "../../middlewares/permission.middleware.js";
 import { PERMISSIONS } from "../../config/permissions.js";
 import { COLLECTIONS } from "../../database/collections.js";
+import { getVariants } from "./variants.controller.js";
 
 const router = Router();
 const COLLECTION = COLLECTIONS.VARIANTS;
@@ -36,13 +38,21 @@ router.post(
 );
 
 router.get(
-  "/",
+  "/attributes",
   permit(PERMISSIONS.PRODUCT_VIEW),
   getAll({
-    collection: COLLECTION,
-    searchableFields: ["sku", "attributes.size", "attributes.color"],
-    filterableFields: ["productId", "status"]
+    collection: COLLECTIONS.ATTRIBUTES,
+    searchableFields: ["name", "type"],
+    filterableFields: ["status", "type"]
   })
+);
+
+
+router.get(
+  "/",
+  authenticate,
+  permit(PERMISSIONS.PRODUCT_VIEW),
+  getVariants
 );
 
 
@@ -62,6 +72,14 @@ router.put(
   })
 );
 
+
+router.post(
+  "/:id/status",
+  permit(PERMISSIONS.VARIANT_MANAGE),
+  toggleStatus({
+    collection: COLLECTION,
+  })
+);
 
 router.delete(
   "/:id",

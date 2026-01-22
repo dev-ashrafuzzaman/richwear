@@ -15,17 +15,15 @@ export const createEmployeeSchema = Joi.object({
     email: Joi.string().email().optional(),
     address: Joi.string().optional(),
   }).required(),
-
+  branchId: Joi.string().required(),
   employment: Joi.object({
     role: Joi.string().valid("ADMIN", "MANAGER", "CASHIER").required(),
     designation: Joi.string().required(),
     joiningDate: Joi.date().default(Date.now),
-    branchId: Joi.string().optional(),
-    status: Joi.string()
-      .valid("active", "inactive", "terminated")
-      .default("active"),
   }).required(),
-
+  status: Joi.string()
+    .valid("active", "inactive", "terminated")
+    .default("active"),
   payroll: Joi.object({
     salaryType: Joi.string().valid("monthly", "daily").default("monthly"),
     baseSalary: Joi.number().min(0).required(),
@@ -58,8 +56,8 @@ export const updateEmployeeSchema = Joi.object({
   employment: Joi.object({
     role: Joi.string().valid("ADMIN", "MANAGER", "CASHIER").optional(),
     designation: Joi.string().optional(),
-    status: Joi.string().valid("active", "inactive", "terminated").optional(),
   }).optional(),
+  status: Joi.string().valid("active", "inactive", "terminated").optional(),
 
   payroll: Joi.object({
     baseSalary: Joi.number().min(0).optional(),

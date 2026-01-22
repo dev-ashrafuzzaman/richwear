@@ -1,22 +1,7 @@
 import { ObjectId } from "mongodb";
 import { writeAuditLog } from "../utils/logger.js";
-import { formatBD } from "../utils/date.js";
+import { formatDocuments } from "../utils/formatedDocument.js";
 
-const formatDocuments = (data, dateFields = ["createdAt", "updatedAt"]) => {
-  if (!data) return data;
-
-  return data.map((doc) => {
-    const formatted = { ...doc };
-
-    dateFields.forEach((field) => {
-      if (formatted[field]) {
-        formatted[field] = formatBD(formatted[field]);
-      }
-    });
-
-    return formatted;
-  });
-};
 
 export const createOne = ({ collection, schema }) => {
   return async (req, res, next) => {
@@ -185,6 +170,74 @@ export const updateOne = ({ collection, schema }) => {
       });
 
       res.json({ success: true, message: "Updated successfully" });
+    } catch (err) {
+      next(err);
+    }
+  };
+};
+
+export const toggleStatus = ({ collection }) => {
+  return async (req, res, next) => {
+    try {
+      const db = req.app.locals.db;
+      const { id } = req.params;
+
+      if (!ObjectId.isValid(id)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid ID",
+        });
+      }
+
+      // 1️⃣ Find current document
+      const doc = await db.collection(collection).findOne({
+        _id: new ObjectId(id),
+      });
+
+      if (!doc) {
+        return res.status(404).json({
+          success: false,
+          message: "Not found",
+        });
+      }
+
+      // 2️⃣ Toggle status
+      const currentStatus = (doc.status || "inactive").toLowerCase();
+      const newStatus = currentStatus === "active" ? "inactive" : "active";
+
+      // 3️⃣ Update DB
+      await db.collection(collection).updateOne(
+        { _id: doc._id },
+        {
+          $set: {
+            status: newStatus,
+            updatedAt: new Date(),
+          },
+        },
+      );
+
+      // 4️⃣ Audit log
+      await writeAuditLog({
+        db,
+        userId: req.user?._id,
+        action: "STATUS_CHANGE",
+        collection,
+        documentId: id,
+        payload: {
+          from: currentStatus ? "ACTIVE" : "INACTIVE",
+          to: newStatus ? "ACTIVE" : "INACTIVE",
+        },
+      });
+
+      // 5️⃣ Response
+      res.json({
+        success: true,
+        message: `Status changed to ${newStatus ? "Active" : "Inactive"}`,
+        data: {
+          id,
+          status: newStatus,
+        },
+      });
     } catch (err) {
       next(err);
     }

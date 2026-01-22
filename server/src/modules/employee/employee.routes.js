@@ -6,6 +6,7 @@ import {
   getOneById,
   updateOne,
   deleteOne,
+  toggleStatus,
 } from "../../controllers/base.controller.js";
 
 import {
@@ -60,6 +61,14 @@ router.put(
     collection: COLLECTION,
     schema: updateEmployeeSchema,
   }),
+);
+
+router.post(
+  "/:id/status",
+  permit(PERMISSIONS.EMPLOYEE_MANAGE),
+  toggleStatus({
+    collection: COLLECTION,
+  })
 );
 
 router.delete(

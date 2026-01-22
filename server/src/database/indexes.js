@@ -1,46 +1,91 @@
 import { COLLECTIONS } from "./collections.js";
 
 export const createIndexes = async (db) => {
+  /* ===========================
+     BRANCHES
+  ============================ */
   await db
     .collection(COLLECTIONS.BRANCHES)
     .createIndex({ code: 1 }, { unique: true });
 
-  await db.collection(COLLECTIONS.BRANCHES).createIndex({ status: 1 });
+  await db
+    .collection(COLLECTIONS.BRANCHES)
+    .createIndex({ status: 1 });
 
-  // await db.collection(COLLECTIONS.COUNTERS).createIndex({ _id: 1 }, { unique: true });
 
-  await db.collection(COLLECTIONS.CATEGORIES).createIndex({ parentId: 1 });
-  await db.collection(COLLECTIONS.CATEGORIES).createIndex({ level: 1 });
+  /* ===========================
+     CATEGORIES
+  ============================ */
+  await db
+    .collection(COLLECTIONS.CATEGORIES)
+    .createIndex({ parentId: 1 });
+
+  await db
+    .collection(COLLECTIONS.CATEGORIES)
+    .createIndex({ level: 1 });
+
+  // Optional (fast category search)
+  await db
+    .collection(COLLECTIONS.CATEGORIES)
+    .createIndex({ name: 1 });
+
 
   /* ===========================
      PRODUCTS
   ============================ */
   // Business rule: same product name cannot exist in same category
+  await db.collection(COLLECTIONS.PRODUCTS).createIndex(
+    { name: 1, categoryId: 1 },
+    { unique: true }
+  );
+
+  // SKU is global identity
+  await db.collection(COLLECTIONS.PRODUCTS).createIndex(
+    { sku: 1 },
+    { unique: true }
+  );
+
   await db
     .collection(COLLECTIONS.PRODUCTS)
-    .createIndex({ name: 1, categoryId: 1 }, { unique: true });
+    .createIndex({ categoryId: 1 });
 
-  // SKU is core identity
   await db
     .collection(COLLECTIONS.PRODUCTS)
-    .createIndex({ sku: 1 }, { unique: true });
+    .createIndex({ status: 1 });
 
-  await db.collection(COLLECTIONS.PRODUCTS).createIndex({ categoryId: 1 });
+  await db
+    .collection(COLLECTIONS.PRODUCTS)
+    .createIndex({ createdAt: -1 });
 
-  await db.collection(COLLECTIONS.PRODUCTS).createIndex({ status: 1 });
 
   /* ===========================
      VARIANTS
   ============================ */
-  await db
-    .collection(COLLECTIONS.VARIANTS)
-    .createIndex({ sku: 1 }, { unique: true });
+  // SKU is global identity
+  await db.collection(COLLECTIONS.VARIANTS).createIndex(
+    { sku: 1 },
+    { unique: true }
+  );
+
+  // Prevent duplicate variant per product
+  await db.collection(COLLECTIONS.VARIANTS).createIndex(
+    {
+      productId: 1,
+      "attributes.size": 1,
+      "attributes.color": 1
+    },
+    { unique: true }
+  );
 
   await db
     .collection(COLLECTIONS.VARIANTS)
-    .createIndex({ productId: 1, status: 1 });
+    .createIndex({ productId: 1 });
 
-  // attribute search optimization (size / color filter)
+  await db
+    .collection(COLLECTIONS.VARIANTS)
+    .createIndex({ status: 1 });
+
+  // Search optimization
   await db
     .collection(COLLECTIONS.VARIANTS)
     .createIndex({ "attributes.size": 1 });
@@ -49,84 +94,155 @@ export const createIndexes = async (db) => {
     .collection(COLLECTIONS.VARIANTS)
     .createIndex({ "attributes.color": 1 });
 
+  await db
+    .collection(COLLECTIONS.VARIANTS)
+    .createIndex({ createdAt: -1 });
+
+
+  /* ===========================
+     ATTRIBUTES (MASTER DATA)
+  ============================ */
+  // Prevent duplicate attribute like (size, M)
+  await db.collection(COLLECTIONS.ATTRIBUTES).createIndex(
+    { type: 1, name: 1 },
+    { unique: true }
+  );
+
+  await db
+    .collection(COLLECTIONS.ATTRIBUTES)
+    .createIndex({ status: 1 });
+
+
   /* ===========================
      STOCKS / INVENTORY
   ============================ */
-  // One variant stock per branch
+  // One stock record per variant per branch
+  await db.collection(COLLECTIONS.STOCKS).createIndex(
+    { branchId: 1, variantId: 1 },
+    { unique: true }
+  );
+
   await db
     .collection(COLLECTIONS.STOCKS)
-    .createIndex({ branchId: 1, variantId: 1 }, { unique: true });
+    .createIndex({ branchId: 1 });
 
-  await db.collection(COLLECTIONS.STOCKS).createIndex({ branchId: 1 });
+  await db
+    .collection(COLLECTIONS.STOCKS)
+    .createIndex({ variantId: 1 });
 
-  await db.collection(COLLECTIONS.STOCKS).createIndex({ variantId: 1 });
 
   /* ===========================
      PURCHASES
   ============================ */
+  await db.collection(COLLECTIONS.PURCHASES).createIndex(
+    { purchaseNo: 1 },
+    { unique: true }
+  );
+
   await db
     .collection(COLLECTIONS.PURCHASES)
-    .createIndex({ purchaseNo: 1 }, { unique: true });
+    .createIndex({ branchId: 1 });
 
-  await db.collection(COLLECTIONS.PURCHASES).createIndex({ branchId: 1 });
+  await db
+    .collection(COLLECTIONS.PURCHASES)
+    .createIndex({ supplierId: 1 });
 
-  await db.collection(COLLECTIONS.PURCHASES).createIndex({ supplierId: 1 });
+  await db
+    .collection(COLLECTIONS.PURCHASES)
+    .createIndex({ createdAt: -1 });
 
-  await db.collection(COLLECTIONS.PURCHASES).createIndex({ createdAt: -1 });
 
   /* ===========================
      SALES
   ============================ */
+  await db.collection(COLLECTIONS.SALES).createIndex(
+    { invoiceNo: 1 },
+    { unique: true }
+  );
+
   await db
     .collection(COLLECTIONS.SALES)
-    .createIndex({ invoiceNo: 1 }, { unique: true });
+    .createIndex({ branchId: 1 });
 
-  await db.collection(COLLECTIONS.SALES).createIndex({ branchId: 1 });
+  await db
+    .collection(COLLECTIONS.SALES)
+    .createIndex({ customerId: 1 });
 
-  await db.collection(COLLECTIONS.SALES).createIndex({ customerId: 1 });
+  await db
+    .collection(COLLECTIONS.SALES)
+    .createIndex({ createdAt: -1 });
 
-  await db.collection(COLLECTIONS.SALES).createIndex({ createdAt: -1 });
 
   /* ===========================
      CUSTOMERS
   ============================ */
+  await db.collection(COLLECTIONS.CUSTOMERS).createIndex(
+    { phone: 1 },
+    { unique: true }
+  );
+
   await db
     .collection(COLLECTIONS.CUSTOMERS)
-    .createIndex({ phone: 1 }, { unique: true });
+    .createIndex({ status: 1 });
 
-  await db.collection(COLLECTIONS.CUSTOMERS).createIndex({ status: 1 });
 
-  await db
-    .collection(COLLECTIONS.SUPPLIERS)
-    .createIndex({ "contacts.phone": 1 }, { unique: true, sparse: true });
+  /* ===========================
+     SUPPLIERS
+  ============================ */
+  await db.collection(COLLECTIONS.SUPPLIERS).createIndex(
+    { "contact.phone": 1 },
+    { unique: true, sparse: true }
+  );
+
 
   /* ===========================
      USERS
   ============================ */
-  await db
-    .collection(COLLECTIONS.USERS)
-    .createIndex({ email: 1 }, { unique: true });
+  await db.collection(COLLECTIONS.USERS).createIndex(
+    { email: 1 },
+    { unique: true }
+  );
 
   await db
     .collection(COLLECTIONS.USERS)
     .createIndex({ "branches.branchId": 1 });
 
-  await db.collection(COLLECTIONS.USERS).createIndex({ status: 1 });
+  await db
+    .collection(COLLECTIONS.USERS)
+    .createIndex({ status: 1 });
 
-  await db.collection(COLLECTIONS.AUDIT_LOGS).createIndex({ action: 1 });
+
+  /* ===========================
+     AUDIT LOGS
+  ============================ */
+  await db
+    .collection(COLLECTIONS.AUDIT_LOGS)
+    .createIndex({ action: 1 });
+
   await db
     .collection(COLLECTIONS.AUDIT_LOGS)
     .createIndex({ refType: 1, refId: 1 });
+
   await db
     .collection(COLLECTIONS.AUDIT_LOGS)
     .createIndex({ branchId: 1, createdAt: -1 });
+
   await db
     .collection(COLLECTIONS.AUDIT_LOGS)
     .createIndex({ userId: 1, createdAt: -1 });
-  await db
-    .collection(COLLECTIONS.LEDGERS)
-    .createIndex({ branchId: 1, accountId: 1, date: 1 });
-  await db
-    .collection(COLLECTIONS.LEDGERS)
-    .createIndex({ refType: 1, refId: 1 });
+
+
+  /* ===========================
+     LEDGERS
+  ============================ */
+  await db.collection(COLLECTIONS.LEDGERS).createIndex(
+    { branchId: 1, accountId: 1, date: 1 }
+  );
+
+  await db.collection(COLLECTIONS.LEDGERS).createIndex(
+    { refType: 1, refId: 1 }
+  );
+
+  console.log("✅ All indexes created successfully");
 };
+ 

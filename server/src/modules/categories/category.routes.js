@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
-  createOne, getAll, getOneById, updateOne, deleteOne
+  createOne, getAll, getOneById, updateOne, deleteOne,
+  toggleStatus
 } from "../../controllers/base.controller.js";
 
 import { createCategorySchema, updateCategorySchema } from "./category.validation.js";
@@ -39,6 +40,13 @@ router.get(
   getOneById({ collection: COLLECTION })
 );
 
+router.post(
+  "/:id/status",
+  permit(PERMISSIONS.CATEGORY_MANAGE),
+  toggleStatus({
+    collection: COLLECTION,
+  })
+);
 
 router.delete(
   "/:id",

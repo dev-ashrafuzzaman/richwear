@@ -5,7 +5,8 @@ import {
   getAll,
   getOneById,
   updateOne,
-  deleteOne
+  deleteOne,
+  toggleStatus
 } from "../../controllers/base.controller.js";
 
 import {
@@ -63,6 +64,14 @@ router.put(
   updateOne({
     collection: COLLECTION,
     schema: updateBranchSchema
+  })
+);
+
+router.post(
+  "/:id/status",
+  permit(PERMISSIONS.BRANCH_MANAGE),
+  toggleStatus({
+    collection: COLLECTION,
   })
 );
 

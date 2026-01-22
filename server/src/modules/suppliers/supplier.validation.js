@@ -12,7 +12,9 @@ export const createSupplierSchema = Joi.object({
   }).required(),
 
   address: Joi.string().optional(),
-
+  status: Joi.string()
+    .valid("active", "inactive", "terminated")
+    .default("active"),
   account: Joi.object({
     openingBalance: Joi.number().min(0).default(0),
     balanceType: Joi.string().valid("payable", "receivable").default("payable"),

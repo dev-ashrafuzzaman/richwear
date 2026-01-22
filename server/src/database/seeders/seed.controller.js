@@ -2,6 +2,7 @@ import { seedSuperAdmin } from "./superAdminSeeder.js";
 import { seedChartOfAccounts } from "../../modules/accounting/seed.accounts.js";
 import { seedBranches } from "../../modules/branches/seed.branch.js";
 import { seedcommissionRules } from "../../modules/sales/commission.seed.js";
+import { seedAttributes } from "../../modules/variants/seed.attributes.js";
 
 
 export const seedAllController = async (req, res, next) => {
@@ -11,7 +12,8 @@ export const seedAllController = async (req, res, next) => {
         // await seedSuperAdmin(db);
         // await seedBranches(db);
         // await seedChartOfAccounts(db);
-        await seedcommissionRules(db);
+        await seedAttributes(db);
+        // await seedcommissionRules(db);
 
 
         res.status(200).json({
