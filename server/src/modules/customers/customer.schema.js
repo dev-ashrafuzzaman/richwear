@@ -13,7 +13,6 @@ export const createCustomerSchema = Joi.object({
     type: Joi.string().valid("regular", "silver", "gold", "platinum").default("regular"),
     discountPercent: Joi.number().min(0).max(100).default(0)
   }).default(),
-
   status: Joi.string().valid("active", "inactive").default("active")
 });
 
