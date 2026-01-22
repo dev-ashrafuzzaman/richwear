@@ -1,113 +1,160 @@
-// src/hooks/useApi.js
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import useAxiosSecure from "./useAxiosSecure";
 import { toast } from "sonner";
 
+/* -------------------------------
+   Simple in-memory cache (GET only)
+-------------------------------- */
 const cacheStore = new Map();
-const getCacheKey = (url, method, data) =>
-  `${method}:${url}:${JSON.stringify(data)}`;
+
+const getCacheKey = (url, params) =>
+  `${url}:${JSON.stringify(params || {})}`;
+
+/* -------------------------------
+   Error normalizer
+-------------------------------- */
+const normalizeError = (err) => {
+  return (
+    err?.response?.data?.message ||
+    err?.message ||
+    "Something went wrong"
+  );
+};
 
 export default function useApi() {
   const { axiosSecure } = useAxiosSecure();
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [data, setData] = useState(null);
+
   const abortRef = useRef(null);
 
-  const request = async (
-    url,
-    method = "GET",
-    payload = {},
-    {
-      cacheDuration = 60 * 1000,
-      retries = 0,
-      delay = 1000,
-      useToast = true,
-      successMessage,
-      errorMessage,
-      onSuccess,
-      onError,
-      onFinally,
-      config = {},
-    } = {}
-  ) => {
-    setLoading(true);
-    setError(null);
-
-    const cacheKey = getCacheKey(url, method, payload);
-    const cached = cacheStore.get(cacheKey);
-    if (cached && Date.now() - cached.time < cacheDuration) {
-      setData(cached.data);
-      setLoading(false);
-      return cached.data;
-    }
-
-    abortRef.current = new AbortController();
-    const signal = abortRef.current.signal;
-
-    const attempt = async () => {
-      return axiosSecure({
-        url,
-        method,
-        data: ["GET", "DELETE"].includes(method) ? undefined : payload,
-        params: ["GET", "DELETE"].includes(method) ? payload : undefined,
-        signal,
-        ...config,
-      });
-    };
-
-    try {
-      const res = await autoRetryRequest(attempt, retries, delay);
-      console.log('rre',res)
-      const resData = res?.data;
-
-      cacheStore.set(cacheKey, { data: resData, time: Date.now() });
-      setData(resData);
-      if (onSuccess) onSuccess(resData);
-
-      // ✅ smart toast message detection
-      if (useToast) {
-        const msg = resData?.message || successMessage;
-        if (msg) toast.success(msg);
-      }
-
-      return resData;
-    } catch (err) {
-      setError(err);
-      if (onError) onError(err);
-
-      // ✅ detect message from error.response
-      if (useToast) {
-        const msg =
-          err?.response?.data?.message ||
-          err?.message ||
-          errorMessage ||
-          "Something went wrong!";
-        toast.error(msg);
-      }
-
-      throw err;
-    } finally {
-      setLoading(false);
-      if (onFinally) onFinally();
-    }
-  };
-
+  /* -------------------------------
+     Cancel running request
+  -------------------------------- */
   const cancelRequest = () => {
-    if (abortRef.current) abortRef.current.abort();
+    if (abortRef.current) {
+      abortRef.current.abort();
+      abortRef.current = null;
+    }
   };
 
-  return { request, cancelRequest, loading, error, data };
-}
+  /* -------------------------------
+     Main request handler
+  -------------------------------- */
+  const request = useCallback(
+    async (
+      url,
+      method = "GET",
+      payload = {},
+      {
+        cacheDuration = 60_000,
+        retries = 0,
+        retryDelay = 800,
+        useToast = true,
+        successMessage,
+        errorMessage,
+        onSuccess,
+        onError,
+        onFinally,
+        config = {},
+      } = {}
+    ) => {
+      const isGet = method === "GET";
 
-// 🔁 helper for retry
-async function autoRetryRequest(fn, retries = 3, delay = 1000) {
-  for (let i = 0; i < retries; i++) {
-    try {
-      return await fn();
-    } catch (err) {
-      if (i === retries - 1) throw err;
-      await new Promise((res) => setTimeout(res, delay * (i + 1)));
-    }
-  }
+      setLoading(true);
+      setError(null);
+
+      /* ---------- Cache (GET only) ---------- */
+      const cacheKey = getCacheKey(url, payload);
+
+      if (isGet && cacheStore.has(cacheKey)) {
+        const cached = cacheStore.get(cacheKey);
+        if (Date.now() - cached.time < cacheDuration) {
+          setData(cached.data);
+          setLoading(false);
+          return cached.data;
+        }
+      }
+
+      /* ---------- Abort previous ---------- */
+      cancelRequest();
+      abortRef.current = new AbortController();
+
+      const axiosCall = () =>
+        axiosSecure({
+          url,
+          method,
+          signal: abortRef.current.signal,
+          params: isGet ? payload : undefined,
+          data: !isGet ? payload : undefined,
+          ...config,
+        });
+
+      /* ---------- Retry loop ---------- */
+      let attempt = 0;
+
+      while (true) {
+        try {
+          const res = await axiosCall();
+          const resData = res?.data;
+
+          setData(resData);
+
+          if (isGet) {
+            cacheStore.set(cacheKey, {
+              data: resData,
+              time: Date.now(),
+            });
+          }
+
+          if (useToast) {
+            toast.success(
+              successMessage ||
+                resData?.message ||
+                "Operation successful"
+            );
+          }
+
+          onSuccess?.(resData);
+          return resData;
+        } catch (err) {
+          attempt++;
+
+          if (err.name === "CanceledError") {
+            return;
+          }
+
+          if (attempt > retries) {
+            const msg =
+              errorMessage || normalizeError(err);
+
+            setError(err);
+            if (useToast) toast.error(msg);
+            onError?.(err);
+            throw err;
+          }
+
+          await new Promise((r) =>
+            setTimeout(r, retryDelay * attempt)
+          );
+        } finally {
+          if (attempt > retries) {
+            setLoading(false);
+            onFinally?.();
+          }
+        }
+      }
+    },
+    [axiosSecure]
+  );
+
+  return {
+    request,
+    cancelRequest,
+    loading,
+    error,
+    data,
+  };
 }

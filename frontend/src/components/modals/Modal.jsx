@@ -6,9 +6,11 @@ export default function Modal({
   isOpen,
   setIsOpen,
   title,
+  subTitle = "",
   children,
   size = "md", // sm | md | lg | xl | full
   closeOnOverlayClick = true,
+  icon = "",
   closeOnEsc = true,
   showCloseButton = true,
   footer = null,
@@ -25,7 +27,7 @@ export default function Modal({
         setIsOpen(false);
       }
     };
-    
+
     if (isOpen) {
       window.addEventListener("keydown", handleEsc);
       return () => window.removeEventListener("keydown", handleEsc);
@@ -70,11 +72,7 @@ export default function Modal({
 
   return (
     <Transition appear show={isOpen} as={Fragment}>
-      <Dialog
-        as="div"
-        className="relative z-50"
-        onClose={closeOnOverlayClick ? handleClose : () => {}}
-      >
+      <Dialog as="div" className="relative z-50" onClose={() => {}}>
         {/* Backdrop/Overlay */}
         <Transition.Child
           as={Fragment}
@@ -83,13 +81,12 @@ export default function Modal({
           enterTo="opacity-100"
           leave="ease-in duration-150"
           leaveFrom="opacity-100"
-          leaveTo="opacity-0"
-        >
-          <div 
-            className="fixed inset-0" 
+          leaveTo="opacity-0">
+          <div
+            className="fixed inset-0"
             style={{
               backgroundColor: `rgba(0, 0, 0, ${overlayOpacity / 100})`,
-              backdropFilter: overlayBlur ? 'blur(4px)' : 'none',
+              backdropFilter: overlayBlur ? "blur(4px)" : "none",
             }}
           />
         </Transition.Child>
@@ -104,28 +101,42 @@ export default function Modal({
               enterTo="opacity-100 scale-100"
               leave="ease-in duration-150"
               leaveFrom="opacity-100 scale-100"
-              leaveTo="opacity-0 scale-95"
-            >
+              leaveTo="opacity-0 scale-95">
               <Dialog.Panel
-                className={`w-full transform bg-white ${roundedClasses} ${shadowClasses} transition-all ${sizeClasses} mx-auto`}
-              >
+                onClick={(e) => e.stopPropagation()}
+                className={`w-full transform bg-white ${roundedClasses} ${shadowClasses} transition-all ${sizeClasses} mx-auto`}>
                 {/* Header */}
-                {(title || showCloseButton) && (
-                  <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-                    {title ? (
-                      <Dialog.Title className="text-lg font-semibold text-gray-900">
-                        {title}
-                      </Dialog.Title>
-                    ) : (
-                      <div /> 
-                    )}
-                    
+                {(title || subTitle || icon || showCloseButton) && (
+                  <div className="flex items-start justify-between px-6 py-4 border-b border-gray-200">
+                    {/* Left: Icon + Title */}
+                    <div className="flex items-center gap-3">
+                      {/* Icon */}
+                      {icon && (
+                        <div className="mt-0.5 text-gray-500">{icon}</div>
+                      )}
+
+                      {/* Title + Subtitle */}
+                      <div>
+                        {title && (
+                          <Dialog.Title className="text-lg font-semibold text-gray-900 leading-tight">
+                            {title}
+                          </Dialog.Title>
+                        )}
+
+                        {subTitle && (
+                          <p className="text-sm text-gray-500 mt-0.5">
+                            {subTitle}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Right: Close button */}
                     {showCloseButton && (
                       <button
                         type="button"
                         onClick={handleClose}
-                        className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-500 transition-colors"
-                      >
+                        className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-red-50 text-gray-400 hover:bg-gray-100 hover:text-gray-500 transition-colors">
                         <XMarkIcon className="w-5 h-5" />
                         <span className="sr-only">Close</span>
                       </button>
@@ -138,7 +149,7 @@ export default function Modal({
 
                 {/* Footer (optional) */}
                 {footer && (
-                  <div className="px-6 py-4 border-t border-gray-200 bg-gray-50/50">
+                  <div className="px-6 py-4 border-t border-gray-200 bg-gray-50/50 rounded-b-xl">
                     {footer}
                   </div>
                 )}

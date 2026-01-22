@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { createPortal } from "react-dom";
-import DeleteModal from "./DeleteModal";
-import StatusChangeModal from "./StatusChangeModal";
+import DeleteModal from "../modals/DeleteModal";
+import StatusChangeModal from "../modals/StatusChangeModal";
 
 export default function TableActions({ actions = [], row, onSuccess }) {
   const [activeModal, setActiveModal] = useState(null); // "delete" | "status" | null
