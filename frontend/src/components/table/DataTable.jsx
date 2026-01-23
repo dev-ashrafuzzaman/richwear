@@ -13,8 +13,8 @@ export default function DataTable({
   actions,
   headerActions,
   tabs,
+  config = SIMPLE_TABLE_TOOLBAR,
 }) {
-
   return (
     <div className="bg-white rounded-xl p-4 space-y-4">
       <TableHeader
@@ -27,9 +27,9 @@ export default function DataTable({
       <TableToolbar
         tabs={tabs}
         activeTab={table.query?.status}
-         config={SIMPLE_TABLE_TOOLBAR}
+        config={config}
         table={table}
-      /> 
+      />
 
       <Table
         columns={columns}
@@ -39,10 +39,7 @@ export default function DataTable({
         table={table}
       />
 
-      <PaginationBar
-        pagination={table.pagination}
-        setQuery={table.setQuery}
-      />
+      <PaginationBar pagination={table.pagination} setQuery={table.setQuery} />
     </div>
   );
 }

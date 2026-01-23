@@ -34,19 +34,7 @@ export const SIDEBAR_MENU = [
     ],
   },
 
-  /* =======================
-     BRANCH MANAGEMENT
-  ======================== */
-  {
-    header: "Branches",
-    items: [
-      {
-        title: "Branch Manage",
-        icon: GitBranch,
-        to: "/branches",
-      },
-    ],
-  },
+
 
   /* =======================
      SALES & POS
@@ -123,8 +111,7 @@ export const SIDEBAR_MENU = [
         icon: Boxes,
         submenu: [
           { title: "Stock Details", to: "/inventory/stock" },
-          { title: "Stock In", to: "/inventory/in" },
-          { title: "Stock Out", to: "/inventory/out" },
+          { title: "Stock Transfer", to: "/inventory/stock-transfer" },
           { title: "Low Stock Report", to: "/inventory/low-stock" },
         ],
       },
@@ -166,7 +153,7 @@ export const SIDEBAR_MENU = [
         icon: Calculator,
         submenu: [
           { title: "Chart of Accounts", to: "/accounting/coa" },
-          { title: "Journal Entry", to: "/accounting/journal/create" },
+          // { title: "Journal Entry", to: "/accounting/journal/create" },
           { title: "Journal Manage", to: "/accounting/journal" },
           { title: "Ledger Manage", to: "/accounting/ledger" },
         ],
@@ -197,16 +184,16 @@ export const SIDEBAR_MENU = [
         icon: CalendarCheck,
         to: "/hr/attendance",
       },
-      {
-        title: "Commission",
-        icon: Wallet,
-        to: "/hr/commission",
-      },
-      {
-        title: "Payroll",
-        icon: Briefcase,
-        to: "/hr/payroll",
-      },
+      // {
+      //   title: "Commission",
+      //   icon: Wallet,
+      //   to: "/hr/commission",
+      // },
+      // {
+      //   title: "Payroll",
+      //   icon: Briefcase,
+      //   to: "/hr/payroll",
+      // },
     ],
   },
 
@@ -216,20 +203,34 @@ export const SIDEBAR_MENU = [
   {
     header: "Administration",
     items: [
-      {
-        title: "Settings",
-        icon: Settings,
-        to: "/settings",
-      },
+      // {
+      //   title: "Settings",
+      //   icon: Settings,
+      //   to: "/settings",
+      // },
       {
         title: "User Management",
         icon: Users,
         to: "/settings/users",
       },
+      // {
+      //   title: "Activity Logs",
+      //   icon: Activity,
+      //   to: "/settings/logs",
+      // },
+    ],
+  },
+
+    /* =======================
+     BRANCH MANAGEMENT
+  ======================== */
+  {
+    header: "Branches",
+    items: [
       {
-        title: "Activity Logs",
-        icon: Activity,
-        to: "/settings/logs",
+        title: "Branch Manage",
+        icon: GitBranch,
+        to: "/branches",
       },
     ],
   },

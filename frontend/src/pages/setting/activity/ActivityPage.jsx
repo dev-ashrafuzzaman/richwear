@@ -1,6 +1,6 @@
 import React from 'react';
 
-const SalesReturnCreateModal = () => {
+const ActivityPage = () => {
     return (
         <div>
             
@@ -8,4 +8,4 @@ const SalesReturnCreateModal = () => {
     );
 };
 
-export default SalesReturnCreateModal;
+export default ActivityPage;

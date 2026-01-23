@@ -71,6 +71,25 @@ export const masterTableToolbar = {
   },
 };
 
+export const ATT_TABLE_TOOLBAR = {
+  search: {
+    enabled: true,
+    placeholder: "Search records...",
+  },
+
+  filters: [
+    {
+      label: "Type",
+      queryKey: "view",
+      options: [
+        { label: "Summary Report", value: "summary" },
+        { label: "Daily Details", value: "details" },
+      ],
+    },
+  ],
+};
+
+
 export const facesTableToolbar = {
   title: "Faces Management",
 

@@ -8,7 +8,7 @@ import ProductCreateModal from "./ProductCreateModal";
 const ProductsPage = () => {
   const { modals, openModal, closeModal } = useModalManager();
   const table = useTableManager("/products");
-  const categories = useTableManager("/categories");
+  const categories = useTableManager("/categories"); 
 
   /* ✅ Optimized category lookup */
   const categoryMap = useMemo(() => {

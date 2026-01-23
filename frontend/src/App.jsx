@@ -94,6 +94,19 @@ const EmployeePage = React.lazy(
   () => import("./pages/parties/employee/EmployeePage"),
 );
 
+const StockPage = React.lazy(
+  () => import("./pages/inventory/StockPage"),
+);
+const AttendancePage = React.lazy(
+  () => import("./pages/hr/AttendancePage"),
+);
+const ActivityPage = React.lazy(
+  () => import("./pages/setting/activity/ActivityPage"),
+);
+const POSCreatePage = React.lazy(
+  () => import("./pages/sales/PosPage"),
+);
+
 export default function App() {
   return (
     <Suspense
@@ -115,6 +128,9 @@ export default function App() {
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<Dashboard />} />
 
+          <Route path="/pos" element={<POSCreatePage />} />
+          <Route path="/settings/logs" element={<ActivityPage />} />
+          <Route path="/hr/attendance" element={<AttendancePage />} />
           <Route path="/branches" element={<BranchesPage />} />
           <Route path="/categories" element={<CategoriesPage />} />
           <Route path="/products" element={<ProductsPage />} />
@@ -140,6 +156,8 @@ export default function App() {
           <Route path="/customers" element={<CustomerPage />} />
           <Route path="/suppliers" element={<SupplierPage />} />
           <Route path="/employees" element={<EmployeePage />} />
+
+          <Route path="/inventory/stock" element={<StockPage />} />
 
           {/* company */}
           <Route
