@@ -12,7 +12,7 @@ export const seedAllController = async (req, res, next) => {
         // await seedSuperAdmin(db);
         // await seedBranches(db);
         // await seedChartOfAccounts(db);
-        await seedAttributes(db);
+        // await seedAttributes(db);
         // await seedcommissionRules(db);
 
 

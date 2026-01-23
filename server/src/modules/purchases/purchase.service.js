@@ -23,7 +23,7 @@ export const createPurchase = async ({ db, body, req }) => {
   let totalQty = 0;
   let totalAmount = 0;
   let mainBranch;
-
+  const barcodePayload = [];
   try {
     session.startTransaction();
 
@@ -59,7 +59,50 @@ export const createPurchase = async ({ db, body, req }) => {
 
       const variant = await db
         .collection(COLLECTIONS.VARIANTS)
-        .findOne({ _id: variantId }, { session });
+        .aggregate(
+          [
+            { $match: { _id: variantId } },
+            {
+              $lookup: {
+                from: "products",
+                localField: "productId",
+                foreignField: "_id",
+                as: "product",
+              },
+            },
+            { $unwind: "$product" },
+            {
+              $lookup: {
+                from: "categories",
+                localField: "product.categoryId",
+                foreignField: "_id",
+                as: "category",
+              },
+            },
+            { $unwind: "$category" },
+            {
+              $lookup: {
+                from: "categories",
+                localField: "category.parentId",
+                foreignField: "_id",
+                as: "parentCategory",
+              },
+            },
+            { $unwind: "$parentCategory" },
+            {
+              $project: {
+                sku: 1,
+                salePrice: 1,
+                attributes: 1,
+                productName: "$product.name",
+                categoryName: "$category.name",
+                parentCategoryName: "$parentCategory.name",
+              },
+            },
+          ],
+          { session },
+        )
+        .next();
 
       if (!variant) throw new Error("Variant not found");
 
@@ -84,6 +127,7 @@ export const createPurchase = async ({ db, body, req }) => {
         const newAvg =
           (stock.qty * stock.avgCost + item.qty * item.costPrice) / newQty;
         const roundedAvg = roundMoney(newAvg);
+
         await db.collection(COLLECTIONS.STOCKS).updateOne(
           { _id: stock._id },
           {
@@ -96,6 +140,17 @@ export const createPurchase = async ({ db, body, req }) => {
           { session },
         );
       }
+
+      /* ---------- BARCODE PAYLOAD ---------- */
+      barcodePayload.push({
+        name: variant.productName,
+        parentCategoryName: variant.parentCategoryName,
+        categoryName: variant.categoryName,
+        mrp: variant.salePrice,
+        sku: variant.sku,
+        attributes: variant.attributes,
+        qty: item.qty,
+      });
 
       /* ---------- SALE PRICE UPDATE ---------- */
       if (item.salePrice && item.salePrice !== variant.salePrice) {
@@ -212,6 +267,7 @@ export const createPurchase = async ({ db, body, req }) => {
       totalAmount,
       paidAmount,
       dueAmount,
+      barcodes: barcodePayload,
     };
   } catch (error) {
     await session.abortTransaction();

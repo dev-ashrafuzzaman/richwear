@@ -20,6 +20,8 @@ import balanceSheetRoutes from "./src/modules/accounting/reports/balanceSheet/ba
 import closingRoutes from "./src/modules/accounting/reports/closing/yearClosing.routes.js";
 import statementRoutes from "./src/modules/accounting/reports/statement/statement.routes.js";
 import trialBalanceRoutes from "./src/modules/accounting/reports/trialBalance/trialBalance.routes.js";
+import stockRoutes from "./src/modules/inventory/stock.routes.js";
+import adminRoutes from "./src/modules/administration/admin.route.js";
 
 
 import { authenticate } from "./src/middlewares/auth.middleware.js";
@@ -29,6 +31,7 @@ const router = Router();
 router.use("/auth", authRoutes);
 
 router.use(authenticate);
+router.use("/activities", adminRoutes);
 router.use("/roles", roleRoutes);
 router.use("/users", userRoutes);
 router.use("/branches", branchRoutes);
@@ -39,9 +42,10 @@ router.use("/customers", customerRoutes);
 router.use("/employees", employeeRoutes);
 router.use("/suppliers", supplierRoutes);
 router.use("/purchases", purchaseRoutes);
-router.use("/attendances", attendanceRoutes);
+router.use("/attendance", attendanceRoutes);
 router.use("/sales", saleRoutes);
-router.use("/sales", saleReturnRoutes); 
+router.use("/sales-return", saleReturnRoutes); 
+router.use("/stocks", stockRoutes); 
 
 // REPORTS ROUTES
 router.use("/accounting/reports/ledgers", ledgerRoutes);

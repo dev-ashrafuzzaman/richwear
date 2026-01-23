@@ -380,3 +380,208 @@ export const createSaleService = async ({ db, payload, user }) => {
     session.endSession();
   }
 };
+
+export const getPosItems = async (req, res, next) => {
+  try {
+    const db = req.app.locals.db;
+
+    const {
+      search = "",
+      page = 1,
+      limit = 20,
+    } = req.query;
+
+    const skip = (Number(page) - 1) * Number(limit);
+console.log("user",req.user)
+    /* ------------------------------------------------
+     * Resolve Branch
+     * ------------------------------------------------ */
+    let branchId = req.user?.branchId || null;
+
+    // Super Admin → Main Warehouse
+    if (!branchId && req.user?.isSuperAdmin === true) {
+      const mainBranch = await db
+        .collection(COLLECTIONS.BRANCHES)
+        .findOne(
+          { isMain: true },
+          { projection: { _id: 1 } }
+        );
+
+      if (!mainBranch) {
+        return res.status(400).json({
+          success: false,
+          message: "Main warehouse branch not found",
+        });
+      }
+
+      branchId = mainBranch._id;
+    }
+
+    if (!branchId) {
+      return res.status(400).json({
+        success: false,
+        message: "Branch could not be resolved",
+      });
+    }
+
+    /* ------------------------------------------------
+     * STOCK Match (Source of truth)
+     * ------------------------------------------------ */
+    const stockMatch = {
+      branchId: new ObjectId(branchId),
+      qty: { $gt: 0 }, // 🔒 sellable only
+    };
+
+    if (search) {
+      stockMatch.sku = { $regex: search, $options: "i" };
+    }
+
+    /* ------------------------------------------------
+     * Aggregation Pipeline
+     * ------------------------------------------------ */
+    const pipeline = [
+      /* 1️⃣ STOCK */
+      { $match: stockMatch },
+
+      /* 2️⃣ VARIANT */
+      {
+        $lookup: {
+          from: COLLECTIONS.VARIANTS,
+          localField: "variantId",
+          foreignField: "_id",
+          as: "variant",
+        },
+      },
+      { $unwind: "$variant" },
+
+      /* 3️⃣ PRODUCT */
+      {
+        $lookup: {
+          from: COLLECTIONS.PRODUCTS,
+          localField: "variant.productId",
+          foreignField: "_id",
+          as: "product",
+        },
+      },
+      { $unwind: "$product" },
+
+      /* 4️⃣ Status validation */
+      {
+        $match: {
+          "variant.status": "active",
+          "product.status": "active",
+        },
+      },
+
+      /* 5️⃣ POS Projection (CLEAN) */
+      {
+        $project: {
+          _id: 0,
+
+          stockId: "$_id",
+          variantId: "$variant._id",
+          productId: "$product._id",
+
+          sku: "$variant.sku",
+          name: "$product.name",
+
+          qty: "$qty",                // stock qty
+          salePrice: "$variant.salePrice",
+
+          attributes: "$variant.attributes",
+
+          unit: "$product.unit",
+        },
+      },
+
+      { $sort: { name: 1 } },
+      { $skip: skip },
+      { $limit: Number(limit) },
+    ];
+
+    const data = await db
+      .collection(COLLECTIONS.STOCKS)
+      .aggregate(pipeline)
+      .toArray();
+
+    /* ------------------------------------------------
+     * Total Count (for pagination)
+     * ------------------------------------------------ */
+    const total = await db
+      .collection(COLLECTIONS.STOCKS)
+      .countDocuments(stockMatch);
+
+    res.json({
+      success: true,
+      pagination: {
+        page: Number(page),
+        limit: Number(limit),
+        total,
+        hasMore: skip + data.length < total,
+      },
+      data
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getPaymentMethods = async (req, res, next) => {
+  try {
+    const db = req.app.locals.db;
+    const { parentCode, search = "" } = req.query;
+
+    if (!parentCode) {
+      return res.status(400).json({
+        success: false,
+        message: "parentCode is required",
+      });
+    }
+
+    /* ---------- Resolve Parent ---------- */
+    const parent = await db.collection(COLLECTIONS.ACCOUNTS).findOne(
+      { code: parentCode, status: "ACTIVE" },
+      { projection: { _id: 1 } }
+    );
+
+    if (!parent) {
+      return res.json({ success: true, data: [] });
+    }
+
+    /* ---------- Match Children ---------- */
+    const match = {
+      parentId: parent._id,
+      status: "ACTIVE",
+    };
+
+    if (search) {
+      match.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { code: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    /* ---------- Query (INCLUSION ONLY) ---------- */
+    const data = await db
+      .collection(COLLECTIONS.ACCOUNTS)
+      .find(match, {
+        projection: {
+          _id: 1,
+          code: 1,
+          name: 1,
+          type: 1,
+          subType: 1,
+          parentId: 1,
+        },
+      })
+      .sort({ name: 1 })
+      .toArray();
+
+    res.json({
+      success: true,
+      data,
+    });
+  } catch (err) {
+    next(err);
+  }
+};

@@ -16,7 +16,7 @@ router.post(
 );
 
 router.get(
-  "/report",
+  "/",
   authenticate,
   permit(PERMISSIONS.ATTENDANCE_VIEW),
   attendanceReport,

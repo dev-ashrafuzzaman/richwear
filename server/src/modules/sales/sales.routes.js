@@ -9,6 +9,7 @@ import {
 
 import { beforeCreateSale } from "./sales.hook.js";
 import { createSale } from "./sales.controller.js";
+import { getPaymentMethods, getPosItems } from "./sales.service.js";
 
 const router = Router();
 
@@ -31,6 +32,18 @@ router.get(
   "/reprint/:invoiceNo",
   permit(PERMISSIONS.SALES_VIEW),
   reprintSaleByInvoice,
+);
+
+// POS CONTROLLER
+router.get(
+  "/pos-items",
+  permit(PERMISSIONS.SALES_VIEW),
+  getPosItems,
+);
+router.get(
+  "/payment-methods",
+  permit(PERMISSIONS.SALES_VIEW),
+  getPaymentMethods,
 );
 
 export default router;
