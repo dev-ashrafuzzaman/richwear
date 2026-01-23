@@ -62,17 +62,27 @@ const BranchesPage = React.lazy(
 const CategoriesPage = React.lazy(
   () => import("./pages/products/category/CategoriesPage"),
 );
-const ProductsPage = React.lazy(
-  () => import("./pages/products/ProductsPage"),
-);
+const ProductsPage = React.lazy(() => import("./pages/products/ProductsPage"));
 const VariantsPage = React.lazy(
   () => import("./pages/products/variant/VariantPage"),
 );
 const PurchaseCreatePage = React.lazy(
   () => import("./pages/purchase/PurchaseCreatePage"),
 );
+const PurchasesPage = React.lazy(
+  () => import("./pages/purchase/PurchasesPage"),
+);
+const PurchasesInvoicePage = React.lazy(
+  () => import("./pages/purchase/invoices/PurchaseInvoice"),
+);
+const PurchasesReturnInvoicePage = React.lazy(
+  () => import("./pages/purchase/invoices/PurchaseReturnInvoice"),
+);
 const PurchaseReturnCreatePage = React.lazy(
   () => import("./pages/purchase/PurchaseReturnCreatePage"),
+);
+const PurchaseReturnPage = React.lazy(
+  () => import("./pages/purchase/PurchasesReturnPage"),
 );
 const CustomerPage = React.lazy(
   () => import("./pages/parties/customer/CustomerPage"),
@@ -109,8 +119,24 @@ export default function App() {
           <Route path="/categories" element={<CategoriesPage />} />
           <Route path="/products" element={<ProductsPage />} />
           <Route path="/variants" element={<VariantsPage />} />
+
+          <Route path="/purchases" element={<PurchasesPage />} />
           <Route path="/purchases/create" element={<PurchaseCreatePage />} />
-          <Route path="/purchases/return" element={<PurchaseReturnCreatePage />} />
+          <Route
+            path="/purchases/:id/invoice"
+            element={<PurchasesInvoicePage />}
+          />
+
+          <Route path="/purchase-returns" element={<PurchaseReturnPage />} />
+          <Route
+            path="/purchase-returns/create"
+            element={<PurchaseReturnCreatePage />}
+          />
+          <Route
+            path="/purchase-returns/:id/invoice"
+            element={<PurchasesReturnInvoicePage />}
+          />
+
           <Route path="/customers" element={<CustomerPage />} />
           <Route path="/suppliers" element={<SupplierPage />} />
           <Route path="/employees" element={<EmployeePage />} />

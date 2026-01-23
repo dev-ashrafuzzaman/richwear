@@ -17,7 +17,11 @@ export default function TableActions({ row, actions = [], onSuccess }) {
   const handleAction = (action) => {
     switch (action.type) {
       case "view":
-        navigate(`${row._id}`);
+        if (action.onClick) {
+          action.onClick(row); 
+        } else {
+          navigate(`${row._id}`);
+        }
         break;
       case "edit":
         navigate(`${row._id}/edit`);
@@ -55,16 +59,11 @@ export default function TableActions({ row, actions = [], onSuccess }) {
               key={i}
               title={action.label}
               onClick={() => handleAction(action)}
-              className={`action ${action.type}`}
-            >
+              className={`action ${action.type}`}>
               {action.type === "view" && <Eye size={14} />}
               {action.type === "edit" && <Pencil size={14} />}
-              {action.type === "delete" && (
-                <Trash2 size={14} />
-              )}
-              {action.type === "status" && (
-                <RefreshCcw size={14}  />
-              )}
+              {action.type === "delete" && <Trash2 size={14} />}
+              {action.type === "status" && <RefreshCcw size={14} />}
               {action.icon}
             </button>
           );

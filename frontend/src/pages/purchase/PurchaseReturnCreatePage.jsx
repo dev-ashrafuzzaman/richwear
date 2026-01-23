@@ -17,7 +17,7 @@ import useApi from "../../hooks/useApi";
 const today = () => new Date().toISOString().split("T")[0];
 
 export default function PurchaseReturnCreatePage() {
-  const { request, loading } = useApi();
+  const { request } = useApi();
 
   const [purchase, setPurchase] = useState(null);
   const [items, setItems] = useState([]);
