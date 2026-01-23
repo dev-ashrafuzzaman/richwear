@@ -9,6 +9,12 @@ import {
   purchaseReturnAccounting,
 } from "../accounting/accounting.adapter.js";
 import { roundMoney } from "../../utils/money.js";
+import { formatDocuments } from "../../utils/formatedDocument.js";
+import {
+  buildAggregationPipeline,
+  castObjectId,
+} from "../../database/buildAggregationPipeline.js";
+import { aggregateList } from "../../database/aggregateList.js";
 
 export const createPurchase = async ({ db, body, req }) => {
   const session = db.client.startSession();
@@ -231,6 +237,248 @@ export const createPurchase = async ({ db, body, req }) => {
   }
 };
 
+export const getAllPurchases = async (req, res, next) => {
+  try {
+    const db = req.app.locals.db;
+
+    const page = Math.max(Number(req.query.page) || 1, 1);
+    const limit = Math.min(Number(req.query.limit) || 10, 100);
+
+    const match = {};
+
+    if (req.query.supplierId) {
+      match.supplierId = castObjectId(req.query.supplierId);
+    }
+
+    if (req.query.paymentStatus) {
+      match.paymentStatus = req.query.paymentStatus;
+    }
+
+    const pipeline = buildAggregationPipeline({
+      match,
+      search: req.query.search,
+      searchableFields: ["purchaseNo", "invoiceNumber"],
+      page,
+      limit,
+      lookups: [
+        {
+          from: COLLECTIONS.SUPPLIERS,
+          localField: "supplierId",
+          foreignField: "_id",
+          as: "supplier",
+        },
+      ],
+      project: {
+        items: 0,
+        "supplier.address": 0,
+      },
+    });
+
+    const { data, total } = await aggregateList({
+      db,
+      collection: COLLECTIONS.PURCHASES,
+      pipeline,
+      match,
+    });
+
+    res.json({
+      success: true,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+      data: formatDocuments(data),
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getSinglePurchaseInvoice = async (req, res, next) => {
+  try {
+    const db = req.app.locals.db;
+    const purchaseId = toObjectId(req.params.id, "purchaseId");
+
+    const data = await db
+      .collection(COLLECTIONS.PURCHASES)
+      .aggregate([
+        { $match: { _id: purchaseId } },
+
+        /* =====================
+           CAST variantId STRING → ObjectId
+        ====================== */
+        {
+          $addFields: {
+            items: {
+              $map: {
+                input: "$items",
+                as: "i",
+                in: {
+                  variantIdObj: { $toObjectId: "$$i.variantId" },
+                  qty: "$$i.qty",
+                  costPrice: "$$i.costPrice",
+                  salePrice: "$$i.salePrice",
+                },
+              },
+            },
+          },
+        },
+
+        /* =====================
+           VARIANT LOOKUP (NOW WORKS)
+        ====================== */
+        {
+          $lookup: {
+            from: COLLECTIONS.VARIANTS,
+            localField: "items.variantIdObj",
+            foreignField: "_id",
+            as: "variants",
+          },
+        },
+
+        /* =====================
+           PRODUCT LOOKUP
+        ====================== */
+        {
+          $lookup: {
+            from: COLLECTIONS.PRODUCTS,
+            localField: "variants.productId",
+            foreignField: "_id",
+            as: "products",
+          },
+        },
+
+        /* =====================
+           SUPPLIER (LIMITED)
+        ====================== */
+        {
+          $lookup: {
+            from: COLLECTIONS.SUPPLIERS,
+            localField: "supplierId",
+            foreignField: "_id",
+            as: "supplier",
+          },
+        },
+        { $unwind: "$supplier" },
+
+        /* =====================
+           BRANCH (LIMITED)
+        ====================== */
+        {
+          $lookup: {
+            from: COLLECTIONS.BRANCHES,
+            localField: "branchId",
+            foreignField: "_id",
+            as: "branch",
+          },
+        },
+        { $unwind: "$branch" },
+
+        /* =====================
+           MERGE ITEMS (FINAL)
+        ====================== */
+        {
+          $addFields: {
+            items: {
+              $map: {
+                input: "$items",
+                as: "item",
+                in: {
+                  $let: {
+                    vars: {
+                      variant: {
+                        $first: {
+                          $filter: {
+                            input: "$variants",
+                            as: "v",
+                            cond: {
+                              $eq: ["$$v._id", "$$item.variantIdObj"],
+                            },
+                          },
+                        },
+                      },
+                    },
+                    in: {
+                      qty: "$$item.qty",
+                      costPrice: "$$item.costPrice",
+                      salePrice: "$$item.salePrice",
+
+                      sku: "$$variant.sku",
+                      variantId: "$$variant._id",
+                      attributes: "$$variant.attributes",
+
+                      productName: {
+                        $first: {
+                          $map: {
+                            input: {
+                              $filter: {
+                                input: "$products",
+                                as: "p",
+                                cond: {
+                                  $eq: ["$$p._id", "$$variant.productId"],
+                                },
+                              },
+                            },
+                            as: "p",
+                            in: "$$p.name",
+                          },
+                        },
+                      },
+
+                      lineTotal: {
+                        $multiply: ["$$item.qty", "$$item.costPrice"],
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+
+        /* =====================
+           CLEAN RESPONSE
+        ====================== */
+        {
+          $project: {
+            variants: 0,
+            products: 0,
+
+            "supplier._id": 0,
+            "supplier.account": 0,
+            "supplier.status": 0,
+            "supplier.code": 0,
+            "supplier.createdAt": 0,
+            "supplier.updatedAt": 0,
+
+            "branch._id": 0,
+            "branch.status": 0,
+            "branch.isMain": 0,
+            "branch.createdAt": 0,
+            "branch.updatedAt": 0,
+          },
+        },
+      ])
+      .toArray();
+
+    if (!data.length) {
+      return res.status(404).json({
+        success: false,
+        message: "Purchase invoice not found",
+      });
+    }
+    const formattedData = formatDocuments(data);
+    res.json({
+      success: true,
+      data: formattedData[0],
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 export const createPurchaseReturn = async ({ db, body, req }) => {
   const session = db.client.startSession();
 
@@ -435,5 +683,181 @@ export const createPurchaseReturn = async ({ db, body, req }) => {
     throw error;
   } finally {
     await session.endSession();
+  }
+};
+
+export const getAllPurchaseReturns = async (req, res, next) => {
+  try {
+    const db = req.app.locals.db;
+
+    const page = Math.max(Number(req.query.page) || 1, 1);
+    const limit = Math.min(Number(req.query.limit) || 10, 100);
+
+    const match = {};
+
+    if (req.query.supplierId) {
+      match.supplierId = castObjectId(req.query.supplierId);
+    }
+
+    if (req.query.purchaseId) {
+      match.purchaseId = castObjectId(req.query.purchaseId);
+    }
+
+    const pipeline = buildAggregationPipeline({
+      match,
+      search: req.query.search,
+      searchableFields: ["returnNo"],
+      page,
+      limit,
+      lookups: [
+        {
+          from: COLLECTIONS.PURCHASES,
+          localField: "purchaseId",
+          foreignField: "_id",
+          as: "purchase",
+        },
+        {
+          from: COLLECTIONS.SUPPLIERS,
+          localField: "supplierId",
+          foreignField: "_id",
+          as: "supplier",
+        },
+      ],
+      project: {
+        items: 0,
+        "supplier.address": 0,
+      },
+    });
+
+    const { data, total } = await aggregateList({
+      db,
+      collection: COLLECTIONS.PURCHASE_RETURNS,
+      pipeline,
+      match,
+    });
+
+    res.json({
+      success: true,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+      data: formatDocuments(data),
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getSinglePurchaseReturnInvoice = async (req, res, next) => {
+  try {
+    const db = req.app.locals.db;
+
+    const returnId = toObjectId(req.params.id, "returnId");
+
+    const data = await db
+      .collection(COLLECTIONS.PURCHASE_RETURNS)
+      .aggregate([
+        { $match: { _id: returnId } },
+
+        /* ---------- PURCHASE ---------- */
+        {
+          $lookup: {
+            from: COLLECTIONS.PURCHASES,
+            localField: "purchaseId",
+            foreignField: "_id",
+            as: "purchase",
+          },
+        },
+        { $unwind: "$purchase" },
+
+        /* ---------- SUPPLIER ---------- */
+        {
+          $lookup: {
+            from: COLLECTIONS.SUPPLIERS,
+            localField: "supplierId",
+            foreignField: "_id",
+            as: "supplier",
+          },
+        },
+        { $unwind: "$supplier" },
+
+        /* ---------- BRANCH ---------- */
+        {
+          $lookup: {
+            from: COLLECTIONS.BRANCHES,
+            localField: "branchId",
+            foreignField: "_id",
+            as: "branch",
+          },
+        },
+        { $unwind: "$branch" },
+
+        /* ---------- VARIANTS ---------- */
+        {
+          $lookup: {
+            from: COLLECTIONS.VARIANTS,
+            localField: "items.variantId",
+            foreignField: "_id",
+            as: "variantDocs",
+          },
+        },
+
+        /* ---------- MERGE ITEMS ---------- */
+        {
+          $addFields: {
+            items: {
+              $map: {
+                input: "$items",
+                as: "item",
+                in: {
+                  $mergeObjects: [
+                    "$$item",
+                    {
+                      variant: {
+                        $arrayElemAt: [
+                          {
+                            $filter: {
+                              input: "$variantDocs",
+                              as: "v",
+                              cond: {
+                                $eq: ["$$v._id", "$$item.variantId"],
+                              },
+                            },
+                          },
+                          0,
+                        ],
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+          },
+        },
+
+        {
+          $project: {
+            variantDocs: 0,
+          },
+        },
+      ])
+      .toArray();
+
+    if (!data.length) {
+      return res.status(404).json({
+        success: false,
+        message: "Purchase return not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      data: formatDocuments(data[0]),
+    });
+  } catch (err) {
+    next(err);
   }
 };
