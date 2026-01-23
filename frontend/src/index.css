@@ -180,39 +180,3 @@ a:hover {
   animation: spin-slow 3s linear infinite;
 }
 
-@page {
-  size: A4;
-  margin: 15mm;
-}
-
-@media print {
-  * {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-
-  body {
-    background: white !important;
-  }
-
-  .no-print {
-    display: none !important;
-  }
-
-  .print-area {
-    width: 210mm;
-    margin: 0 auto;
-  }
-
-  table {
-    border-collapse: collapse;
-  }
-
-  thead {
-    display: table-header-group;
-  }
-
-  tr {
-    page-break-inside: avoid;
-  }
-}

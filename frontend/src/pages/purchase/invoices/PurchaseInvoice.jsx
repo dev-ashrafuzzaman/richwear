@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import useApi from "../../../hooks/useApi";
+import PurchaseInvoiceTemplate from "../../invoices/purchases/PurchaseInvoiceTemplate";
+import { printInvoice } from "../../invoices/purchases/printInvoice";
 
 const PurchaseInvoice = () => {
   const { id } = useParams();
@@ -12,7 +14,7 @@ const PurchaseInvoice = () => {
   /* ---------------- FETCH INVOICE ---------------- */
   useEffect(() => {
     request(`/purchases/${id}/`, "GET").then((res) => {
-        console.log("resss",res)
+      console.log("resss", res);
       setInvoice(res?.data);
     });
   }, [id]);
@@ -20,10 +22,20 @@ const PurchaseInvoice = () => {
   if (!invoice) return <p>Loading invoice...</p>;
 
   /* ---------------- PRINT ---------------- */
+  // PurchaseInvoice.jsx (partial update)
   const handlePrint = () => {
-    window.print();
-  };
+    // Get the invoice page element
+    const invoiceElement = printRef.current;
 
+    // Clone the element to avoid affecting the original
+    const clonedElement = invoiceElement.cloneNode(true);
+
+    // Remove print:hidden buttons from clone if any
+    const buttons = clonedElement.querySelectorAll(".print\\:hidden, button");
+    buttons.forEach((btn) => btn.remove());
+
+    printInvoice(clonedElement.outerHTML);
+  };
   /* ---------------- DOWNLOAD PDF ---------------- */
   const handleDownload = () => {
     const opt = {
@@ -41,97 +53,17 @@ const PurchaseInvoice = () => {
     <div className="p-6 space-y-4">
       {/* Actions */}
       <div className="flex justify-end gap-3 print:hidden">
-        <button onClick={handlePrint} className="btn-secondary">
+        <button onClick={handlePrint} className="px-4 btn btn-gradient">
           Print
         </button>
-        <button onClick={handleDownload} className="btn-primary">
-          Download PDF
-        </button>
+   
       </div>
 
       {/* INVOICE */}
       <div
         ref={printRef}
-        className="bg-white p-8 rounded-md text-sm max-w-[210mm] mx-auto"
-      >
-        {/* HEADER */}
-        <div className="flex justify-between mb-6">
-          <div>
-            <h2 className="text-xl font-bold">PURCHASE INVOICE</h2>
-            <p className="text-gray-500">{invoice.purchaseNo}</p>
-          </div>
-
-          <div className="text-right">
-            <p className="font-semibold">{invoice.branch.name}</p>
-            <p>{invoice.branch.address}</p>
-          </div>
-        </div>
-
-        {/* SUPPLIER */}
-        <div className="grid grid-cols-2 gap-6 mb-6">
-          <div>
-            <h4 className="font-semibold mb-1">Supplier</h4>
-            <p>{invoice.supplier.name}</p>
-            <p>{invoice.supplier.address}</p>
-            <p>Phone: {invoice.supplier.contact.phone}</p>
-          </div>
-
-          <div className="text-right">
-            <p>Invoice No: {invoice.invoiceNumber}</p>
-            <p>Date: {invoice.invoiceDate.slice(0, 10)}</p>
-          </div>
-        </div>
-
-        {/* ITEMS */}
-        <table className="w-full border-collapse mb-6">
-          <thead>
-            <tr className="border bg-gray-100">
-              <th className="p-2 text-left">Item</th>
-              <th className="p-2 text-center">Qty</th>
-              <th className="p-2 text-right">Cost</th>
-              <th className="p-2 text-right">Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {invoice.items.map((i, idx) => (
-              <tr key={idx} className="border-b">
-                <td className="p-2">
-                  {i.productName} ({i.sku})
-                </td>
-                <td className="p-2 text-center">{i.qty}</td>
-                <td className="p-2 text-right">{i.costPrice}</td>
-                <td className="p-2 text-right">{i.lineTotal}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        {/* SUMMARY */}
-        <div className="flex justify-end">
-          <div className="w-64 space-y-1">
-            <div className="flex justify-between">
-              <span>Total Qty</span>
-              <span>{invoice.totalQty}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Total Amount</span>
-              <span>{invoice.totalAmount}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Paid</span>
-              <span>{invoice.paidAmount}</span>
-            </div>
-            <div className="flex justify-between font-semibold">
-              <span>Due</span>
-              <span>{invoice.dueAmount}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* FOOTER */}
-        <div className="mt-10 text-center text-xs text-gray-500">
-          This is a system generated invoice.
-        </div>
+        className="bg-white p-8 rounded-md text-sm max-w-[210mm] mx-auto">
+        <PurchaseInvoiceTemplate invoice={invoice} />
       </div>
     </div>
   );
