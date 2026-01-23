@@ -71,6 +71,9 @@ const VariantsPage = React.lazy(
 const PurchaseCreatePage = React.lazy(
   () => import("./pages/purchase/PurchaseCreatePage"),
 );
+const PurchaseReturnCreatePage = React.lazy(
+  () => import("./pages/purchase/PurchaseReturnCreatePage"),
+);
 const CustomerPage = React.lazy(
   () => import("./pages/parties/customer/CustomerPage"),
 );
@@ -107,6 +110,7 @@ export default function App() {
           <Route path="/products" element={<ProductsPage />} />
           <Route path="/variants" element={<VariantsPage />} />
           <Route path="/purchases/create" element={<PurchaseCreatePage />} />
+          <Route path="/purchases/return" element={<PurchaseReturnCreatePage />} />
           <Route path="/customers" element={<CustomerPage />} />
           <Route path="/suppliers" element={<SupplierPage />} />
           <Route path="/employees" element={<EmployeePage />} />
