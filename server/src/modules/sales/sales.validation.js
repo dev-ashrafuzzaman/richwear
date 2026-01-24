@@ -3,7 +3,6 @@ import Joi from "joi";
 export const createSaleSchema = Joi.object({
   invoiceNo: Joi.string(),
   type: Joi.string().valid("RETAIL", "WHOLESALE").required(),
-  branchId: Joi.string().required(),
   customerId: Joi.string().required(),
   salesmanId: Joi.string().required(),
 
@@ -13,6 +12,7 @@ export const createSaleSchema = Joi.object({
         productId: Joi.string().required(),
         variantId: Joi.string().required(),
         qty: Joi.number().min(1).required(),
+        sku: Joi.string().required(),
         salePrice: Joi.number().min(0).required(),
         discountType: Joi.string().valid("FIXED", "PERCENT").optional(),
         discountValue: Joi.number().min(0).optional(),

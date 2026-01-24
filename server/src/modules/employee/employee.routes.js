@@ -7,6 +7,7 @@ import {
   updateOne,
   deleteOne,
   toggleStatus,
+  getAllSmart,
 } from "../../controllers/base.controller.js";
 
 import {
@@ -44,6 +45,16 @@ router.get(
     searchableFields: ["name", "phone", "email"],
     filterableFields: ["status"],
   }),
+);
+
+router.get(
+  "/pos",
+  permit(PERMISSIONS.EMPLOYEE_VIEW),
+  getAllSmart({
+    collection: COLLECTIONS.EMPLOYEES,
+    searchableFields: ["code", "name", "phone"],
+    filterableFields: ["status"],
+  })
 );
 
 router.get(

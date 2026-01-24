@@ -6,7 +6,7 @@ import {
   createCustomerSchema,
   updateCustomerSchema,
 } from "./customer.schema.js";
-import { deleteOne, getAll, toggleStatus } from "../../controllers/base.controller.js";
+import { deleteOne, getAll, getAllSmart, toggleStatus } from "../../controllers/base.controller.js";
 import { COLLECTIONS } from "../../database/collections.js";
 import { permit } from "../../middlewares/permission.middleware.js";
 import { PERMISSIONS } from "../../config/permissions.js";
@@ -27,6 +27,16 @@ router.get(
     searchableFields: ["name", "phone", "email"],
     filterableFields: ["status"],
   }),
+);
+
+router.get(
+  "/pos",
+  permit(PERMISSIONS.CUSTOMERS_VIEW),
+  getAllSmart({
+    collection: COLLECTIONS.CUSTOMERS,
+    searchableFields: ["name", "phone"],
+    filterableFields: ["status"],
+  })
 );
 
 router.get("/:id", controller.getById);

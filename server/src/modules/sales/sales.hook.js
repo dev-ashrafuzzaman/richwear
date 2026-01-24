@@ -4,17 +4,10 @@ import { generateCode } from "../../utils/codeGenerator.js";
 export const beforeCreateSale = async (req, res, next) => {
   try {
     const db = req.app.locals.db;
-    const { branchId } = req.body;
-
-    if (!ObjectId.isValid(branchId)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid branchId",
-      });
-    }
+    const { branchId = "696ca2f1b9dfc697dfe2e670" } = req.body;
 
     const branch = await db.collection("branches").findOne({
-      _id: new ObjectId(branchId),
+      _id: new ObjectId("696ca2f1b9dfc697dfe2e670"),
       status: "active",
     });
 

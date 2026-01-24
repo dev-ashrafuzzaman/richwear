@@ -2,7 +2,6 @@ import { ObjectId } from "mongodb";
 import { writeAuditLog } from "../utils/logger.js";
 import { formatDocuments } from "../utils/formatedDocument.js";
 
-
 export const createOne = ({ collection, schema }) => {
   return async (req, res, next) => {
     try {
@@ -99,8 +98,132 @@ export const getAll = ({
           page,
           limit,
           totalPages: Math.ceil(total / limit),
+          hasMore: skip + data.length < total,
         },
         data: formatDocuments(data, dateFields),
+      });
+    } catch (err) {
+      next(err);
+    }
+  };
+};
+
+export const getAllSmart = ({
+  collection,
+  searchableFields = [],
+  filterableFields = [],
+  projection = {},
+}) => {
+  return async (req, res, next) => {
+    try {
+      const db = req.app.locals.db;
+
+      const page = Math.max(Number(req.query.page) || 1, 1);
+      const limit = Math.min(Number(req.query.limit) || 20, 50);
+      const skip = (page - 1) * limit;
+
+      const search = req.query.search?.trim();
+      const filter = {};
+
+      /* ---------- Filters ---------- */
+      filterableFields.forEach((f) => {
+        if (req.query[f] !== undefined) {
+          filter[f] = req.query[f];
+        }
+      });
+
+      const pipeline = [];
+
+      /* ---------- Search (Indexed) ---------- */
+      if (search) {
+        pipeline.push({
+          $match: {
+            ...filter,
+            $or: [{ code: search }, { phone: search }],
+          },
+        });
+
+        pipeline.push({
+          $addFields: {
+            _rank: {
+              $cond: [
+                { $eq: ["$code", search] },
+                1,
+                {
+                  $cond: [{ $eq: ["$phone", search] }, 2, 99],
+                },
+              ],
+            },
+          },
+        });
+
+        pipeline.push({
+          $unionWith: {
+            coll: collection,
+            pipeline: [
+              {
+                $match: {
+                  ...filter,
+                  $text: { $search: search },
+                },
+              },
+              {
+                $addFields: {
+                  _rank: { $literal: 3 },
+                  _score: { $meta: "textScore" },
+                },
+              },
+            ],
+          },
+        });
+
+        pipeline.push({
+          $sort: {
+            _rank: 1,
+            _score: -1,
+            name: 1,
+          },
+        });
+      } else {
+        pipeline.push({ $match: filter });
+        pipeline.push({ $sort: { createdAt: -1 } });
+      }
+
+      /* ---------- Count ---------- */
+      const countPipeline = [...pipeline, { $count: "total" }];
+      const countRes = await db
+        .collection(collection)
+        .aggregate(countPipeline)
+        .toArray();
+
+      const total = countRes[0]?.total || 0;
+
+      /* ---------- Pagination ---------- */
+      pipeline.push({ $skip: skip });
+      pipeline.push({ $limit: limit });
+
+      /* ---------- Projection ---------- */
+      pipeline.push({
+        $project: {
+          _score: 0,
+          ...projection,
+        },
+      });
+
+      const data = await db
+        .collection(collection)
+        .aggregate(pipeline)
+        .toArray();
+
+      res.json({
+        success: true,
+        pagination: {
+          page,
+          limit,
+          total,
+          hasMore: skip + data.length < total,
+        },
+        data,
       });
     } catch (err) {
       next(err);

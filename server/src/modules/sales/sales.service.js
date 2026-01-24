@@ -21,11 +21,12 @@ export const createSaleService = async ({ db, payload, user }) => {
       throw new Error("At least one payment is required");
     }
 
+const branchId = new ObjectId("696ce70a1116cd44f0d9ccc7");
     /* ---------------- Branch ---------------- */
     const branch = await db
       .collection(COLLECTIONS.BRANCHES)
       .findOne(
-        { _id: new ObjectId(payload.branchId), status: "active" },
+        { _id: branchId, status: "active" },
         { session },
       );
 
@@ -198,53 +199,84 @@ export const createSaleService = async ({ db, payload, user }) => {
       { session },
     );
 
-    const stockOps = [];
-    const stockLedgerDocs = [];
 
-    /* ---------------- Stock ---------------- */
-    const skuMap = new Map(
-      saleItems.map((i) => [i.variantId.toString(), i.sku]),
+/* --------------------------------
+   STOCK VALIDATION + UPDATE
+---------------------------------- */
+
+const stockOps = [];
+const stockLedgerDocs = [];
+
+/* 1️⃣ Collect variantIds */
+const saleVariantIds = payload.items.map(
+  (i) => new ObjectId(i.variantId)
+);
+
+
+/* 2️⃣ Read stock */
+const stocks = await db
+  .collection(COLLECTIONS.STOCKS)
+  .find(
+    {
+      branchId: branchId,
+      variantId: { $in: saleVariantIds },
+    },
+    { session }
+  )
+  .toArray();
+
+/* 3️⃣ Build stock map */
+const stockMap = new Map(
+  stocks.map((s) => [s.variantId.toString(), s.qty])
+);
+
+/* 4️⃣ Validate */
+for (const item of payload.items) {
+  const availableQty =
+    stockMap.get(item.variantId.toString()) ?? 0;
+
+  if (availableQty < item.qty) {
+    throw new Error(
+      `Insufficient stock for variant ${item.variantId}`
     );
+  }
+}
 
-    for (const item of payload.items) {
-      stockOps.push({
-        updateOne: {
-          filter: {
-            branchId: branch._id,
-            variantId: new ObjectId(item.variantId),
-            qty: { $gte: item.qty },
-          },
-          update: {
-            $inc: { qty: -item.qty },
-            $set: { updatedAt: new Date() },
-          },
-        },
-      });
-
-      stockLedgerDocs.push({
+/* 5️⃣ Update */
+for (const item of payload.items) {
+  stockOps.push({
+    updateOne: {
+      filter: {
         branchId: branch._id,
         variantId: new ObjectId(item.variantId),
-        sku: skuMap.get(item.variantId),
-        source: "SALE",
-        sourceId: saleId,
-        qtyOut: item.qty,
-        createdAt: new Date(),
-      });
-    }
+      },
+      update: {
+        $inc: { qty: -item.qty },
+        $set: { updatedAt: new Date() },
+      },
+    },
+  });
 
-    const stockResult = await db
-      .collection(COLLECTIONS.STOCKS)
-      .bulkWrite(stockOps, { session });
+  stockLedgerDocs.push({
+    branchId: branch._id,
+    variantId: new ObjectId(item.variantId),
+    sku: item.sku,
+    source: "SALE",
+    sourceId: saleId,
+    qtyOut: item.qty,
+    createdAt: new Date(),
+  });
+}
 
-    const insufficientStock = stockResult.matchedCount !== stockOps.length;
+await db
+  .collection(COLLECTIONS.STOCKS)
+  .bulkWrite(stockOps, { session });
 
-    if (insufficientStock) {
-      throw new Error("Insufficient stock for one or more items");
-    }
+await db
+  .collection(COLLECTIONS.STOCK_LEDGERS)
+  .insertMany(stockLedgerDocs, { session });
 
-    await db
-      .collection(COLLECTIONS.STOCK_LEDGERS)
-      .insertMany(stockLedgerDocs, { session });
+
 
     /* ---------------- 🔥 ACCOUNTING ---------------- */
     await salesAccounting({
@@ -527,61 +559,47 @@ console.log("user",req.user)
 };
 
 export const getPaymentMethods = async (req, res, next) => {
-  try {
-    const db = req.app.locals.db;
-    const { parentCode, search = "" } = req.query;
+  const db = req.app.locals.db;
+  const { parentCode, search = "", page = 1, limit = 20 } = req.query;
 
-    if (!parentCode) {
-      return res.status(400).json({
-        success: false,
-        message: "parentCode is required",
-      });
-    }
+  const skip = (page - 1) * limit;
 
-    /* ---------- Resolve Parent ---------- */
-    const parent = await db.collection(COLLECTIONS.ACCOUNTS).findOne(
-      { code: parentCode, status: "ACTIVE" },
-      { projection: { _id: 1 } }
-    );
+  const parent = await db.collection(COLLECTIONS.ACCOUNTS).findOne({
+    code: parentCode,
+    status: "ACTIVE",
+  });
 
-    if (!parent) {
-      return res.json({ success: true, data: [] });
-    }
+  if (!parent) return res.json({ success: true, data: [] });
 
-    /* ---------- Match Children ---------- */
-    const match = {
-      parentId: parent._id,
-      status: "ACTIVE",
-    };
+  const match = {
+    parentId: parent._id,
+    status: "ACTIVE",
+  };
 
-    if (search) {
-      match.$or = [
-        { name: { $regex: search, $options: "i" } },
-        { code: { $regex: search, $options: "i" } },
-      ];
-    }
-
-    /* ---------- Query (INCLUSION ONLY) ---------- */
-    const data = await db
-      .collection(COLLECTIONS.ACCOUNTS)
-      .find(match, {
-        projection: {
-          _id: 1,
-          code: 1,
-          name: 1,
-          type: 1,
-          subType: 1,
-          parentId: 1,
-        },
-      })
-      .sort({ name: 1 })
-      .toArray();
-
-    res.json({
-      success: true,
-      data,
-    });
-  } catch (err) {
-    next(err);
+  if (search) {
+    match.$or = [
+      { name: { $regex: search, $options: "i" } },
+      { code: { $regex: search, $options: "i" } },
+    ];
   }
+
+  const cursor = db.collection(COLLECTIONS.ACCOUNTS)
+    .find(match)
+    .sort({ name: 1 })
+    .skip(skip)
+    .limit(Number(limit));
+
+  const data = await cursor.toArray();
+  const total = await db.collection(COLLECTIONS.ACCOUNTS).countDocuments(match);
+
+  res.json({
+    success: true,
+    pagination: {
+      page: Number(page),
+      limit: Number(limit),
+      total,
+      hasMore: skip + data.length < total,
+    },
+    data,
+  });
 };
