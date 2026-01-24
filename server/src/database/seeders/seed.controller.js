@@ -3,6 +3,7 @@ import { seedChartOfAccounts } from "../../modules/accounting/seed.accounts.js";
 import { seedBranches } from "../../modules/branches/seed.branch.js";
 import { seedcommissionRules } from "../../modules/sales/commission.seed.js";
 import { seedAttributes } from "../../modules/variants/seed.attributes.js";
+import { seedProductTypes } from "../../modules/products/productType.seed.js";
 
 
 export const seedAllController = async (req, res, next) => {
@@ -14,6 +15,7 @@ export const seedAllController = async (req, res, next) => {
         // await seedChartOfAccounts(db);
         // await seedAttributes(db);
         // await seedcommissionRules(db);
+        //  await seedProductTypes(db);
 
 
         res.status(200).json({
