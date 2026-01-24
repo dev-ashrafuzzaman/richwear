@@ -26,4 +26,5 @@ export const COLLECTIONS = {
   LEDGERS: "ledgers",
   TAX_CONFIGS: "tax_configs",
   ACCOUNTS: "accounts",
+  PRODUCT_TYPES: "product_types",
 };

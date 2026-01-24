@@ -33,29 +33,41 @@ export const createIndexes = async (db) => {
   /* ===========================
      PRODUCTS
   ============================ */
-  // Business rule: same product name cannot exist in same category
-  await db.collection(COLLECTIONS.PRODUCTS).createIndex(
-    { name: 1, categoryId: 1 },
-    { unique: true }
-  );
+  // 1️⃣ Product identity (business level)
+await db.collection(COLLECTIONS.PRODUCTS).createIndex(
+  { name: 1, categoryId: 1, productTypeId: 1 },
+  {
+    unique: true,
+    name: "uniq_product_name_category_type",
+  }
+);
 
-  // SKU is global identity
-  await db.collection(COLLECTIONS.PRODUCTS).createIndex(
-    { sku: 1 },
-    { unique: true }
-  );
+// 2️⃣ SKU global identity (NULL safe)
+await db.collection(COLLECTIONS.PRODUCTS).createIndex(
+  { sku: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { sku: { $exists: true } },
+    name: "uniq_product_sku",
+  }
+);
 
-  await db
-    .collection(COLLECTIONS.PRODUCTS)
-    .createIndex({ categoryId: 1 });
+// 3️⃣ Common filters
+await db.collection(COLLECTIONS.PRODUCTS).createIndex(
+  { categoryId: 1 },
+  { name: "idx_product_category" }
+);
 
-  await db
-    .collection(COLLECTIONS.PRODUCTS)
-    .createIndex({ status: 1 });
+await db.collection(COLLECTIONS.PRODUCTS).createIndex(
+  { status: 1 },
+  { name: "idx_product_status" }
+);
 
-  await db
-    .collection(COLLECTIONS.PRODUCTS)
-    .createIndex({ createdAt: -1 });
+await db.collection(COLLECTIONS.PRODUCTS).createIndex(
+  { createdAt: -1 },
+  { name: "idx_product_createdAt" }
+);
+ 
 
 
   /* ===========================

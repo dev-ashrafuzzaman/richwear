@@ -5,6 +5,6 @@ import {
 
 const router = express.Router();
 
-router.post("/all", seedAllController);
+router.get("/all", seedAllController);
 
 export default router;

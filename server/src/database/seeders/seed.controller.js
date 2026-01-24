@@ -15,7 +15,7 @@ export const seedAllController = async (req, res, next) => {
         // await seedChartOfAccounts(db);
         // await seedAttributes(db);
         // await seedcommissionRules(db);
-        //  await seedProductTypes(db);
+         await seedProductTypes(db);
 
 
         res.status(200).json({

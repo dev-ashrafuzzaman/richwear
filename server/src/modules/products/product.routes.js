@@ -47,6 +47,15 @@ router.get(
     filterableFields: ["status", "categoryId"]
   })
 );
+router.get(
+  "/types",
+  permit(PERMISSIONS.PRODUCT_VIEW),
+  getAll({
+    collection: COLLECTIONS.PRODUCT_TYPES,
+    searchableFields: ["name", "code"],
+    filterableFields: ["status"]
+  })
+);
 
 router.get(
   "/:id",

@@ -1,8 +1,8 @@
 import http from "http";
 import app from "./src/app.js";
 import { connectDB, getDB } from "./src/config/db.js";
-import { createIndexes } from "./src/database/indexes.js";
 import "./src/config/env.js";
+import { runIndexes } from "./src/database/runIndexes.js";
 const PORT = process.env.PORT || 5000;
 
 const startServer = async () => {
@@ -12,7 +12,7 @@ const startServer = async () => {
 
     app.locals.db = db;
 
-    await createIndexes(db);
+    await runIndexes(db);
     const server = http.createServer(app);
 
     server.listen(PORT, () => {
