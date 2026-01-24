@@ -11,6 +11,7 @@ export default function useTableManager(route, options = {}) {
     transform,
     staleTime = 30_000,
     onError,
+    enabled = true, // 🔥 KEY ADDITION
   } = options;
 
   const { axiosSecure } = useAxiosSecure();
@@ -27,7 +28,7 @@ export default function useTableManager(route, options = {}) {
   }, [searchParams, initialQuery]);
 
   /* ===============================
-     Set query (URL synced)
+     URL synced setters
   =============================== */
   const setQuery = useCallback(
     (key, value) => {
@@ -50,23 +51,45 @@ export default function useTableManager(route, options = {}) {
   }, [initialQuery, setSearchParams]);
 
   /* ===============================
-     Fetch
+     Fetch (SAFE)
   =============================== */
   const fetchData = async () => {
-    const res = await axiosSecure.get(route, { params: query });
-    return transform ? transform(res.data) : res.data;
+    if (!route) return null; // 🛑 HARD STOP
+
+    try {
+      const res = await axiosSecure.get(route, { params: query });
+      return transform ? transform(res.data) : res.data;
+    } catch (err) {
+      // 🔥 Normalize error (ERP friendly)
+      const errorPayload = {
+        message:
+          err?.response?.data?.message ||
+          err?.message ||
+          "Network error",
+        status: err?.response?.status || 500,
+      };
+
+      throw errorPayload;
+    }
   };
 
-  const { data, isLoading, isFetching, error, refetch } = useQuery({
+  const {
+    data,
+    isLoading,
+    isFetching,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: [queryKey, query],
     queryFn: fetchData,
+    enabled: enabled && !!route, // 🔥 THIS SOLVES YOUR ISSUE
     keepPreviousData: true,
     staleTime,
     onError,
   });
 
   /* ===============================
-     NORMALIZED RETURN (IMPORTANT)
+     NORMALIZED RETURN
   =============================== */
   return {
     rows: data?.data || [],

@@ -40,7 +40,7 @@ const ProductsPage = () => {
           },
         ]}
         columns={[
-          { key: "sku", label: "SKU" },
+          { key: "productCode", label: "productCode" },
           { key: "name", label: "Name" },
           { key: "unit", label: "Unit" },
           {
@@ -63,17 +63,17 @@ const ProductsPage = () => {
           { key: "createdAt", label: "Created At" },
         ]}
         actions={[
-          { type: "edit", label: "Edit" },
+          // { type: "edit", label: "Edit" },
           {
             type: "status",
             label: "Change Status",
             api: (row) => `/products/${row._id}/status`,
           },
-          {
-            type: "delete",
-            label: "Delete",
-            api: (row) => `/products/${row._id}`,
-          },
+          // {
+          //   type: "delete",
+          //   label: "Delete",
+          //   api: (row) => `/products/${row._id}`,
+          // },
         ]}
       />
     </Page>

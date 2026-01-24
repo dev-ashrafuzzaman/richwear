@@ -1,20 +1,39 @@
 import { useForm, Controller, useWatch } from "react-hook-form";
-import { Loader2 } from "lucide-react";
-import useApi from "../../hooks/useApi";
-import useTableManager from "../../hooks/useTableManager";
+import { Loader2, ChevronRight } from "lucide-react";
+
 import Modal from "../../components/modals/Modal";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
 import Select from "../../components/ui/Select";
 import Checkbox from "../../components/ui/Checkbox";
+import MultiSelect from "../../components/ui/MultiSelect";
 
+import useApi from "../../hooks/useApi";
+import useTableManager from "../../hooks/useTableManager";
+
+/* -----------------------
+   Static Options
+------------------------ */
+const SIZE_TYPE_OPTIONS = [
+  { label: "Text Size (XS, S, M...)", value: "TEXT" },
+  { label: "Number Size (40–45)", value: "NUMBER" },
+  { label: "No Size (Accessory)", value: "N/A" },
+];
+
+const COLOR_OPTIONS = ["BLACK", "WHITE", "RED", "BLUE", "GREEN", "YELLOW"].map(
+  (c) => ({ label: c, value: c }),
+);
+
+/* =========================
+   ProductCreateModal
+========================= */
 export default function ProductCreateModal({ isOpen, setIsOpen, refetch }) {
   const { request, loading } = useApi();
 
   const {
+    control,
     register,
     handleSubmit,
-    control,
     reset,
     setValue,
     formState: { errors },
@@ -22,135 +41,355 @@ export default function ProductCreateModal({ isOpen, setIsOpen, refetch }) {
     defaultValues: {
       level1Id: "",
       categoryId: "",
+      productTypeId: "",
       name: "",
+      sizeType: "",
+      sizeMin: "",
+      sizeMax: "",
+      sizeStep: 1,
+      colors: [],
       confirm: false,
     },
   });
 
-  /* 👀 Watchers */
+  /* -----------------------
+     Watchers
+  ------------------------ */
   const level1Id = useWatch({ control, name: "level1Id" });
-  const categoryId = useWatch({ control, name: "categoryId" });
-  const name = useWatch({ control, name: "name" });
+  const sizeType = useWatch({ control, name: "sizeType" });
   const confirmed = useWatch({ control, name: "confirm" });
 
-  /* Data sources */
+  /* -----------------------
+     Data Sources
+  ------------------------ */
   const level1Table = useTableManager("/categories?level=1");
+
+  // ✅ FIX: Level-2 only loads if level-1 exists
   const level2Table = useTableManager(
-    level1Id ? `/categories?level=2&parentId=${level1Id}` : null
+    level1Id ? `/categories?level=2&parentId=${level1Id}` : null,
   );
 
+  const productTypeTable = useTableManager("/products/types");
+
+  /* -----------------------
+     Submit Handler
+  ------------------------ */
   const onSubmit = async (data) => {
-    await request(
-      "/products",
-      "POST",
-      {
-        name: data.name,
-        categoryId: data.categoryId,
+    const payload = {
+      name: data.name.trim(),
+      categoryId: data.categoryId,
+      productTypeId: data.productTypeId,
+      sizeType: data.sizeType,
+      colors: data.colors.map((c) => c.value),
+    };
+
+    // Only NUMBER sends sizeConfig
+    if (data.sizeType === "NUMBER") {
+      payload.sizeConfig = {
+        min: Number(data.sizeMin),
+        max: Number(data.sizeMax),
+        step: Number(data.sizeStep || 1),
+      };
+    }
+
+    await request("/products", "POST", payload, {
+      successMessage: "Product created successfully",
+      onSuccess: () => {
+        reset();
+        setIsOpen(false);
+        refetch?.();
       },
-      {
-        successMessage: "Product created successfully",
-        onSuccess: () => {
-          reset();
-          setIsOpen(false);
-          refetch();
-        },
-      }
-    );
+    });
   };
 
+  /* =========================
+     Render
+  ========================= */
   return (
     <Modal
       isOpen={isOpen}
       setIsOpen={setIsOpen}
-      title="Add New Product"
-      subTitle="Follow steps to create product"
-      size="lg"
+      title="Create New Product"
+      subTitle="Fill in the details to add a new product to your inventory"
+      size="6xl"
       footer={
-        <div className="flex justify-end gap-2">
-          <Button variant="ghost" onClick={() => setIsOpen(false)}>
+        <div className="flex justify-end gap-3 pt-6 border-t border-gray-100">
+          <Button
+            variant="outline"
+            onClick={() => setIsOpen(false)}
+            className="px-6">
             Cancel
           </Button>
           <Button
             onClick={handleSubmit(onSubmit)}
             disabled={!confirmed || loading}
-            prefix={loading && <Loader2 className="w-4 h-4 animate-spin" />}
-            variant="gradient">
+            className="px-8 bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-sm"
+            prefix={loading && <Loader2 className="w-4 h-4 animate-spin" />}>
             Create Product
           </Button>
         </div>
-      }
-    >
-      <div className="flex flex-col gap-4">
+      }>
+      <div className="space-y-8">
+        {/* Form Sections */}
+        <div className="space-y-6">
+          <div className="grid grid-cols-2 gap-4">
+            {/* Category Section */}
+            <div className="bg-gray-50/60 rounded-xl p-5 border border-gray-100">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-1.5 h-5 bg-linear-to-b from-blue-500 to-indigo-500 rounded-full"></div>
+                <h3 className="text-sm font-semibold text-gray-800">
+                  CATEGORY
+                </h3>
+              </div>
 
-        {/* Level 1 */}
-        <Controller
-          name="level1Id"
-          control={control}
-          rules={{ required: "Level 1 category required" }}
-          render={({ field }) => (
-            <Select
-              label="Category Level 1"
-              placeholder="Select main category"
-              value={field.value}
-              onChange={(val) => {
-                field.onChange(val);
-                setValue("categoryId", "");
-              }}
-              error={errors.level1Id?.message}
-              options={level1Table.rows.map((c) => ({
-                label: c.name,
-                value: c._id,
-              }))}
-            />
-          )}
-        />
+              <div className="space-y-4 pl-1">
+                <Controller
+                  name="level1Id"
+                  control={control}
+                  rules={{ required: "Main category required" }}
+                  render={({ field }) => (
+                    <Select
+                      label="Main Category"
+                      value={field.value}
+                      onChange={(val) => {
+                        field.onChange(val);
+                        setValue("categoryId", "");
+                      }}
+                      options={level1Table.rows.map((c) => ({
+                        label: c.name,
+                        value: c._id,
+                      }))}
+                      error={errors.level1Id?.message}
+                      className="bg-white"
+                    />
+                  )}
+                />
 
-        {/* Level 2 (disabled until level 1) */}
-        <Controller
-          name="categoryId"
-          control={control}
-          rules={{ required: "Level 2 category required" }}
-          render={({ field }) => (
-            <Select
-              label="Category Level 2"
-              placeholder="Search & select sub-category"
-              searchable
-              disabled={!level1Id}
-              value={field.value}
-              onChange={field.onChange}
-              error={errors.categoryId?.message}
-              options={level2Table?.rows?.map((c) => ({
-                label: c.name,
-                value: c._id,
-              }))}
-            />
-          )}
-        />
+                <Controller
+                  name="categoryId"
+                  control={control}
+                  rules={{ required: "Sub category required" }}
+                  render={({ field }) => (
+                    <div className="relative">
+                      <Select
+                        label="Sub Category"
+                        disabled={!level1Id}
+                        value={field.value}
+                        onChange={field.onChange}
+                        options={level2Table?.rows?.map((c) => ({
+                          label: c.name,
+                          value: c._id,
+                        }))}
+                        error={errors.categoryId?.message}
+                        className="bg-white"
+                      />
+                      {!level1Id && (
+                        <div className="absolute inset-0 bg-white/50 backdrop-blur-[1px] rounded-lg flex items-center justify-center">
+                          <span className="text-sm text-gray-400">
+                            Select main category first
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                />
+              </div>
+            </div>
 
-        {/* Product name (disabled until level 2) */}
-        <Input
-          label="Product Name"
-          placeholder="Cotton T-Shirt"
-          disabled={!categoryId}
-          error={errors.name?.message}
-          {...register("name", {
-            required: "Product name is required",
-          })}
-        />
+            {/* Product Details Section */}
+            <div className="bg-gray-50/60 rounded-xl p-5 border border-gray-100">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-1.5 h-5 bg-linear-to-b from-emerald-500 to-teal-500 rounded-full"></div>
+                <h3 className="text-sm font-semibold text-gray-800">
+                  PRODUCT DETAILS
+                </h3>
+              </div>
 
-        {/* Confirmation (disabled until name entered) */}
-        <Controller
-          name="confirm"
-          control={control}
-          render={({ field }) => (
-            <Checkbox
-              disabled={!name}
-              checked={field.value}
-              onChange={field.onChange}
-              label="I confirm that the information is correct"
-            />
-          )}
-        />
+              <div className="space-y-4 pl-1">
+                <Controller
+                  name="productTypeId"
+                  control={control}
+                  rules={{ required: "Product type required" }}
+                  render={({ field }) => (
+                    <Select
+                      label="Product Type"
+                      value={field.value}
+                      onChange={field.onChange}
+                      options={productTypeTable.rows.map((p) => ({
+                        label: p.name,
+                        value: p._id,
+                      }))}
+                      error={errors.productTypeId?.message}
+                      className="bg-white"
+                    />
+                  )}
+                />
+
+                <Input
+                  label="Product Name"
+                  placeholder="e.g., Cotton T-Shirt, Leather Boots"
+                  {...register("name", { required: "Product name required" })}
+                  error={errors.name?.message}
+                  className="bg-white"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Size Configuration Section */}
+          <div className="bg-gray-50/60 rounded-xl p-5 border border-gray-100">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-1.5 h-5 bg-linear-to-b from-amber-500 to-orange-500 rounded-full"></div>
+              <h3 className="text-sm font-semibold text-gray-800">
+                SIZE CONFIGURATION
+              </h3>
+            </div>
+
+            <div className="space-y-4 pl-1">
+              <Controller
+                name="sizeType"
+                control={control}
+                rules={{ required: "Size type required" }}
+                render={({ field }) => (
+                  <Select
+                    label="Size Type"
+                    value={field.value}
+                    onChange={field.onChange}
+                    options={SIZE_TYPE_OPTIONS}
+                    error={errors.sizeType?.message}
+                    className="bg-white"
+                  />
+                )}
+              />
+
+              {/* NUMBER SIZE CONFIG */}
+              {sizeType === "NUMBER" && (
+                <div className="bg-white rounded-lg border border-gray-200 p-4 space-y-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
+                    <h4 className="text-sm font-medium text-gray-700">
+                      Numeric Size Range
+                    </h4>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3">
+                    <Input
+                      label="Min Size"
+                      type="number"
+                      {...register("sizeMin", { required: true })}
+                      className="bg-gray-50"
+                    />
+                    <Input
+                      label="Max Size"
+                      type="number"
+                      {...register("sizeMax", { required: true })}
+                      className="bg-gray-50"
+                    />
+                    <Input
+                      label="Step"
+                      type="number"
+                      {...register("sizeStep")}
+                      className="bg-gray-50"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Size range will be generated automatically based on these
+                    values
+                  </p>
+                </div>
+              )}
+
+              {/* Size Type Info */}
+              {sizeType && sizeType !== "NUMBER" && (
+                <div
+                  className={`text-sm px-4 py-3 rounded-lg ${
+                    sizeType === "TEXT"
+                      ? "bg-blue-50 text-blue-700 border border-blue-100"
+                      : "bg-gray-50 text-gray-600 border border-gray-100"
+                  }`}>
+                  {sizeType === "TEXT"
+                    ? "✓ Product will use standard text sizes (XS, S, M, L, XL, etc.)"
+                    : "✓ This product does not require size specifications"}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Colors Section */}
+          <div className="bg-gray-50/60 rounded-xl p-5 border border-gray-100">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-1.5 h-5 bg-linear-to-b from-purple-500 to-pink-500 rounded-full"></div>
+              <h3 className="text-sm font-semibold text-gray-800">
+                COLOR OPTIONS
+              </h3>
+            </div>
+
+            <div className="pl-1">
+              <Controller
+                name="colors"
+                control={control}
+                render={({ field }) => (
+                  <MultiSelect
+                    label="Select Available Colors"
+                    value={field.value}
+                    onChange={field.onChange}
+                    options={COLOR_OPTIONS}
+                    placeholder="Choose colors for this product"
+                    className="bg-white"
+                  />
+                )}
+              />
+              <p className="text-xs text-gray-500 mt-2">
+                Selected colors will be available for this product variant
+              </p>
+            </div>
+          </div>
+
+          {/* Confirmation Section */}
+          <div className="bg-linear-to-r from-gray-50 to-gray-50/50 rounded-xl p-5 border border-gray-200">
+            <div className="flex items-start gap-3">
+              <Controller
+                name="confirm"
+                control={control}
+                render={({ field }) => (
+                  <Checkbox
+                    checked={field.value}
+                    onChange={field.onChange}
+                    className="mt-0.5"
+                    labelClass="text-sm font-medium text-gray-700"
+                  />
+                )}
+              />
+              <div>
+                <label className="text-sm font-medium text-gray-700 cursor-pointer">
+                  I confirm the information is correct
+                </label>
+                <p className="text-xs text-gray-500 mt-1">
+                  By checking this box, you verify that all product details are
+                  accurate and ready for creation.
+                </p>
+              </div>
+            </div>
+
+            {/* Status Indicator */}
+            <div
+              className={`mt-4 text-sm px-4 py-2.5 rounded-lg flex items-center gap-2 ${
+                confirmed
+                  ? "bg-linear-to-r from-emerald-50 to-teal-50 text-emerald-700 border border-emerald-100"
+                  : "bg-linear-to-r from-amber-50 to-orange-50 text-amber-700 border border-amber-100"
+              }`}>
+              <div
+                className={`w-2 h-2 rounded-full ${
+                  confirmed ? "bg-emerald-500 animate-pulse" : "bg-amber-500"
+                }`}></div>
+              <span>
+                {confirmed
+                  ? "✓ Ready to create product - All information confirmed"
+                  : "⚠ Please review and confirm the information before creating the product"}
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
     </Modal>
   );

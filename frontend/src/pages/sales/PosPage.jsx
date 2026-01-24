@@ -33,7 +33,6 @@ export default function PosPage() {
 
   /* ---------------- Confirm Sale ---------------- */
   const confirmSale = async (payments) => {
-    console.log("payments", payments);
     const payload = {
       type: "RETAIL",
       customerId: customer,
