@@ -37,6 +37,63 @@ export const createOne = ({ collection, schema }) => {
   };
 };
 
+export const createOneTx =
+  ({ collection, schema }) =>
+  async (req, res, next) => {
+    const db = req.app.locals.db;
+    const session = req.session;
+
+    try {
+      /* =====================
+         JOI VALIDATION
+      ====================== */
+      if (schema) {
+        const { error, value } = schema.validate(req.body, {
+          abortEarly: false,
+          stripUnknown: true,
+        });
+
+        if (error) {
+          return res.status(422).json({
+            success: false,
+            message: "Validation failed",
+            errors: error.details.map(d => d.message),
+          });
+        }
+
+        req.body = value;
+      }
+
+      /* =====================
+         TRANSACTION
+      ====================== */
+      await session.withTransaction(async () => {
+        const payload = {
+          ...req.body,
+          ...req.generated,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+
+        await db
+          .collection(collection)
+          .insertOne(payload, { session });
+      });
+
+      res.status(201).json({
+        success: true,
+        message: "Product created successfully",
+      });
+    } catch (err) {
+      await session.abortTransaction();
+      next(err);
+    } finally {
+      await session.endSession();
+    }
+  };
+
+
+
 export const getAll = ({
   collection,
   searchableFields = [],

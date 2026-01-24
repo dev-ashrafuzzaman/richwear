@@ -5,6 +5,8 @@ import { generateProductCode } from "../../utils/sku/generateProductCode.js";
 export const beforeCreateProduct = async (req, res, next) => {
   try {
     const db = req.app.locals.db;
+    const session = req.session;
+
     const {
       name,
       categoryId,
@@ -14,47 +16,65 @@ export const beforeCreateProduct = async (req, res, next) => {
     } = req.body;
 
     /* =====================
+       OBJECT ID VALIDATION
+    ====================== */
+    if (!ObjectId.isValid(categoryId) || !ObjectId.isValid(productTypeId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid categoryId or productTypeId",
+      });
+    }
+
+    const categoryObjectId = new ObjectId(categoryId);
+    const productTypeObjectId = new ObjectId(productTypeId);
+
+    /* =====================
        CATEGORY VALIDATION
     ====================== */
-    const categoryObjectId = new ObjectId(categoryId);
-    const category = await db.collection(COLLECTIONS.CATEGORIES).findOne({
-      _id: categoryObjectId,
-      status: "active",
-    });
+    const category = await db
+      .collection(COLLECTIONS.CATEGORIES)
+      .findOne(
+        { _id: categoryObjectId, status: "active" },
+        { session }
+      );
 
     if (!category) {
       return res.status(400).json({
         success: false,
-        message: "Invalid category",
+        message: "Invalid or inactive category",
       });
     }
 
     /* =====================
        PRODUCT TYPE VALIDATION
     ====================== */
-    const productTypeObjectId = new ObjectId(productTypeId);
     const productType = await db
       .collection(COLLECTIONS.PRODUCT_TYPES)
-      .findOne({
-        _id: productTypeObjectId,
-        status: "active",
-      });
+      .findOne(
+        { _id: productTypeObjectId, status: "active" },
+        { session }
+      );
 
     if (!productType) {
       return res.status(400).json({
         success: false,
-        message: "Invalid product type",
+        message: "Invalid or inactive product type",
       });
     }
 
     /* =====================
-       DUPLICATE CHECK
+       DUPLICATE CHECK (SESSION)
     ====================== */
-    const exists = await db.collection(COLLECTIONS.PRODUCTS).findOne({
-      name,
-      categoryId: categoryObjectId,
-      productTypeId: productTypeObjectId,
-    });
+    const exists = await db
+      .collection(COLLECTIONS.PRODUCTS)
+      .findOne(
+        {
+          name: name.trim(),
+          categoryId: categoryObjectId,
+          productTypeId: productTypeObjectId,
+        },
+        { session }
+      );
 
     if (exists) {
       return res.status(400).json({
@@ -64,54 +84,62 @@ export const beforeCreateProduct = async (req, res, next) => {
     }
 
     /* =====================
-       PRODUCT CODE
-    ====================== */
-    const productCode = await generateProductCode({
-      db,
-      productTypeCode: productType.code, // e.g. "01"
-    });
-
-    /* =====================
-       SIZE HANDLING (FINAL LOGIC)
+       SIZE HANDLING
     ====================== */
     let finalSizeConfig = null;
+    let hasVariant = false;
 
     if (sizeType === "TEXT") {
       if (!productType.defaultSizes?.length) {
         return res.status(400).json({
           success: false,
-          message: "No default sizes defined for TEXT size type",
+          message: "TEXT sizeType requires defaultSizes",
         });
       }
 
       finalSizeConfig = {
         values: productType.defaultSizes,
       };
+      hasVariant = true;
     }
 
     if (sizeType === "NUMBER") {
       if (!sizeConfig?.min || !sizeConfig?.max) {
         return res.status(400).json({
           success: false,
-          message: "NUMBER size requires min & max",
+          message: "NUMBER sizeType requires min & max",
         });
       }
-      finalSizeConfig = sizeConfig;
+
+      finalSizeConfig = {
+        min: sizeConfig.min,
+        max: sizeConfig.max,
+        step: sizeConfig.step || 1,
+      };
+      hasVariant = true;
     }
 
     /* =====================
-       ATTACH GENERATED DATA
+       PRODUCT CODE (TX SAFE)
+    ====================== */
+    const productCode = await generateProductCode({
+      db,
+      productTypeCode: productType.code,
+      session,
+    });
+
+    /* =====================
+       ATTACH GENERATED
     ====================== */
     req.generated = {
       categoryId: categoryObjectId,
       productTypeId: productTypeObjectId,
-      productCode,           // 🔑 010001
+      productCode,
       sizeType,
       sizeConfig: finalSizeConfig,
-      hasVariant: sizeType !== "N/A",
+      hasVariant,
     };
 
-    // Clean frontend payload
     delete req.body.sizeConfig;
 
     next();

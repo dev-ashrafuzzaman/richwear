@@ -1,14 +1,8 @@
-// utils/sku/generateProductCode.js
-
-/**
- * Generates productCode = TT + PPPP
- * Example: 01 + 0001 => 010001
- */
-export const generateProductCode = async ({ db, productTypeCode }) => {
-  if (!productTypeCode || productTypeCode.length !== 2) {
-    throw new Error("Invalid productTypeCode");
-  }
-
+export const generateProductCode = async ({
+  db,
+  productTypeCode,
+  session,
+}) => {
   const counterId = `PRODUCT_${productTypeCode}`;
 
   const counter = await db.collection("counters").findOneAndUpdate(
@@ -17,11 +11,9 @@ export const generateProductCode = async ({ db, productTypeCode }) => {
     {
       upsert: true,
       returnDocument: "after",
+      session,
     }
   );
 
-  const productSerial = String(counter.seq).padStart(4, "0");
-
-  // TT + PPPP
-  return `${productTypeCode}${productSerial}`; // e.g. 010001
+  return `${productTypeCode}${String(counter.seq).padStart(4, "0")}`;
 };

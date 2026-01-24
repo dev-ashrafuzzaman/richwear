@@ -6,7 +6,8 @@ import {
   getOneById,
   updateOne,
   deleteOne,
-  toggleStatus
+  toggleStatus,
+  createOneTx
 } from "../../controllers/base.controller.js";
 
 import {
@@ -20,6 +21,7 @@ import { authenticate } from "../../middlewares/auth.middleware.js";
 import { permit } from "../../middlewares/permission.middleware.js";
 import { PERMISSIONS } from "../../config/permissions.js";
 import { COLLECTIONS } from "../../database/collections.js";
+import { attachSession } from "../../middlewares/attachSession.js";
 
 const router = Router();
 const COLLECTION = COLLECTIONS.PRODUCTS;
@@ -27,16 +29,26 @@ const COLLECTION = COLLECTIONS.PRODUCTS;
 router.use(authenticate);
 
 
+// router.post(
+//   "/",
+//   permit(PERMISSIONS.PRODUCT_MANAGE),
+//   beforeCreateProduct,
+//   createOne({
+//     collection: COLLECTION,
+//     schema: createProductSchema
+//   })
+// );
+
 router.post(
   "/",
   permit(PERMISSIONS.PRODUCT_MANAGE),
+  attachSession,
   beforeCreateProduct,
-  createOne({
+  createOneTx({
     collection: COLLECTION,
-    schema: createProductSchema
+    schema: createProductSchema,
   })
 );
-
 
 router.get(
   "/",
