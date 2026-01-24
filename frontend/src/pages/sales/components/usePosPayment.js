@@ -105,16 +105,26 @@ export default function usePosPayment(
   /* ------------------------------------------------
    * FINAL VALIDATION (NO DUE ALLOWED)
    * ------------------------------------------------ */
-  const isValid = useMemo(() => {
-    if (remaining > 0) return false; // ❌ no due
+const isValid = useMemo(() => {
+  // must have visible payment rows
+  if (!payments.length) return false;
 
-    return payments.every(
-      (p) =>
-        p.accountId &&
-        p.method &&
-        Number(p.amount) >= 0
-    );
-  }, [payments, remaining]);
+  // every row must be valid
+  const rowsValid = payments.every(
+    (p) =>
+      p.accountId &&
+      p.method &&
+      Number(p.amount) >= 0
+  );
+
+  if (!rowsValid) return false;
+
+  // ❌ no due allowed
+  if (paidAmount < totalAmount) return false;
+
+  return true;
+}, [payments, paidAmount, totalAmount]);
+
 
   return {
     payments,
