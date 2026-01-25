@@ -180,7 +180,7 @@ export default function BarcodeModal({ isOpen, setIsOpen, barcodes }) {
       isOpen={isOpen}
       setIsOpen={setIsOpen}
       title="Barcode Preview"
-      size="3xl"
+      size="6xl"
       footer={<Button onClick={handlePrint}>Print Selected</Button>}
     >
       {/* 🔘 Bulk Actions */}
@@ -194,7 +194,7 @@ export default function BarcodeModal({ isOpen, setIsOpen, barcodes }) {
       </div>
 
       {/* 🔍 Preview */}
-      <div className="flex flex-wrap gap-4">
+      <div className="grid grid-cols-5 gap-4">
         {barcodes.map((item, i) => {
           const size = item.attribute?.size || "";
           const color = shortColor(item.attribute?.color);
@@ -216,7 +216,7 @@ export default function BarcodeModal({ isOpen, setIsOpen, barcodes }) {
                 ${selected[i] ? "ring-2 ring-blue-500" : "opacity-40"}`}
               style={{ width: 190, height: 125 }}
             >
-              <div className="flex justify-between text-[10px] mb-1">
+              <div className="flex justify-center gap-1 text-[10px] mb-1">
                 <span className="font-bold">RICHWEAR</span>
                 <input type="checkbox" checked={selected[i]} readOnly />
               </div>

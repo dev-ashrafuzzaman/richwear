@@ -1,4 +1,4 @@
-// purchase/PurchaseCreatePage.jsx
+// purchase/PurchaseCreatePage.jsx - Updated (removing isSubmitting)
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import useApi from "../../hooks/useApi";
@@ -20,7 +20,6 @@ export default function PurchaseCreatePage() {
   const [supplier, setSupplier] = useState(null);
   const [items, setItems] = useState([]);
   const [barcodeItems, setBarcodeItems] = useState([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { register, handleSubmit, watch, reset } = useForm({
     defaultValues: {
@@ -53,8 +52,6 @@ export default function PurchaseCreatePage() {
       return;
     }
 
-    setIsSubmitting(true);
-
     const payload = {
       supplierId: supplier._id,
       ...data,
@@ -78,7 +75,6 @@ export default function PurchaseCreatePage() {
         setItems([]);
         setSupplier(null);
       },
-      onFinally: () => setIsSubmitting(false),
     });
   };
 
@@ -165,17 +161,6 @@ export default function PurchaseCreatePage() {
           />
         )}
       </form>
-
-      {isSubmitting && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-xl shadow-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-              <div className="font-medium text-gray-900">Processing Purchase...</div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
