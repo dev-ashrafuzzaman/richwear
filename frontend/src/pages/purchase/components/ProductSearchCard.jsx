@@ -1,3 +1,4 @@
+//purchase/components/ProductSearchCard.jsx
 import { useEffect, useState } from "react";
 import useApi from "../../../hooks/useApi";
 
@@ -33,16 +34,21 @@ export default function ProductSearchCard({ items, setItems }) {
   };
 
   return (
-    <div className="bg-white border rounded-lg p-5">
-      <label className="text-sm font-medium text-gray-700">
-        Add Product
-      </label>
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+ <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-gray-900">
+            Add Products
+          </h3>
+          <span className="text-sm text-gray-500">
+            {items.length} items added
+          </span>
+        </div>
 
       <input
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder="Search product name / code"
-        className="input mt-2 w-full"
+        className="pl-10 pr-4 py-3 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
       />
 
       {products.map(p => (

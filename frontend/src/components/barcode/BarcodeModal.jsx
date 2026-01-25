@@ -94,7 +94,7 @@ export default function BarcodeModal({ isOpen, setIsOpen, barcodes }) {
     }
 
     .price {
-      font-size: 8px;
+      font-size: 10px;
       font-weight: 700;
       text-align: center;
     }
@@ -138,7 +138,7 @@ export default function BarcodeModal({ isOpen, setIsOpen, barcodes }) {
 
         <div class="product">${item.productName || ""}</div>
 
-        <div class="price">M.R.P: ${item.salesPrice} BDT</div>
+        <div class="price">PRICE: ${item.salesPrice} BDT</div>
 
         <div class="barcode">
           <svg id="bc-${item.sku}"></svg>
@@ -180,7 +180,7 @@ export default function BarcodeModal({ isOpen, setIsOpen, barcodes }) {
       isOpen={isOpen}
       setIsOpen={setIsOpen}
       title="Barcode Preview"
-      size="xl"
+      size="3xl"
       footer={<Button onClick={handlePrint}>Print Selected</Button>}
     >
       {/* 🔘 Bulk Actions */}
@@ -232,7 +232,7 @@ export default function BarcodeModal({ isOpen, setIsOpen, barcodes }) {
               </div>
 
               <div className="text-[11px] font-semibold text-center">
-                M.R.P: {item.salesPrice} BDT
+                PRICE: {item.salesPrice} BDT
               </div>
 
               <Barcode
