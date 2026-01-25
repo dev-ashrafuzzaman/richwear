@@ -6,7 +6,7 @@ export default function ProductSearchCard({ items, setItems }) {
   const { request } = useApi();
   const [search, setSearch] = useState("");
   const [products, setProducts] = useState([]);
-
+console.log(products)
   useEffect(() => {
     if (!search) return;
     request(`/products?search=${search}&limit=10`, "GET").then(res =>
@@ -15,23 +15,32 @@ export default function ProductSearchCard({ items, setItems }) {
   }, [search]);
 
   const addProduct = (product) => {
-    setItems(prev =>
-      prev.find(p => p.productId === product._id)
-        ? prev
-        : [
-            ...prev,
-            {
-              productId: product._id,
-              product,
-              costPrice: 0,
-              salePrice: 0,
-              sizes: {},
-            },
-          ]
-    );
-    setSearch("");
-    setProducts([]);
-  };
+  setItems(prev =>
+    prev.find(p => p.productId === product._id)
+      ? prev
+      : [
+          ...prev,
+          {
+            productId: product._id,
+            product,
+
+            costPrice: product.hasVariant
+              ? product.defaultCostPrice || 0
+              : 0,
+
+            salePrice: product.hasVariant
+              ? product.defaultSalePrice || 0
+              : 0,
+
+            sizes: {},
+          },
+        ]
+  );
+
+  setSearch("");
+  setProducts([]);
+};
+
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
@@ -57,7 +66,7 @@ export default function ProductSearchCard({ items, setItems }) {
           onClick={() => addProduct(p)}
           className="px-3 py-2 text-sm hover:bg-gray-100 cursor-pointer"
         >
-          {p.name}
+          {p.category.parent} - {p.name} - {p.productCode}
         </div>
       ))}
     </div>

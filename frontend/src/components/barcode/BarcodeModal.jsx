@@ -86,7 +86,7 @@ export default function BarcodeModal({ isOpen, setIsOpen, barcodes }) {
     }
 
     .product {
-      font-size: clamp(5.5px, 2.2vw, 7px);
+      font-size: clamp(6px, 2.2vw, 7px);
       text-align: center;
       white-space: nowrap;
       overflow: hidden;
@@ -101,13 +101,14 @@ export default function BarcodeModal({ isOpen, setIsOpen, barcodes }) {
 
     .barcode {
       width: 100%;
+      height: 60%;
       text-align: center;
     }
 
     .sku {
-      font-size: 7px;
+      font-size: 8px;
       text-align: center;
-      margin-top: -2px;
+      margin-top: -3px;
       letter-spacing: 0.6px;
     }
   </style>

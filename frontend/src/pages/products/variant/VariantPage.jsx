@@ -21,13 +21,13 @@ const VariantPage = () => {
       <DataTable
         table={table}
         title="Variants"
-        headerActions={[
-          {
-            variant: "gradient",
-            label: "Add Variant",
-            onClick: () => openModal("addVariant"),
-          },
-        ]}
+        // headerActions={[
+        //   {
+        //     variant: "gradient",
+        //     label: "Add Variant",
+        //     onClick: () => openModal("addVariant"),
+        //   },
+        // ]}
         columns={[
           { key: "sku", label: "SKU" },
           {
@@ -85,17 +85,17 @@ const VariantPage = () => {
           { key: "createdAt", label: "Created At" },
         ]}
         actions={[
-          { type: "edit", label: "Edit" },
-          {
-            type: "status",
-            label: "Change Status",
-            api: (row) => `/variants/${row._id}/status`,
-          },
-          {
-            type: "delete",
-            label: "Delete",
-            api: (row) => `/variants/${row._id}`,
-          },
+          // { type: "edit", label: "Edit" },
+          // {
+          //   type: "status",
+          //   label: "Change Status",
+          //   api: (row) => `/variants/${row._id}/status`,
+          // },
+          // {
+          //   type: "delete",
+          //   label: "Delete",
+          //   api: (row) => `/variants/${row._id}`,
+          // },
         ]}
       />
     </Page>

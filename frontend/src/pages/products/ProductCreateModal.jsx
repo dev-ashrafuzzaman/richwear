@@ -10,6 +10,7 @@ import MultiSelect from "../../components/ui/MultiSelect";
 
 import useApi from "../../hooks/useApi";
 import useTableManager from "../../hooks/useTableManager";
+import { COLOR_OPTIONS } from "./variant/variantOptions";
 
 /* -----------------------
    Static Options
@@ -20,9 +21,7 @@ const SIZE_TYPE_OPTIONS = [
   { label: "No Size (Accessory)", value: "N/A" },
 ];
 
-const COLOR_OPTIONS = ["BLACK", "WHITE", "RED", "BLUE", "GREEN", "YELLOW"].map(
-  (c) => ({ label: c, value: c }),
-);
+
 
 /* =========================
    ProductCreateModal
@@ -356,7 +355,6 @@ export default function ProductCreateModal({ isOpen, setIsOpen, refetch }) {
                     checked={field.value}
                     onChange={field.onChange}
                     className="mt-0.5"
-                    labelClass="text-sm font-medium text-gray-700"
                   />
                 )}
               />

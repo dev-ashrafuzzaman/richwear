@@ -93,8 +93,8 @@ export const SIDEBAR_MENU = [
         submenu: [
           { title: "Purchase Create", to: "/purchases/create" },
           { title: "Purchase Manage", to: "/purchases" },
-          { title: "Purchase Return", to: "/purchase-returns/create" },
-          { title: "Purchase Return Manage", to: "/purchase-returns" },
+          // { title: "Purchase Return", to: "/purchase-returns/create" },
+          // { title: "Purchase Return Manage", to: "/purchase-returns" },
         ],
       },
     ],

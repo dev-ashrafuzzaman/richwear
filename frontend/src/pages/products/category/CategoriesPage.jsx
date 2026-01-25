@@ -63,17 +63,17 @@ const CategoriesPage = () => {
           },
         ]}
         actions={[
-          { type: "edit", label: "Edit" },
-          {
-            type: "status",
-            label: "Change Status",
-            api: (row) => `/categories/${row._id}/status`,
-          },
-          {
-            type: "delete",
-            label: "Delete",
-            api: (row) => `/categories/${row._id}`,
-          },
+          // { type: "edit", label: "Edit" },
+          // {
+          //   type: "status",
+          //   label: "Change Status",
+          //   api: (row) => `/categories/${row._id}/status`,
+          // },
+          // {
+          //   type: "delete",
+          //   label: "Delete",
+          //   api: (row) => `/categories/${row._id}`,
+          // },
         ]}
       />
     </Page>

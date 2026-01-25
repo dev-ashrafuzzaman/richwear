@@ -54,12 +54,12 @@ const StockPage = () => {
             render: (r) => <strong>{r.stockValue}</strong>,
           },
         ]}
-        actions={[
-          {
-            type: "view",
-            label: "View History",
-          },
-        ]}
+        // actions={[
+        //   {
+        //     type: "view",
+        //     label: "View History",
+        //   },
+        // ]}
       />
     </Page>
   );

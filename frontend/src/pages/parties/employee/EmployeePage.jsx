@@ -42,19 +42,19 @@ const EmployeePage = () => {
           },
         ]}
         actions={[
-          { type: "view", label: "View" },
-          { type: "edit", label: "Edit" },
-          {
-            type: "status",
-            label: "Change Status",
-            api: (row) => `/employees/${row._id}/status`,
-          },
-          {
-            type: "delete",
-            label: "Delete",
-            api: (row) => `/employees/${row._id}`,
-            hidden: (row) => row.isSystem === true,
-          },
+          // { type: "view", label: "View" },
+          // { type: "edit", label: "Edit" },
+          // {
+          //   type: "status",
+          //   label: "Change Status",
+          //   api: (row) => `/employees/${row._id}/status`,
+          // },
+          // {
+          //   type: "delete",
+          //   label: "Delete",
+          //   api: (row) => `/employees/${row._id}`,
+          //   hidden: (row) => row.isSystem === true,
+          // },
         ]}
       />
     </Page>

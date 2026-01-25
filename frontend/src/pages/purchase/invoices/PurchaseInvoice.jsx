@@ -20,7 +20,7 @@ const PurchaseInvoice = () => {
   }, [id]);
 
   if (!invoice) return <p>Loading invoice...</p>;
-
+console.log(invoice)
   /* ---------------- PRINT ---------------- */
   // PurchaseInvoice.jsx (partial update)
   const handlePrint = () => {
