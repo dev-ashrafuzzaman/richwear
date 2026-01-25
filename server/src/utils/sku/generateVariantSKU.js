@@ -4,7 +4,7 @@
  * Generates full SKU = TT + PPPP + VVV
  * Example: 010001 + 001 => 010001001
  */
-export const generateVariantSKU = async ({ db, productId, productCode }) => {
+export const generateVariantSKU = async ({ db, productId, productCode, session }) => {
   if (!productId || !productCode || productCode.length !== 6) {
     throw new Error("Invalid productId or productCode");
   }
@@ -17,7 +17,8 @@ export const generateVariantSKU = async ({ db, productId, productCode }) => {
     {
       upsert: true,
       returnDocument: "after",
-    }
+      session
+    },
   );
 
   const variantSerial = String(counter.seq).padStart(3, "0");

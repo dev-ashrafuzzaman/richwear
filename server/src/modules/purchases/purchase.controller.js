@@ -6,15 +6,28 @@ import {
 
 export const createPurchaseController = async (req, res, next) => {
   try {
-    const { error, value } = createPurchaseSchema.validate(req.body);
+    /* ======================
+       VALIDATION
+    ====================== */
+    const { error, value } = createPurchaseSchema.validate(req.body, {
+      abortEarly: false,  
+      stripUnknown: true, 
+    });
+
     if (error) {
       return res.status(400).json({
         success: false,
-        message: "Validation error",
-        errors: error.details.map((d) => d.message),
+        message: "Validation failed",
+        errors: error.details.map(d => ({
+          field: d.path.join("."),
+          message: d.message,
+        })),
       });
     }
 
+    /* ======================
+       SERVICE CALL
+    ====================== */
     const db = req.app.locals.db;
 
     const result = await createPurchase({
@@ -23,7 +36,10 @@ export const createPurchaseController = async (req, res, next) => {
       req,
     });
 
-    res.status(201).json({
+    /* ======================
+       RESPONSE
+    ====================== */
+    return res.status(201).json({
       success: true,
       message: "Purchase created successfully",
       data: result,
@@ -32,6 +48,7 @@ export const createPurchaseController = async (req, res, next) => {
     next(err);
   }
 };
+
 export const createPurchaseReturnController = async (req, res, next) => {
   try {
     const { error, value } = createPurchaseReturnSchema.validate(req.body);

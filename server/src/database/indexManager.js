@@ -1,17 +1,20 @@
-// src/database/indexManager.js
+import { ensureCollection } from "./ensureCollection.js";
 
 export async function ensureIndex(collection, keys, options = {}) {
-  const indexes = await collection.indexes();
+  // ✅ ensure collection exists FIRST
+  await ensureCollection(
+    collection.db,
+    collection.collectionName
+  );
 
+  const indexes = await collection.indexes();
   const keyStr = JSON.stringify(keys);
 
   const existing = indexes.find(
     (idx) => JSON.stringify(idx.key) === keyStr
   );
 
-  // ✅ Index exists → skip
   if (existing) {
-    // Optional: warn if name mismatch
     if (options.name && existing.name !== options.name) {
       console.warn(
         `⚠️ Index key ${keyStr} exists as "${existing.name}", expected "${options.name}"`
@@ -20,7 +23,6 @@ export async function ensureIndex(collection, keys, options = {}) {
     return;
   }
 
-  // ✅ Safe create
   await collection.createIndex(keys, options);
 
   console.log(

@@ -1,28 +1,57 @@
 import Joi from "joi";
 
+/**
+ * Size → Color → Qty map
+ * Example:
+ * {
+ *   "XS": { "BLACK": 10, "RED": 5 },
+ *   "M":  { "NA": 12 }
+ * }
+ */
+const sizeColorQtySchema = Joi.object()
+  .pattern(
+    Joi.string(), // size (XS / M / 32 etc)
+    Joi.object().pattern(
+      Joi.string(), // color (BLACK / RED / NA)
+      Joi.number().integer().min(0)
+    )
+  )
+  .min(1)
+  .required();
+
 export const createPurchaseSchema = Joi.object({
+  /* ======================
+     BASIC INFO
+  ====================== */
   supplierId: Joi.string().required(),
 
-  invoiceNumber: Joi.string().required(),
+  invoiceNumber: Joi.string().trim().required(),
   invoiceDate: Joi.date().required(),
 
   paidAmount: Joi.number().min(0).default(0),
 
+  /* ======================
+     ITEMS (PRODUCT BASED)
+  ====================== */
   items: Joi.array()
     .items(
       Joi.object({
-        variantId: Joi.string().required(),
-        qty: Joi.number().positive().required(),
+        productId: Joi.string().required(),
+
         costPrice: Joi.number().positive().required(),
-        salePrice: Joi.number().positive().optional()
+        salePrice: Joi.number().positive().required(),
+
+        sizes: sizeColorQtySchema
       })
     )
     .min(1)
     .required(),
 
-  notes: Joi.string().optional()
+  /* ======================
+     OPTIONAL
+  ====================== */
+  notes: Joi.string().allow("", null).optional()
 });
-
 
 
 export const createPurchaseReturnSchema = Joi.object({

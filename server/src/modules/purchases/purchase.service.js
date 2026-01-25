@@ -15,32 +15,88 @@ import {
   castObjectId,
 } from "../../database/buildAggregationPipeline.js";
 import { aggregateList } from "../../database/aggregateList.js";
+import { ObjectId } from "mongodb";
+import { generateVariantSKU } from "../../utils/sku/generateVariantSKU.js";
 
+/* ---------------------------------------
+  Helpers
+---------------------------------------- */
+const toId = (id, label) => {
+  if (!ObjectId.isValid(id)) throw new Error(`Invalid ${label}`);
+  return new ObjectId(id);
+};
+
+/* ---------------------------------------
+  Stock Upsert (AVG Cost Safe)
+---------------------------------------- */
+async function upsertStock({
+  db,
+  session,
+  branchId,
+  variantId,
+  sku,
+  qty,
+  costPrice,
+}) {
+  const stock = await db
+    .collection(COLLECTIONS.STOCKS)
+    .findOne({ branchId, variantId }, { session });
+
+  if (!stock) {
+    await db.collection(COLLECTIONS.STOCKS).insertOne(
+      {
+        branchId,
+        variantId,
+        sku,
+        qty,
+        avgCost: roundMoney(costPrice),
+        createdAt: new Date(),
+      },
+      { session },
+    );
+  } else {
+    const newQty = stock.qty + qty;
+    const newAvg = (stock.qty * stock.avgCost + qty * costPrice) / newQty;
+
+    await db.collection(COLLECTIONS.STOCKS).updateOne(
+      { _id: stock._id },
+      {
+        $set: {
+          qty: newQty,
+          avgCost: roundMoney(newAvg),
+          updatedAt: new Date(),
+        },
+      },
+      { session },
+    );
+  }
+}
+
+/* ---------------------------------------
+  CREATE PURCHASE (NEW FLOW)
+---------------------------------------- */
 export const createPurchase = async ({ db, body, req }) => {
   const session = db.client.startSession();
-
-  let purchaseNo;
-  let totalQty = 0;
-  let totalAmount = 0;
-  let mainBranch;
-  const barcodePayload = [];
+  let purchaseNo = null;
+  let transactionStarted = false;
   try {
+    const payload = body;
     session.startTransaction();
-
+    transactionStarted = true;
     /* =====================
-       1️⃣ MAIN WAREHOUSE
+       Branch
     ====================== */
-    mainBranch = await getMainBranch(db, session);
+    const mainBranch = await getMainBranch(db, session);
     const branchId = mainBranch._id;
 
     /* =====================
-       2️⃣ CORE DATA
+       Core Data
     ====================== */
-    const supplierId = toObjectId(body.supplierId, "supplierId");
-    const paidAmount = Number(body.paidAmount || 0);
+    const supplierId = toId(payload.supplierId, "supplierId");
+    const paidAmount = roundMoney(payload.paidAmount || 0);
 
     /* =====================
-       3️⃣ PURCHASE NO
+       Purchase No
     ====================== */
     purchaseNo = await generateCode({
       db,
@@ -51,173 +107,193 @@ export const createPurchase = async ({ db, body, req }) => {
       session,
     });
 
+    let totalQty = 0;
+    let totalAmount = 0;
+    const barcodePayload = [];
+
     /* =====================
-       4️⃣ ITEM LOOP
+       Preload Categories (NO N+1)
     ====================== */
-    for (const item of body.items) {
-      const variantId = toObjectId(item.variantId, "variantId");
+    const productIds = payload.items.map((i) => toId(i.productId, "productId"));
 
-      const variant = await db
-        .collection(COLLECTIONS.VARIANTS)
-        .aggregate(
-          [
-            { $match: { _id: variantId } },
-            {
-              $lookup: {
-                from: "products",
-                localField: "productId",
-                foreignField: "_id",
-                as: "product",
-              },
-            },
-            { $unwind: "$product" },
-            {
-              $lookup: {
-                from: "categories",
-                localField: "product.categoryId",
-                foreignField: "_id",
-                as: "category",
-              },
-            },
-            { $unwind: "$category" },
-            {
-              $lookup: {
-                from: "categories",
-                localField: "category.parentId",
-                foreignField: "_id",
-                as: "parentCategory",
-              },
-            },
-            { $unwind: "$parentCategory" },
-            {
-              $project: {
-                sku: 1,
-                salePrice: 1,
-                attributes: 1,
-                productName: "$product.name",
-                categoryName: "$category.name",
-                parentCategoryName: "$parentCategory.name",
-              },
-            },
-          ],
-          { session },
-        )
-        .next();
-
-      if (!variant) throw new Error("Variant not found");
-
-      const stock = await db
-        .collection(COLLECTIONS.STOCKS)
-        .findOne({ branchId, variantId }, { session });
-
-      if (!stock) {
-        await db.collection(COLLECTIONS.STOCKS).insertOne(
+    const products = await db
+      .collection(COLLECTIONS.PRODUCTS)
+      .aggregate(
+        [
+          { $match: { _id: { $in: productIds } } },
           {
-            branchId,
-            variantId,
-            sku: variant.sku,
-            qty: item.qty,
-            avgCost: roundMoney(item.costPrice),
-            createdAt: new Date(),
-          },
-          { session },
-        );
-      } else {
-        const newQty = stock.qty + item.qty;
-        const newAvg =
-          (stock.qty * stock.avgCost + item.qty * item.costPrice) / newQty;
-        const roundedAvg = roundMoney(newAvg);
-
-        await db.collection(COLLECTIONS.STOCKS).updateOne(
-          { _id: stock._id },
-          {
-            $set: {
-              qty: newQty,
-              avgCost: roundedAvg,
-              updatedAt: new Date(),
+            $lookup: {
+              from: COLLECTIONS.CATEGORIES,
+              localField: "categoryId",
+              foreignField: "_id",
+              as: "category",
             },
           },
-          { session },
-        );
-      }
-
-      /* ---------- BARCODE PAYLOAD ---------- */
-      barcodePayload.push({
-        name: variant.productName,
-        parentCategoryName: variant.parentCategoryName,
-        categoryName: variant.categoryName,
-        mrp: variant.salePrice,
-        sku: variant.sku,
-        attributes: variant.attributes,
-        qty: item.qty,
-      });
-
-      /* ---------- SALE PRICE UPDATE ---------- */
-      if (item.salePrice && item.salePrice !== variant.salePrice) {
-        await db.collection(COLLECTIONS.VARIANTS).updateOne(
-          { _id: variantId },
+          { $unwind: "$category" },
           {
-            $set: {
+            $lookup: {
+              from: COLLECTIONS.CATEGORIES,
+              localField: "category.parentId",
+              foreignField: "_id",
+              as: "parentCategory",
+            },
+          },
+          { $unwind: "$parentCategory" },
+        ],
+        { session },
+      )
+      .toArray();
+
+    const productMap = new Map(products.map((p) => [String(p._id), p]));
+
+    /* =====================
+       ITEM LOOP
+    ====================== */
+    for (const item of payload.items) {
+      const product = productMap.get(item.productId);
+      if (!product) throw new Error("Product not found");
+
+      const colors =
+        Array.isArray(product.colors) && product.colors.length
+          ? product.colors
+          : ["NA"];
+
+      for (const [size, colorMap] of Object.entries(item.sizes)) {
+        for (const color of colors) {
+          const qty = Number(colorMap?.[color] || 0);
+          if (qty <= 0) continue;
+
+          /* =====================
+             Variant Find/Create
+          ====================== */
+          let variant = await db.collection(COLLECTIONS.VARIANTS).findOne(
+            {
+              productId: product._id,
+              "attributes.size": size,
+              "attributes.color": color,
+            },
+            { session },
+          );
+
+          let oldSalePrice = null;
+
+          if (!variant) {
+            const sku = await generateVariantSKU({
+              db,
+              productId: product._id,
+              productCode: product.productCode,
+              session,
+            });
+
+            const insert = await db.collection(COLLECTIONS.VARIANTS).insertOne(
+              {
+                productId: product._id,
+                sku,
+                attributes: { size, color },
+                costPrice: item.costPrice,
+                salePrice: item.salePrice,
+                priceHistory: [],
+                status: "active",
+                createdAt: new Date(),
+              },
+              { session },
+            );
+
+            variant = {
+              _id: insert.insertedId,
+              sku,
+              attributes: { size, color },
               salePrice: item.salePrice,
-              updatedAt: new Date(),
-            },
-            $push: {
-              priceHistory: {
-                oldPrice: variant.salePrice,
-                newPrice: item.salePrice,
-                source: "PURCHASE",
-                date: new Date(),
-              },
-            },
-          },
-          { session },
-        );
-      }
+            };
+          } else if (item.salePrice !== variant.salePrice) {
+            oldSalePrice = variant.salePrice;
 
-      totalQty += item.qty;
-      totalAmount += item.qty * item.costPrice;
+            await db.collection(COLLECTIONS.VARIANTS).updateOne(
+              { _id: variant._id },
+              {
+                $set: {
+                  salePrice: item.salePrice,
+                  updatedAt: new Date(),
+                },
+                $push: {
+                  priceHistory: {
+                    oldPrice: oldSalePrice,
+                    newPrice: item.salePrice,
+                    source: "PURCHASE",
+                    refType: "PURCHASE",
+                    refId: purchaseNo,
+                    date: new Date(),
+                  },
+                },
+              },
+              { session },
+            );
+          }
+
+          /* =====================
+             Stock Update
+          ====================== */
+          await upsertStock({
+            db,
+            session,
+            branchId,
+            variantId: variant._id,
+            sku: variant.sku,
+            qty,
+            costPrice: item.costPrice,
+          });
+
+          /* =====================
+             Barcode Payload (PER UNIT)
+          ====================== */
+          for (let i = 0; i < qty; i++) {
+            barcodePayload.push({
+              productName: product.name,
+              sku: variant.sku,
+              parentCategory: product.parentCategory.name,
+              subCategory: product.category.name,
+              salesPrice: item.salePrice,
+              qtn: item.qtn,
+              attribute: variant.attributes,
+            });
+          }
+
+          totalQty += qty;
+          totalAmount += qty * item.costPrice;
+        }
+      }
     }
 
     totalAmount = roundMoney(totalAmount);
-
-    /* =====================
-       5️⃣ PAYMENT CALCULATION
-    ====================== */
-    const dueAmount = roundMoney(Math.max(totalAmount - paidAmount, 0), 2);
-
-    const paidRounded = roundMoney(paidAmount, 2);
+    const dueAmount = roundMoney(Math.max(totalAmount - paidAmount, 0));
 
     const paymentStatus =
-      dueAmount === 0 ? "PAID" : paidRounded > 0 ? "PARTIAL" : "DUE";
+      dueAmount === 0 ? "PAID" : paidAmount > 0 ? "PARTIAL" : "DUE";
 
     /* =====================
-       6️⃣ PURCHASE INSERT
+       Purchase Insert
     ====================== */
     const insertResult = await db.collection(COLLECTIONS.PURCHASES).insertOne(
       {
         purchaseNo,
         supplierId,
         branchId,
-
-        invoiceNumber: body.invoiceNumber,
-        invoiceDate: body.invoiceDate,
-
-        items: body.items,
+        invoiceNumber: payload.invoiceNumber,
+        invoiceDate: payload.invoiceDate,
+        items: payload.items,
         totalQty,
         totalAmount,
-
         paidAmount,
         dueAmount,
         paymentStatus,
-
-        notes: body.notes || null,
+        notes: payload.notes || null,
         createdAt: new Date(),
       },
       { session },
     );
 
     /* =====================
-       7️⃣ ACCOUNTING (TX SAFE)
+       Accounting
     ====================== */
     await purchaseAccounting({
       db,
@@ -232,12 +308,12 @@ export const createPurchase = async ({ db, body, req }) => {
     });
 
     /* =====================
-       8️⃣ AUDIT LOG
+       Audit Log
     ====================== */
     await writeAuditLog({
       db,
       session,
-      userId: toObjectId(req?.user?.id),
+      userId: toId(req?.user?._id, "userId"),
       action: "PURCHASE_CREATE",
       collection: COLLECTIONS.PURCHASES,
       documentId: insertResult.insertedId,
@@ -245,8 +321,6 @@ export const createPurchase = async ({ db, body, req }) => {
       refId: insertResult.insertedId,
       payload: {
         purchaseNo,
-        branchCode: mainBranch.code,
-        supplierId,
         totalQty,
         totalAmount,
         paidAmount,
@@ -262,7 +336,6 @@ export const createPurchase = async ({ db, body, req }) => {
     return {
       purchaseNo,
       branch: mainBranch.code,
-      invoiceNumber: body.invoiceNumber,
       totalQty,
       totalAmount,
       paidAmount,
@@ -270,16 +343,17 @@ export const createPurchase = async ({ db, body, req }) => {
       barcodes: barcodePayload,
     };
   } catch (error) {
-    await session.abortTransaction();
+    if (transactionStarted) {
+      await session.abortTransaction();
+    }
+
     await writeAuditLog({
       db,
-      userId: toObjectId(req?.user?.id),
+      userId: toId(req?.user?._id, "userId"),
       action: "PURCHASE_CREATE_FAILED",
       collection: COLLECTIONS.PURCHASES,
-      refType: "PURCHASE",
-      refId: null,
       payload: {
-        purchaseNo: purchaseNo || null,
+        purchaseNo,
         error: error.message,
       },
       ipAddress: req?.ip,
@@ -690,7 +764,7 @@ export const createPurchaseReturn = async ({ db, body, req }) => {
     await writeAuditLog({
       db,
       session,
-      userId: toObjectId(req?.user?.id),
+      userId: toObjectId(req?.user?._id),
       action: "PURCHASE_RETURN_CREATE",
       collection: COLLECTIONS.PURCHASE_RETURNS,
       documentId: insertResult.insertedId,
@@ -722,7 +796,7 @@ export const createPurchaseReturn = async ({ db, body, req }) => {
 
     await writeAuditLog({
       db,
-      userId: toObjectId(req?.user?.id),
+      userId: toObjectId(req?.user?._id),
       action: "PURCHASE_RETURN_FAILED",
       collection: COLLECTIONS.PURCHASE_RETURNS,
       refType: "PURCHASE_RETURN",
