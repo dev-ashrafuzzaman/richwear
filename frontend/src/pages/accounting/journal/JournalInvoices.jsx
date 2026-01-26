@@ -18,7 +18,6 @@ const JournalInvoices = () => {
       transform: (res) => res?.data ?? [],
     }
   );
-  console.log("jor", data);
   return (
     <Page title="Journal Invoices">
       {modals.journalReceiptsModal?.isOpen && (

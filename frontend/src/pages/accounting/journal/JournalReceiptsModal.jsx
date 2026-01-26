@@ -12,7 +12,6 @@ export default function JournalReceiptsModal({ isOpen, setIsOpen, data }) {
   });
 
   if (!data) return null;
-console.log("mod",data)
   return (
     <Modal
       isOpen={isOpen}

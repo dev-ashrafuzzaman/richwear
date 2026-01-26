@@ -37,7 +37,6 @@ export default function VariantCreateModal({ isOpen, setIsOpen, refetch }) {
       { useToast: false },
     );
 
-    console.log("res", res);
     return res?.data?.map((p) => ({
       label: p.name,
       value: p._id,

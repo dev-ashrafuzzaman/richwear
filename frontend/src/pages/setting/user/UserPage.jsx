@@ -13,7 +13,6 @@ const UserListPage = () => {
       transform: (res) => res?.data ?? [],
     }
   );
-console.log(data)
   return (
     <Page title="System Users">
       <div>

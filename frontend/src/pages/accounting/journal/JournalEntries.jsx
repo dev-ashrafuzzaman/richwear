@@ -3,28 +3,16 @@ import { useForm, Controller, useFieldArray } from "react-hook-form";
 import {
   Plus,
   Trash2,
-  Calendar,
-  Building2,
   Loader2,
-  XCircle,
-  CheckCircle,
-  Keyboard,
   Save,
-  PlusCircle,
-  ChevronLeft,
-  ChevronRight,
 } from "lucide-react";
 import { motion } from "framer-motion";
-import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import { subDays } from "date-fns";
 import Card from "../../components/ui/Card";
-import Input from "../../components/ui/Input";
 import Button from "../../components/ui/Button";
 import Divider from "../../components/ui/Divider";
 import useApi from "../../hooks/useApi";
 import { toast } from "sonner";
-import PageHeader from "../../components/common/PageHeader";
 import { useNavigate } from "react-router-dom";
 import Page from "../../components/common/Page";
 import SmartSelect from "../../components/common/SmartSelect";
@@ -39,17 +27,16 @@ const JournalEntries = () => {
   const [focusedField, setFocusedField] = useState({ row: 0, field: "date" });
 
   const formatDateForDisplay = (isoDate) => {
-  if (!isoDate) return "";
-  const [year, month, day] = isoDate.split("-");
-  return `${day}-${month}-${year}`;
-};
+    if (!isoDate) return "";
+    const [year, month, day] = isoDate.split("-");
+    return `${day}-${month}-${year}`;
+  };
 
-const formatDisplayToISO = (displayDate) => {
-  if (!displayDate) return "";
-  const [day, month, year] = displayDate.split("-");
-  return `${year}-${month}-${day}`;
-};
-
+  const formatDisplayToISO = (displayDate) => {
+    if (!displayDate) return "";
+    const [day, month, year] = displayDate.split("-");
+    return `${year}-${month}-${day}`;
+  };
 
   const [currentRowIndex, setCurrentRowIndex] = useState(0);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
@@ -84,20 +71,15 @@ const formatDisplayToISO = (displayDate) => {
   const totalDebit = entries.reduce((sum, e) => sum + Number(e.debit || 0), 0);
   const totalCredit = entries.reduce(
     (sum, e) => sum + Number(e.credit || 0),
-    0
+    0,
   );
   const balanced = totalDebit === totalCredit && totalDebit > 0;
 
-  // Enhanced Auto-focus with multiple strategies
   useEffect(() => {
     if (hasAutoFocused) return;
 
     const focusDateField = () => {
       if (!dateInputRef.current) return;
-
-      console.log("Attempting to focus date field...");
-
-      // Multiple focus attempts with different strategies
       const focusStrategies = [
         () => {
           dateInputRef.current.focus();
@@ -128,7 +110,6 @@ const formatDisplayToISO = (displayDate) => {
         },
       ];
 
-      // Execute all focus strategies
       focusStrategies.forEach((strategy, index) => {
         setTimeout(strategy, index * 150);
       });
@@ -136,17 +117,14 @@ const formatDisplayToISO = (displayDate) => {
       setHasAutoFocused(true);
     };
 
-    // Focus immediately if component is ready
     focusDateField();
 
-    // Also focus when page becomes visible
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible" && !hasAutoFocused) {
         setTimeout(focusDateField, 200);
       }
     };
 
-    // Handle browser navigation (back/forward)
     const handlePageShow = (event) => {
       if (event.persisted && !hasAutoFocused) {
         setTimeout(focusDateField, 200);
@@ -162,14 +140,12 @@ const formatDisplayToISO = (displayDate) => {
     };
   }, [hasAutoFocused]);
 
-  // Reset auto-focus flag when component unmounts
   useEffect(() => {
     return () => {
       setHasAutoFocused(false);
     };
   }, []);
 
-  // Check if a row is complete
   const isRowComplete = (rowIndex) => {
     const row = entries[rowIndex];
     if (!row?.ledger) return false;
@@ -182,22 +158,17 @@ const formatDisplayToISO = (displayDate) => {
     return true;
   };
 
-  // Check if current row is the last row and complete
   const canAddNewRow = () => {
     return (
       currentRowIndex === fields.length - 1 && isRowComplete(currentRowIndex)
     );
   };
 
-  // Enhanced Keyboard shortcuts handler
   useEffect(() => {
     const handleKeyDown = (e) => {
-      // Don't trigger shortcuts when user is typing in inputs (except for Tab and Escape)
       if (e.target.tagName === "INPUT" && !["Tab", "Escape"].includes(e.key)) {
         return;
       }
-
-      // Ctrl+E for Date Picker (instead of Ctrl+T which opens new tab)
       if ((e.ctrlKey || e.metaKey) && e.key === "e") {
         e.preventDefault();
         if (dateInputRef.current) {
@@ -297,11 +268,11 @@ const formatDisplayToISO = (displayDate) => {
         }
       } else if (fieldName === "ledger" || fieldName === "subsidiary") {
         element = document.querySelector(
-          `[data-row="${rowIndex}"] .smart-select-${fieldName} input`
+          `[data-row="${rowIndex}"] .smart-select-${fieldName} input`,
         );
       } else {
         element = document.querySelector(
-          `[name="entries.${rowIndex}.${fieldName}"]`
+          `[name="entries.${rowIndex}.${fieldName}"]`,
         );
       }
 
@@ -318,7 +289,7 @@ const formatDisplayToISO = (displayDate) => {
   const handleTabNavigation = (
     currentRow,
     currentField,
-    isShiftTab = false
+    isShiftTab = false,
   ) => {
     const fieldOrder = ["date", "ledger", "subsidiary", "debit", "credit"];
     const row = entries[currentRow];
@@ -602,7 +573,7 @@ const formatDisplayToISO = (displayDate) => {
               <tbody>
                 {fields.map((field, index) => {
                   const subsidiaryType = watch(
-                    `entries.${index}.subsidiary_type`
+                    `entries.${index}.subsidiary_type`,
                   );
                   const isRowFocused = currentRowIndex === index;
 
@@ -648,13 +619,13 @@ const formatDisplayToISO = (displayDate) => {
                                 const type = getSubsidiaryType(selected);
                                 setValue(
                                   `entries.${index}.subsidiary_type`,
-                                  type
+                                  type,
                                 );
                                 setValue(`entries.${index}.subsidiary`, null);
                                 setTimeout(() => {
                                   focusField(
                                     index,
-                                    type ? "subsidiary" : "debit"
+                                    type ? "subsidiary" : "debit",
                                   );
                                 }, 100);
                               }}
@@ -665,7 +636,7 @@ const formatDisplayToISO = (displayDate) => {
                                   handleTabNavigation(
                                     index,
                                     "ledger",
-                                    e.shiftKey
+                                    e.shiftKey,
                                   );
                                 }
                               }}
@@ -703,7 +674,7 @@ const formatDisplayToISO = (displayDate) => {
                                     handleTabNavigation(
                                       index,
                                       "subsidiary",
-                                      e.shiftKey
+                                      e.shiftKey,
                                     );
                                   }
                                 }}
@@ -736,7 +707,7 @@ const formatDisplayToISO = (displayDate) => {
                                   handleTabNavigation(
                                     index,
                                     "debit",
-                                    e.shiftKey
+                                    e.shiftKey,
                                   );
                                 }
                               }}
@@ -772,7 +743,7 @@ const formatDisplayToISO = (displayDate) => {
                                   handleTabNavigation(
                                     index,
                                     "credit",
-                                    e.shiftKey
+                                    e.shiftKey,
                                   );
                                 }
                               }}
@@ -798,7 +769,7 @@ const formatDisplayToISO = (displayDate) => {
                               remove(index);
                               if (currentRowIndex >= index) {
                                 setCurrentRowIndex(
-                                  Math.max(0, currentRowIndex - 1)
+                                  Math.max(0, currentRowIndex - 1),
                                 );
                               }
                             }}

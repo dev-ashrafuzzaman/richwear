@@ -109,7 +109,6 @@ export default function PurchaseReturnCreatePage() {
       cashRefund,
       dueAdjust,
     };
-console.log("payload",payload)
     await request("/purchases/return", "POST", payload, {
       successMessage: "Purchase return completed successfully",
       onSuccess: () => {

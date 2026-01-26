@@ -47,7 +47,6 @@ const BalanceReportView = ({ type, title }) => {
             id: ledgerId,
           },
         });
-        console.log("id", response);
         if (response.data?.data) {
           setLedgerData(response.data.data);
         } else {
@@ -60,7 +59,6 @@ const BalanceReportView = ({ type, title }) => {
             type,
           },
         });
-        console.log('res',response)
         if (response.data?.data) {
           setLedgerData(response.data.data);
         } else {

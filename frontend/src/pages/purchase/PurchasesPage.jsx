@@ -37,8 +37,7 @@ const PurchasesPage = () => {
             label: "Return",
              icon: <RotateCcw size={14} />,
             onClick: (row) =>
-              // navigate(`/purchases/return/create?purchaseId=${row._id}`),
-            console.log('return')
+              navigate(`/purchases/return/create?purchaseId=${row._id}`),
           },
          
         ]}

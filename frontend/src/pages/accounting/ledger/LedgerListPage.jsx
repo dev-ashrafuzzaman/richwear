@@ -16,7 +16,6 @@ const LedgerListPage = () => {
       transform: (res) => res?.data ?? [],
     }
   );
-  console.log(data);
   return (
     <Page title="General Ledgers">
       {modals.addLedger?.isOpen && (

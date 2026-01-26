@@ -16,7 +16,6 @@ const TypesListPage = () => {
       transform: (res) => res?.data ?? [],
     }
   );
-  console.log("ss",data);
   return (
     <Page title="Account Types">
       {modals.addType?.isOpen && (

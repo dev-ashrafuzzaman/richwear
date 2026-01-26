@@ -14,23 +14,16 @@ const PurchaseInvoice = () => {
   /* ---------------- FETCH INVOICE ---------------- */
   useEffect(() => {
     request(`/purchases/${id}/`, "GET").then((res) => {
-      console.log("resss", res);
       setInvoice(res?.data);
     });
   }, [id]);
 
   if (!invoice) return <p>Loading invoice...</p>;
-console.log(invoice)
+
   /* ---------------- PRINT ---------------- */
-  // PurchaseInvoice.jsx (partial update)
   const handlePrint = () => {
-    // Get the invoice page element
     const invoiceElement = printRef.current;
-
-    // Clone the element to avoid affecting the original
     const clonedElement = invoiceElement.cloneNode(true);
-
-    // Remove print:hidden buttons from clone if any
     const buttons = clonedElement.querySelectorAll(".print\\:hidden, button");
     buttons.forEach((btn) => btn.remove());
 

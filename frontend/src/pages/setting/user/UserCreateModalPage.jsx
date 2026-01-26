@@ -22,7 +22,6 @@ import { useAuth } from "../../../context/useAuth";
 export default function UserCreatePage() {
   const { user } = useAuth();
   const permissions = user?.permissions || {};
-  console.log(permissions)
   const { request, loading } = useApi();
   const navigate = useNavigate();
   const {

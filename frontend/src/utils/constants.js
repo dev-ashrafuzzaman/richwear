@@ -49,6 +49,4 @@ export const Config = {
 export const isDevelopment = ENV === 'development';
 export const isStaging = ENV === 'staging';
 export const isProduction = ENV === 'production';
-
-console.log(`🔧 Loaded config for [${ENV}] environment`);
  

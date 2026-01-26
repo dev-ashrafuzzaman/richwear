@@ -5,7 +5,6 @@ import { motion } from "framer-motion";
 import Card from "../../components/ui/Card";
 import Input from "../../components/ui/Input";
 import Button from "../../components/ui/Button";
-import Divider from "../../components/ui/Divider";
 import Page from "../../components/common/Page";
 import useAxiosSecure from "../../hooks/useAxiosSecure";
 import { useNavigate } from "react-router-dom";
@@ -30,7 +29,6 @@ const TrialBalance = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // 🔹 Fetch Trial Balance Data
   const onSubmit = async (formData) => {
     if (!formData.TBDate) {
       return alert("Please select a Trial Balance Date first");
@@ -48,7 +46,6 @@ const TrialBalance = () => {
       }
 
       const res = await axiosSecure.get("/reports/trial-balance/", { params });
-      console.log("bal", res);
       if (res?.data?.data) {
         setTbData(res.data.data);
       } else {

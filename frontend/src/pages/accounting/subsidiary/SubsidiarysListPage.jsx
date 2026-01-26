@@ -23,7 +23,6 @@ const SubsidiarysListPage = ({ type }) => {
       transform: (res) => res?.data ?? [],
     },
   );
-  console.log(data);
   return (
     <Page title={type}>
       {modals.addSubsidiary?.isOpen && (

@@ -29,7 +29,6 @@ export default function CategoryCreateModal({ isOpen, setIsOpen, refetch }) {
   const level = useWatch({ control, name: "level" });
 
   const onSubmit = async (data) => {
-    console.log("data", data);
     if (data.level === 1) {
       data.parentId = null;
     }

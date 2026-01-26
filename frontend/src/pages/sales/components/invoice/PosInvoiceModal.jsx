@@ -59,17 +59,16 @@ export default function PosInvoiceModal({
     setTimeout(() => {
       try {
         win.print();
-      } catch {}
+      } catch {""}
     }, 100);
 
-    // 🔥 GUARANTEED CLEANUP
     setTimeout(() => {
       try {
         win.close();
-      } catch {}
+      } catch {""}
 
       setIsOpen(false);
-      onAfterClose?.(); // 🔥 SIGNAL POS IS READY AGAIN
+      onAfterClose?.(); 
     }, 1200);
   };
 

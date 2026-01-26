@@ -42,7 +42,6 @@ const Ledger = () => {
     queryKey: "journals",
     transform: (res) => res?.data ?? [],
   });
-  console.log("jor", data);
 
   const handleJournalModal = (id) => {
     if (!data?.length) return;
@@ -116,7 +115,6 @@ const Ledger = () => {
     };
     // Add subsidiary_id if selected (not mandatory)
     if (formData.subsidiary?.value) {
-      console.log("ss", formData.subsidiary?.value);
       params.subsidiary_id = formData.subsidiary.value;
     }
 
@@ -124,8 +122,6 @@ const Ledger = () => {
       const response = await axiosSecure.get(`/reports/gl/${ledgerId}/`, {
         params: params,
       });
-
-      console.log("✅ Direct fetch success:", response.data);
 
       if (response.data?.data) {
         setLedgerData(response.data.data);

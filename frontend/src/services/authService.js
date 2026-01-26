@@ -35,7 +35,6 @@ export const refreshApi = async () => {
 
 export const meApi = async (axiosSecure) => {
   const res = await axiosSecure.get("/users/me");
-  console.log("meApi",res)
   return res.data;
 };
 /* ===========================
