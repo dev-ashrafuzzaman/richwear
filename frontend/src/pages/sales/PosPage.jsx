@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import usePosCart from "./components/usePosCart";
 import PosItemSearch from "./components/PosItemSearch";
 import PosCart from "./components/PosCart";
@@ -35,8 +35,8 @@ export default function PosPage() {
   const confirmSale = async (payments) => {
     const payload = {
       type: "RETAIL",
-      customerId: customer,
-      salesmanId: salesman,
+      customerId: customer?._id,
+      salesmanId: salesman?._id,
 
       items: cart.map((i) => ({
         productId: i.productId,
@@ -49,14 +49,40 @@ export default function PosPage() {
       })),
 
       billDiscount,
-      payments,
+      payments: payments.map((p) => ({
+        method: p.method,
+        accountId: p.accountId,
+        amount: Number(p.amount),
+        reference: p.method === "Cash" ? "Hand Cash" : p.reference,
+      })),
     };
+    console.log("payload", payload);
     const res = await request("/sales", "POST", payload);
-    console.log("after sales",res)
+    console.log("after sales", res);
     setModalData(res.data);
     openModal("printPosInvoice");
     setPayOpen(false);
   };
+
+  useEffect(() => {
+    const handleKey = (e) => {
+      // Ctrl + Enter → Pay
+      if (e.ctrlKey && e.key === "Enter") {
+        e.preventDefault();
+
+        // ❌ If any modal already open → ignore
+        if (Object.values(modals).some((m) => m?.isOpen)) return;
+
+        // ❌ If cart empty → ignore
+        if (!cart.length) return;
+
+        setPayOpen(true);
+      }
+    };
+
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [cart.length, modals]);
 
   return (
     <>
@@ -67,9 +93,54 @@ export default function PosPage() {
           data={modalData}
         />
       )}
-      <div className="p-6 grid grid-cols-12 gap-6">
+      {/* POS Header – Professional UI/UX */}
+      <section className="">
+        <div className="bg-linear-to-r from-blue-50 to-indigo-50 border border-gray-200 rounded-2xl shadow-sm">
+          <div className="flex items-center justify-between px-8 py-5">
+            {/* Left Section */}
+            <div className="flex items-center gap-5">
+              <div className="w-14 h-14 rounded-2xl bg-linear-to-br from-blue-600 to-cyan-500 flex items-center justify-center shadow-md">
+                <svg
+                  className="w-7 h-7 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"
+                  />
+                </svg>
+              </div>
+
+              <div>
+                <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">
+                  Point of Sale
+                </h1>
+                <div className="mt-1 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-green-50 text-green-600 text-sm font-medium">
+                  <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                  Live Session Active
+                </div>
+              </div>
+            </div>
+
+            {/* Right Section */}
+            <div className="text-right">
+              <h2 className="text-xl font-bold text-gray-900 tracking-wide">
+                RICHWEAR
+              </h2>
+              <p className="mt-1 text-sm font-medium text-blue-600 uppercase tracking-wider">
+                Jhikargachha Outlet
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div className="py-2 grid grid-cols-12 gap-2">
         {/* LEFT */}
-        <div className="col-span-7 space-y-4">
+        <div className="col-span-8 space-y-2">
           <PosItemSearch onSelect={addItem} />
           <PosCart
             cart={cart}
@@ -81,10 +152,14 @@ export default function PosPage() {
         </div>
 
         {/* RIGHT */}
-        <div className="col-span-5 space-y-4">
-          <PosCustomerSelect value={customer} onChange={setCustomer} />
-          <PosSalesmanSelect value={salesman} onChange={setSalesman} />
+        <div className="col-span-4 space-y-2">
+          <div className="w-full bg-white border border-gray-200 rounded-xl p-4 shadow-lg">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-1">
+              <PosCustomerSelect value={customer} onChange={setCustomer} />
 
+              <PosSalesmanSelect value={salesman} onChange={setSalesman} />
+            </div>
+          </div>
           <PosSummary
             subtotal={subtotal}
             billDiscount={billDiscount}

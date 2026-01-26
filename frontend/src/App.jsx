@@ -106,6 +106,9 @@ const ActivityPage = React.lazy(
 const POSCreatePage = React.lazy(
   () => import("./pages/sales/PosPage"),
 );
+const SalesPage = React.lazy(
+  () => import("./pages/sales/SalesPage"),
+);
 
 export default function App() {
   return (
@@ -129,6 +132,7 @@ export default function App() {
           <Route path="/dashboard" element={<Dashboard />} />
 
           <Route path="/pos" element={<POSCreatePage />} />
+          <Route path="/sales" element={<SalesPage />} />
           <Route path="/settings/logs" element={<ActivityPage />} />
           <Route path="/hr/attendance" element={<AttendancePage />} />
           <Route path="/branches" element={<BranchesPage />} />

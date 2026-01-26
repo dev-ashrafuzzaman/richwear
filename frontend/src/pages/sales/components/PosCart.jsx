@@ -10,7 +10,7 @@ export default function PosCart({
   return (
     <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
       {/* Cart Header */}
-      <div className="px-6 py-4 border-b border-gray-100 bg-linear-to-r from-blue-50 to-indigo-50">
+      <div className="px-6 py-2 border-b border-gray-100 bg-linear-to-r from-blue-50 to-indigo-50">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-xl font-bold text-gray-900">Cart Items</h2>
@@ -60,12 +60,12 @@ export default function PosCart({
                     <div className="flex items-start gap-3">
                       <div className="w-10 h-10 bg-linear-to-br from-blue-100 to-indigo-100 rounded-lg flex items-center justify-center">
                         <span className="text-blue-600 font-semibold text-sm">
-                          {item.name.charAt(0)}
+                          {(item.productName || "").charAt(0)}
                         </span>
                       </div>
                       <div>
                         <h3 className="font-semibold text-gray-900 group-hover:text-blue-700 transition-colors">
-                          {item.name}
+                          {item.productName}
                         </h3>
                         <p className="text-xs text-gray-500 font-mono mt-0.5">
                           SKU: {item.sku}
@@ -73,7 +73,7 @@ export default function PosCart({
                         {isLowStock(item) && (
                           <div className="inline-flex items-center gap-1.5 px-2 py-1 mt-2 bg-red-50 border border-red-100 rounded-lg text-xs text-red-700 animate-pulse">
                             <div className="w-1.5 h-1.5 bg-red-500 rounded-full"></div>
-                            Low Stock
+                            Low Stock ({item.stockQty} left)
                           </div>
                         )}
                       </div>
@@ -194,11 +194,11 @@ export default function PosCart({
                 <div className="flex items-start gap-3">
                   <div className="w-12 h-12 bg-linear-to-br from-blue-100 to-indigo-100 rounded-xl flex items-center justify-center">
                     <span className="text-blue-600 font-bold">
-                      {item.name.charAt(0)}
+                      {(item.productName || "").charAt(0)}
                     </span>
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900">{item.name}</h3>
+                    <h3 className="font-semibold text-gray-900">{item.productName}</h3>
                     <p className="text-xs text-gray-500 font-mono mt-0.5">
                       SKU: {item.sku}
                     </p>

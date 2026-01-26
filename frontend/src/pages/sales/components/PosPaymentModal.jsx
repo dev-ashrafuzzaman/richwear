@@ -1,9 +1,11 @@
-import { useCallback } from "react";
-import Input from "../../../components/ui/Input";
-import Button from "../../../components/ui/Button";
+import { useEffect, useState } from "react";
+import { X, Plus, Check, Wallet, AlertCircle, CreditCard, Receipt } from "lucide-react";
 import useApi from "../../../hooks/useApi";
 import usePosPayment from "./usePosPayment";
-import AsyncSelectPos from "../../../components/ui/AsyncSelectPos";
+import Modal from "../../../components/modals/Modal";
+import Button from "../../../components/ui/Button";
+import Input from "../../../components/ui/Input";
+import SmartSelect from "../../../components/common/SmartSelect";
 
 export default function PosPaymentModal({
   open,
@@ -12,6 +14,29 @@ export default function PosPaymentModal({
   onConfirm,
 }) {
   const { request } = useApi();
+  const [cashAccount, setCashAccount] = useState(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    (async () => {
+      const res = await request(
+        "/sales/payment-methods",
+        "GET",
+        { code: "1001", limit: 1 },
+        { useToast: false }
+      );
+
+      if (res?.data?.length) {
+        const cash = res.data[0];
+        setCashAccount({
+          accountId: cash._id,
+          method: cash.name,
+          raw: cash,
+        });
+      }
+    })();
+  }, [open, request]);
 
   const {
     payments,
@@ -22,178 +47,216 @@ export default function PosPaymentModal({
     remaining,
     changeAmount,
     isValid,
-  } = usePosPayment(totalAmount);
+    markManualClear,
+    clearManualClear,
+  } = usePosPayment(totalAmount, cashAccount);
 
-  const loadPaymentMethods = useCallback(
-    async (search) => {
-      const res = await request(
-        "/sales/payment-methods",
-        "GET",
-        {
-          search,
-          parentCode: "1002",
-          limit: 10,
-        },
-        { useToast: false },
-      );
-      return res?.data?.map((m) => ({
-        label: `${m.code} - ${m.name}`,
-        value: m._id,
-        method: m.name,
-      }));
-    },
-    [request],
-  );
-
-  if (!open) return null;
+  const handleConfirm = () => {
+    onConfirm(payments);
+    onClose();
+  };
 
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-      <div 
-        className="bg-white w-full max-w-2xl rounded-xl shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 rounded-t-xl">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-2xl font-bold text-white">Payment</h2>
-              <p className="text-blue-100 mt-1">Complete the sale transaction</p>
-            </div>
-            <button
+    <Modal
+      isOpen={open}
+      setIsOpen={onClose}
+      title="Payment Processing"
+      size="2xl"
+      closeOnOverlayClick={false}
+      closeOnEsc={false}
+      footer={
+        <div className="flex justify-between w-full">
+          <div className="flex items-center gap-2 text-sm text-gray-500">
+            <Receipt className="w-4 h-4" />
+            <span>Receipt will be printed automatically</span>
+          </div>
+          
+          <div className="flex gap-3">
+            <Button
+              variant="outline"
               onClick={onClose}
-              className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-blue-500/30 transition-colors"
+              className="px-6"
             >
-              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+              Cancel
+            </Button>
+            
+            <Button
+              disabled={!isValid || remaining > 0}
+              onClick={handleConfirm}
+              variant="gradient"
+              className="px-8"
+            >
+              <div className="flex items-center gap-2">
+                <Check className="w-4 h-4" />
+                Confirm Sale
+              </div>
+            </Button>
+          </div>
+        </div>
+      }
+    >
+      <div className="space-y-6">
+        {/* Header Summary */}
+        <div className="bg-linear-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-xl p-5">
+          <div className="grid grid-cols-3 gap-4">
+            <div className="text-center">
+              <div className="text-sm text-gray-600">Total Amount</div>
+              <div className="text-2xl font-bold text-gray-900">BDT {totalAmount}</div>
+            </div>
+            <div className="text-center">
+              <div className="text-sm text-gray-600">Paid Amount</div>
+              <div className="text-2xl font-bold text-green-600">BDT {paidAmount}</div>
+            </div>
+            <div className="text-center">
+              <div className="text-sm text-gray-600">Remaining</div>
+              <div className={`text-2xl font-bold BDT {remaining > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                BDT {remaining}
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Body */}
-        <div className="p-6">
-          {/* Payment Methods */}
-          <div className="space-y-4">
+        {/* Payment Methods Section */}
+        <div>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold text-gray-800">Payment Methods</h3>
+            <Button
+              onClick={addPayment}
+              size="sm"
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              Add Payment
+            </Button>
+          </div>
+
+          <div className="space-y-4 max-h-75 overflow-y-auto pr-2">
             {payments.map((p, index) => (
-              <div 
-                key={index} 
-                className="grid grid-cols-12 gap-4 items-center p-4 bg-gray-50 rounded-lg border-2 border-gray-200"
+              <div
+                key={index}
+                className="bg-gray-50 border border-gray-200 rounded-lg p-4"
               >
-                <div className="col-span-4">
-                  <AsyncSelectPos
-                    loadOptions={loadPaymentMethods}
-                    value={
-                      p.accountId ? { value: p.accountId, label: p.method } : null
-                    }
-                    onChange={(opt) => {
-                      updatePayment(index, "accountId", opt.value);
-                      updatePayment(index, "method", opt.method);
-                    }}
-                    className="border-2 border-gray-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-200"
-                  />
-                </div>
+                <div className="grid grid-cols-12 gap-3 items-center">
+                  {/* Payment Method */}
+                  <div className="col-span-5">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Method
+                    </label>
+                    <SmartSelect
+                      customRoute="/sales/payment-methods"
+                      displayField={["name", "code"]}
+                      idField="_id"
+                      preLoad
+                      pageSize={10}
+                      extraParams={{
+                        parentCode: "1002",
+                        sort: "cash_first",
+                      }}
+                      placeholder="Select method"
+                      value={
+                        p.accountId
+                          ? {
+                              value: p.accountId,
+                              label: p.method,
+                              raw: p.raw,
+                            }
+                          : null
+                      }
+                      onChange={(opt) => {
+                        if (!opt) {
+                          markManualClear(index);
+                          updatePayment(index, "accountId", "");
+                          updatePayment(index, "method", "");
+                          updatePayment(index, "raw", null);
+                          return;
+                        }
 
-                <div className="col-span-3">
-                  <Input
-                    type="number"
-                    min={0}
-                    placeholder="Amount"
-                    value={p.amount}
-                    onChange={(e) =>
-                      updatePayment(index, "amount", Number(e.target.value))
-                    }
-                    className="border-2 border-gray-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-200 text-lg"
-                  />
-                </div>
+                        clearManualClear(index);
+                        updatePayment(index, "accountId", opt.value);
+                        updatePayment(index, "method", opt.raw.name);
+                        updatePayment(index, "raw", opt.raw);
+                      }}
+                    />
+                  </div>
 
-                <div className="col-span-4">
-                  <Input
-                    placeholder="Reference"
-                    value={p.reference}
-                    onChange={(e) =>
-                      updatePayment(index, "reference", e.target.value)
-                    }
-                    className="border-2 border-gray-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-200"
-                  />
-                </div>
+                  {/* Amount */}
+                  <div className="col-span-3">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Amount
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">BDT </span>
+                      <Input
+                        type="number"
+                        value={p.amount}
+                        onChange={(e) =>
+                          updatePayment(index, "amount", e.target.value)
+                        }
+                        inputClassName="pl-8 text-right"
+                        className="m-0"
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
 
-                <div className="col-span-1">
-                  {payments.length > 1 && (
-                    <button
-                      onClick={() => removePayment(index)}
-                      className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-red-100 text-gray-500 hover:text-red-600"
-                    >
-                      ✕
-                    </button>
-                  )}
+                  {/* Reference */}
+                  <div className="col-span-3">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Reference
+                    </label>
+                    <Input
+                      value={p.method === "Cash" ? "Cash" : p.reference}
+                      onChange={(e) =>
+                        updatePayment(index, "reference", e.target.value)
+                      }
+                      placeholder="Reference"
+                      className="m-0"
+                    />
+                  </div>
+
+                  {/* Remove Button */}
+                  <div className="col-span-1 flex justify-end">
+                    {payments.length > 1 && (
+                      <button
+                        onClick={() => removePayment(index)}
+                        className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
           </div>
+        </div>
 
-          {/* Add Payment Button */}
-          <button
-            onClick={addPayment}
-            className="mt-4 flex items-center gap-2 px-4 py-2 text-blue-600 hover:text-blue-700 font-medium"
-          >
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 3a1 1 0 00-1 1v5H4a1 1 0 100 2h5v5a1 1 0 102 0v-5h5a1 1 0 100-2h-5V4a1 1 0 00-1-1z" clipRule="evenodd" />
-            </svg>
-            Add Payment Method
-          </button>
-
-          {/* Summary */}
-          <div className="mt-8 p-5 bg-gradient-to-r from-blue-50 to-gray-50 rounded-xl border-2 border-gray-200">
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-gray-700 font-medium">Total Bill:</span>
-                <span className="text-2xl font-bold text-gray-900">৳{totalAmount}</span>
-              </div>
-              
-              <div className="flex justify-between items-center">
-                <span className="text-gray-700 font-medium">Paid Amount:</span>
-                <span className="text-xl font-semibold text-green-600">৳{paidAmount}</span>
-              </div>
-              
-              {remaining > 0 && (
-                <div className="flex justify-between items-center pt-3 border-t border-gray-300">
-                  <span className="text-gray-700 font-medium">Due Amount:</span>
-                  <span className="text-xl font-bold text-red-600">৳{remaining}</span>
+        {/* Warning Message - Due System Disabled */}
+        {remaining > 0 && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <div className="font-medium text-amber-800">Full Payment Required</div>
+                <div className="text-sm text-amber-700 mt-1">
+                  Due system is disabled. Please add payment to cover the remaining BDT {remaining}.
                 </div>
-              )}
-              
-              {changeAmount > 0 && (
-                <div className="flex justify-between items-center pt-3 border-t border-gray-300">
-                  <span className="text-gray-700 font-medium">Change:</span>
-                  <span className="text-xl font-bold text-green-600">৳{changeAmount}</span>
-                </div>
-              )}
+              </div>
             </div>
           </div>
+        )}
 
-          {/* Actions */}
-          <div className="mt-8 flex gap-4">
-            <Button 
-              className="flex-1 py-4 text-lg font-bold bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
-              onClick={() => onConfirm(payments)}
-            >
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              Confirm Sale
-            </Button>
-            
-            <Button 
-              variant="secondary" 
-              className="flex-1 py-4 text-lg border-2"
-              onClick={onClose}
-            >
-              Cancel
-            </Button>
+        {/* Change Amount */}
+        {changeAmount > 0 && (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div className="font-medium text-green-800">Change Amount</div>
+              <div className="text-lg font-bold text-green-700">BDT {changeAmount}</div>
+            </div>
           </div>
-        </div>
+        )}
       </div>
-    </div>
+    </Modal>
   );
 }

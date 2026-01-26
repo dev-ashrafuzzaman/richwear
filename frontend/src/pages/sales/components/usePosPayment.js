@@ -3,50 +3,45 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 const EMPTY_ROW = {
   method: "",
   accountId: "",
+  option: null, // 🔥 store SmartSelect option
   amount: 0,
   reference: "",
+  manualClear: false,
 };
 
-export default function usePosPayment(
-  totalAmount,
-  defaultCashAccount // { accountId, method }
-) {
+export default function usePosPayment(totalAmount, defaultCashAccount) {
   const [payments, setPayments] = useState([EMPTY_ROW]);
+  const [cashApplied, setCashApplied] = useState(false);
 
-  /* ------------------------------------------------
-   * Default Cash Auto Select
-   * ------------------------------------------------ */
+  /* 🔥 Apply CASH only once when fetched */
   useEffect(() => {
-    if (!defaultCashAccount) return;
+    if (!defaultCashAccount || cashApplied) return;
 
     setPayments([
       {
         ...EMPTY_ROW,
-        method: defaultCashAccount.method || "CASH",
+        method: defaultCashAccount.method,
         accountId: defaultCashAccount.accountId,
+        raw: defaultCashAccount.raw,
         amount: totalAmount,
       },
     ]);
-  }, [defaultCashAccount, totalAmount]);
 
-  /* ------------------------------------------------
-   * Paid & Change
-   * ------------------------------------------------ */
+    setCashApplied(true);
+  }, [defaultCashAccount, totalAmount, cashApplied]);
+
   const paidAmount = useMemo(
     () =>
       payments.reduce(
-        (sum, p) => sum + Math.max(Number(p.amount) || 0, 0),
+        (s, p) => s + Math.max(Number(p.amount) || 0, 0),
         0
       ),
     [payments]
   );
 
-  const changeAmount = Math.max(paidAmount - totalAmount, 0);
   const remaining = Math.max(totalAmount - paidAmount, 0);
+  const changeAmount = Math.max(paidAmount - totalAmount, 0);
 
-  /* ------------------------------------------------
-   * Add Payment (remaining auto-fill)
-   * ------------------------------------------------ */
   const addPayment = useCallback(() => {
     setPayments((prev) => [
       ...prev,
@@ -54,77 +49,62 @@ export default function usePosPayment(
         ...EMPTY_ROW,
         amount: Math.max(
           totalAmount -
-            prev.reduce(
-              (s, p) => s + (Number(p.amount) || 0),
-              0
-            ),
+            prev.reduce((s, p) => s + (Number(p.amount) || 0), 0),
           0
         ),
       },
     ]);
   }, [totalAmount]);
 
-  /* ------------------------------------------------
-   * Remove Payment
-   * ------------------------------------------------ */
   const removePayment = useCallback((index) => {
     setPayments((prev) => prev.filter((_, i) => i !== index));
   }, []);
 
-  /* ------------------------------------------------
-   * Update Payment (safe)
-   * ------------------------------------------------ */
-  const updatePayment = useCallback(
-    (index, field, value) => {
-      setPayments((prev) =>
-        prev.map((p, i) => {
-          if (i !== index) return p;
+  const markManualClear = useCallback((index) => {
+    setPayments((prev) =>
+      prev.map((p, i) =>
+        i === index ? { ...p, manualClear: true } : p
+      )
+    );
+  }, []);
 
-          // prevent duplicate account
-          if (
-            field === "accountId" &&
-            prev.some(
-              (x, idx) =>
-                idx !== index && x.accountId === value
-            )
-          ) {
-            return p;
-          }
+  const clearManualClear = useCallback((index) => {
+    setPayments((prev) =>
+      prev.map((p, i) =>
+        i === index ? { ...p, manualClear: false } : p
+      )
+    );
+  }, []);
 
-          if (field === "amount") {
-            value = Math.max(Number(value) || 0, 0);
-          }
+  const updatePayment = useCallback((index, field, value) => {
+    setPayments((prev) =>
+      prev.map((p, i) => {
+        if (i !== index) return p;
 
-          return { ...p, [field]: value };
-        })
-      );
-    },
-    []
-  );
+        if (
+          field === "accountId" &&
+          prev.some((x, idx) => idx !== index && x.accountId === value)
+        ) {
+          return p;
+        }
 
-  /* ------------------------------------------------
-   * FINAL VALIDATION (NO DUE ALLOWED)
-   * ------------------------------------------------ */
-const isValid = useMemo(() => {
-  // must have visible payment rows
-  if (!payments.length) return false;
+        if (field === "amount") {
+          value = Math.max(Number(value) || 0, 0);
+        }
 
-  // every row must be valid
-  const rowsValid = payments.every(
-    (p) =>
-      p.accountId &&
-      p.method &&
-      Number(p.amount) >= 0
-  );
+        return { ...p, [field]: value };
+      })
+    );
+  }, []);
 
-  if (!rowsValid) return false;
+  const isValid = useMemo(() => {
+    if (!payments.length) return false;
+    if (paidAmount < totalAmount) return false;
 
-  // ❌ no due allowed
-  if (paidAmount < totalAmount) return false;
-
-  return true;
-}, [payments, paidAmount, totalAmount]);
-
+    return payments.every(
+      (p) => p.accountId && p.method && p.amount >= 0
+    );
+  }, [payments, paidAmount, totalAmount]);
 
   return {
     payments,
@@ -133,7 +113,9 @@ const isValid = useMemo(() => {
     updatePayment,
     paidAmount,
     remaining,
-    changeAmount, // 🔥 NEW
+    changeAmount,
     isValid,
+    markManualClear,
+    clearManualClear,
   };
 }

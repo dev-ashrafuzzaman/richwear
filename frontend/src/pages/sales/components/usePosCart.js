@@ -1,19 +1,28 @@
 import { useCallback, useMemo, useState } from "react";
+import { toast } from "sonner";
 
-const LOW_STOCK_THRESHOLD = 5;
+const LOW_STOCK_THRESHOLD = 3;
 
 export default function usePosCart() {
   const [cart, setCart] = useState([]);
   const [billDiscount, setBillDiscount] = useState(0);
 
-  /* ---------------- Add Item ---------------- */
+  /* ---------------- Add Item (SCAN / SELECT) ---------------- */
   const addItem = useCallback((item) => {
     setCart((prev) => {
       const found = prev.find(
         (i) => i.variantId === item.variantId
       );
 
+      // 🔁 Same SKU scanned again
       if (found) {
+        if (found.qty + 1 > found.stockQty) {
+          toast.error(
+            `Only ${found.stockQty} item(s) available`
+          );
+          return prev;
+        }
+
         return prev.map((i) =>
           i.variantId === item.variantId
             ? { ...i, qty: i.qty + 1 }
@@ -21,17 +30,19 @@ export default function usePosCart() {
         );
       }
 
+      // ➕ New item
       return [
         ...prev,
         {
           productId: item.productId,
           variantId: item.variantId,
           sku: item.sku,
-          name: item.name,
+          productName: item.productName, // ✅ match backend
           salePrice: item.salePrice,
-          stockQty: item.qty,
+          stockQty: item.qty,            // 🔥 freeze stock
           qty: 1,
-          discountType: null,     // FIXED | PERCENT
+
+          discountType: null,             // FIXED | PERCENT
           discountValue: 0,
         },
       ];
@@ -39,46 +50,55 @@ export default function usePosCart() {
   }, []);
 
   /* ---------------- Update Qty ---------------- */
-  const updateQty = (variantId, qty) => {
+  const updateQty = useCallback((variantId, nextQty) => {
     setCart((prev) =>
-      prev.map((i) =>
-        i.variantId === variantId
-          ? { ...i, qty: Math.max(1, qty) }
-          : i
-      )
+      prev.map((i) => {
+        if (i.variantId !== variantId) return i;
+
+        let qty = Math.max(1, Number(nextQty) || 1);
+
+        if (qty > i.stockQty) {
+          toast.error(
+            `Only ${i.stockQty} item(s) available`
+          );
+          qty = i.stockQty;
+        }
+
+        return { ...i, qty };
+      })
     );
-  };
+  }, []);
 
   /* ---------------- Update Discount ---------------- */
-const updateDiscount = (variantId, field, value) => {
-  setCart((prev) =>
-    prev.map((i) => {
-      if (i.variantId !== variantId) return i;
+  const updateDiscount = useCallback((variantId, field, value) => {
+    setCart((prev) =>
+      prev.map((i) => {
+        if (i.variantId !== variantId) return i;
 
-      if (field === "discountType") {
+        if (field === "discountType") {
+          return {
+            ...i,
+            discountType: value || null,
+            discountValue: 0,
+          };
+        }
+
         return {
           ...i,
-          discountType: value,
-          discountValue: 0,
+          discountValue: Math.max(Number(value) || 0, 0),
         };
-      }
-
-      return {
-        ...i,
-        [field]: Math.max(Number(value) || 0, 0),
-      };
-    })
-  );
-};
+      })
+    );
+  }, []);
 
   /* ---------------- Remove Item ---------------- */
-  const removeItem = (variantId) => {
+  const removeItem = useCallback((variantId) => {
     setCart((prev) =>
       prev.filter((i) => i.variantId !== variantId)
     );
-  };
+  }, []);
 
-  /* ---------------- Subtotal (Item Discount Applied) ---------------- */
+  /* ---------------- Subtotal ---------------- */
   const subtotal = useMemo(() => {
     return cart.reduce((sum, i) => {
       let lineTotal = i.qty * i.salePrice;
@@ -98,9 +118,12 @@ const updateDiscount = (variantId, field, value) => {
   /* ---------------- Grand Total ---------------- */
   const grandTotal = Math.max(subtotal - billDiscount, 0);
 
-  /* ---------------- Stock Warning ---------------- */
-  const isLowStock = (item) =>
-    item.stockQty - item.qty <= LOW_STOCK_THRESHOLD;
+  /* ---------------- Low Stock ---------------- */
+  const isLowStock = useCallback(
+    (item) =>
+      item.stockQty - item.qty <= LOW_STOCK_THRESHOLD,
+    []
+  );
 
   return {
     cart,

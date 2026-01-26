@@ -16,7 +16,7 @@ export default function CustomerCreateModal({
   const {
     register,
     handleSubmit,
-    reset,
+    reset, 
     formState: { errors },
   } = useForm({
     defaultValues: {

@@ -11,55 +11,78 @@ import debounce from "lodash.debounce";
 import { toast } from "sonner";
 import useAxiosSecure from "../../hooks/useAxiosSecure";
 
+/* ---------------- Utils ---------------- */
+const isNumeric = (v) => /^[0-9]+$/.test(v);
+
 /**
- * SmartSelect – POS & ERP Grade
- * --------------------------------
- * ✔ Async pagination
+ * SmartSelect v2 – Clean & Optimized
+ * ----------------------------------
+ * ✔ Preload support
+ * ✔ POS barcode scan (ENTER)
+ * ✔ ERP async search
+ * ✔ Phone instant select
  * ✔ Infinite scroll
- * ✔ Barcode scan support
- * ✔ Request cache
- * ✔ ESLint clean
+ * ✔ Cache aware
+ * ✔ Keyboard-first
  */
 const SmartSelect = forwardRef(
   (
     {
+      /* API */
       customRoute,
+      extraParams = {},
+
+      /* Value */
       value,
       onChange,
+
+      /* UI */
       placeholder = "Search...",
+      disabled = false,
+
+      /* Mapping */
       displayField = ["name"],
       idField = "_id",
-      pageSize = 20,
-      disabled = false,
-      extraParams = {},        // additional query params
-      barcode = false,         // enable barcode scan
-      minBarcodeLength = 6,
+
+      /* Pagination */
+      pageSize = 10,
+
+      /* NEW */
+      preLoad = false,
+
+      /* POS */
+      barcode = false,
+      skuLength = 9,
+
+      /* ERP */
+      minSearchLength = 1,
+
+      /* Phone instant */
+      phoneInstant = false,
+      phoneLength = 10,
     },
-    ref
+    ref,
   ) => {
     const { axiosSecure } = useAxiosSecure();
 
-    /* -------------------- State -------------------- */
+    const selectRef = useRef(null);
+    const cacheRef = useRef(new Map());
+
+    const [menuOpen, setMenuOpen] = useState(false);
     const [options, setOptions] = useState([]);
     const [inputValue, setInputValue] = useState("");
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
     const [loading, setLoading] = useState(false);
 
-    /* -------------------- Refs -------------------- */
-    const cacheRef = useRef(new Map());
-    const barcodeTimer = useRef(null);
-
-    /* -------------------- Helpers -------------------- */
+    /* ---------------- Label Builder ---------------- */
     const getLabel = useCallback(
       (item) =>
-        Array.isArray(displayField)
-          ? displayField
-              .map((f) => item?.[f])
-              .filter(Boolean)
-              .join(" — ")
-          : item?.[displayField],
-      [displayField]
+        displayField
+          .map((f) => item?.[f])
+          .filter(Boolean)
+          .join(" — "),
+      [displayField],
     );
 
     const toOption = useCallback(
@@ -68,18 +91,13 @@ const SmartSelect = forwardRef(
         label: getLabel(item),
         raw: item,
       }),
-      [idField, getLabel]
+      [idField, getLabel],
     );
 
-    /* -------------------- API Fetch -------------------- */
+    /* ---------------- Fetch ---------------- */
     const fetchOptions = useCallback(
       async (search = "", pageNo = 1) => {
-        const cacheKey = JSON.stringify({
-          route: customRoute,
-          search,
-          pageNo,
-          extraParams,
-        });
+        const cacheKey = `${customRoute}_${search}_${pageNo}`;
 
         if (cacheRef.current.has(cacheKey)) {
           return cacheRef.current.get(cacheKey);
@@ -95,6 +113,7 @@ const SmartSelect = forwardRef(
               ...extraParams,
             },
           });
+
           const rows = res.data?.data || [];
           const mapped = rows.map(toOption);
 
@@ -109,28 +128,41 @@ const SmartSelect = forwardRef(
           setLoading(false);
         }
       },
-      [axiosSecure, customRoute, pageSize, extraParams, toOption]
+      [axiosSecure, customRoute, pageSize, extraParams, toOption],
     );
 
-    /* -------------------- Load Options (Debounced) -------------------- */
-    const loadOptions = useMemo(() => {
-      const fn = debounce(async (input, callback) => {
-        setPage(1);
-        const data = await fetchOptions(input, 1);
-        setOptions(data);
-        callback(data);
-      }, 300);
-
-      return fn;
-    }, [fetchOptions]);
-
-    /* Cleanup debounce */
+    /* ---------------- Preload ---------------- */
     useEffect(() => {
-      return () => loadOptions.cancel();
-    }, [loadOptions]);
+      if (!preLoad) return;
 
-    /* -------------------- Infinite Scroll -------------------- */
-    const handleMenuScrollToBottom = useCallback(async () => {
+      (async () => {
+        setPage(1);
+        const data = await fetchOptions("", 1);
+        setOptions(data);
+      })();
+    }, [preLoad, fetchOptions]);
+
+    /* ---------------- Async Loader ---------------- */
+    const loadOptions = useMemo(
+      () =>
+        debounce(async (input, cb) => {
+          if (!barcode && input.length < minSearchLength) {
+            cb(preLoad ? options : []);
+            return;
+          }
+
+          setPage(1);
+          const data = await fetchOptions(input, 1);
+          setOptions(data);
+          cb(data);
+        }, 300),
+      [fetchOptions, barcode, minSearchLength, preLoad, options],
+    );
+
+    useEffect(() => () => loadOptions.cancel(), [loadOptions]);
+
+    /* ---------------- Infinite Scroll ---------------- */
+    const handleScrollBottom = async () => {
       if (!hasMore || loading) return;
 
       const nextPage = page + 1;
@@ -138,57 +170,60 @@ const SmartSelect = forwardRef(
 
       setOptions((prev) => [...prev, ...more]);
       setPage(nextPage);
-    }, [hasMore, loading, page, inputValue, fetchOptions]);
+    };
 
-    /* -------------------- Barcode Select -------------------- */
-    const handleBarcodeSelect = useCallback(
-      async (value) => {
-        const data = await fetchOptions(value, 1);
+    /* ---------------- POS Barcode ---------------- */
+    const handleEnter = async () => {
+      if (!barcode || inputValue.length < skuLength) return;
 
-        if (data.length > 0) {
-          onChange(data[0]);
-          setInputValue("");
-        } else {
-          toast.error("Item not found");
-        }
-      },
-      [fetchOptions, onChange]
-    );
+      const result = await fetchOptions(inputValue, 1);
 
-    /* -------------------- Barcode Detection -------------------- */
-    useEffect(() => {
-      if (!barcode || !inputValue) return;
-
-      if (barcodeTimer.current) {
-        clearTimeout(barcodeTimer.current);
+      if (result.length) {
+        onChange(result[0]);
+      } else {
+        toast.error("Item not found");
       }
 
-      barcodeTimer.current = setTimeout(() => {
-        if (inputValue.length >= minBarcodeLength) {
-          handleBarcodeSelect(inputValue);
-        }
-      }, 60);
+      resetInput();
+    };
 
-      return () => {
-        if (barcodeTimer.current) {
-          clearTimeout(barcodeTimer.current);
-        }
-      };
-    }, [
-      inputValue,
-      barcode,
-      minBarcodeLength,
-      handleBarcodeSelect,
-    ]);
+    /* ---------------- Phone Instant ---------------- */
+    const handlePhoneInstant = useCallback(
+      async (val) => {
+        const result = await fetchOptions(val, 1);
 
-    /* -------------------- Render -------------------- */
+        if (result.length === 1) {
+          onChange(result[0]);
+          resetInput();
+        } else if (!result.length) {
+          toast.error("Customer not found");
+        }
+      },
+      [fetchOptions, onChange],
+    );
+
+    /* ---------------- Helpers ---------------- */
+    const resetInput = () => {
+      setInputValue("");
+      setMenuOpen(false);
+      selectRef.current?.blur();
+      selectRef.current?.focus();
+    };
+
+    /* ---------------- Render ---------------- */
     return (
       <AsyncSelect
-        ref={ref}
+        ref={(el) => {
+          selectRef.current = el;
+          if (ref) ref.current = el;
+        }}
+        menuIsOpen={menuOpen}
+        onMenuOpen={() => setMenuOpen(true)}
+        onMenuClose={() => setMenuOpen(false)}
         cacheOptions={false}
-        defaultOptions={options}
+        defaultOptions={preLoad ? options : false}
         loadOptions={loadOptions}
-        onMenuScrollToBottom={handleMenuScrollToBottom}
+        onMenuScrollToBottom={handleScrollBottom}
         value={value}
         onChange={onChange}
         placeholder={placeholder}
@@ -198,24 +233,32 @@ const SmartSelect = forwardRef(
         menuPosition="fixed"
         inputValue={inputValue}
         onInputChange={(val, meta) => {
-          if (meta.action === "input-change") setInputValue(val);
-          if (meta.action === "menu-close") setInputValue("");
+          if (meta.action !== "input-change") return;
+
+          setInputValue(val);
+
+          if (phoneInstant && isNumeric(val) && val.length >= phoneLength) {
+            handlePhoneInstant(val);
+          }
+        }}
+        onKeyDown={(e) => {
+          if (barcode && e.key === "Enter") {
+            e.preventDefault();
+            handleEnter();
+          }
         }}
         styles={{
           control: (base) => ({
             ...base,
-            minHeight: 40,
-            borderRadius: 8,
-            fontSize: 14,
+            minHeight: 42,
+            borderRadius: 10,
+            fontSize: 15,
           }),
-          menuPortal: (base) => ({
-            ...base,
-            zIndex: 9999,
-          }),
+          menuPortal: (base) => ({ ...base, zIndex: 9999 }),
         }}
       />
     );
-  }
+  },
 );
 
 export default React.memo(SmartSelect);
