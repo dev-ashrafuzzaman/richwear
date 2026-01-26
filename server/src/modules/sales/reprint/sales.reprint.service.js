@@ -1,8 +1,9 @@
 import { ObjectId } from "mongodb";
-
-export const reprintSaleService = async ({ db, saleId, invoiceNo }) => {
+export const reprintSaleService = async ({ db, saleId, invoiceNo, user }) => {
   /* ---------------- Sale ---------------- */
-  const saleQuery = saleId ? { _id: new ObjectId(saleId) } : { invoiceNo };
+  const saleQuery = saleId
+    ? { _id: new ObjectId(saleId) }
+    : { invoiceNo };
 
   const sale = await db.collection("sales").findOne(saleQuery);
 
@@ -24,7 +25,7 @@ export const reprintSaleService = async ({ db, saleId, invoiceNo }) => {
   }
 
   /* ---------------- Items ---------------- */
-  const items = await db
+  const saleItems = await db
     .collection("sale_items")
     .find({ saleId: sale._id })
     .toArray();
@@ -43,7 +44,7 @@ export const reprintSaleService = async ({ db, saleId, invoiceNo }) => {
   const vatRate = vatConfig ? Number(vatConfig.rate) : 0;
 
   /* =================================================
-   * 🔥 FINAL RESPONSE (SAME AS CREATE)
+   * 🔥 FINAL RESPONSE (100% SAME AS CREATE SALE)
    * ================================================= */
   return {
     success: true,
@@ -54,8 +55,9 @@ export const reprintSaleService = async ({ db, saleId, invoiceNo }) => {
         saleId: sale._id,
         invoiceNo: sale.invoiceNo,
         type: sale.type,
-        status: sale.status,
+        status: sale.status ,
         date: sale.createdAt,
+        createdBy: sale.createdBy || user?.name || "ERP SYSTEM",
       },
 
       branch: {
@@ -80,7 +82,7 @@ export const reprintSaleService = async ({ db, saleId, invoiceNo }) => {
             address: null,
           },
 
-      items: items.map((i) => ({
+      items: saleItems.map((i) => ({
         sku: i.sku,
         qty: i.qty,
         unitPrice: i.salePrice,
@@ -109,7 +111,7 @@ export const reprintSaleService = async ({ db, saleId, invoiceNo }) => {
         currency: "BDT",
         vatRate,
         footerNote: "Thank you for shopping with us!",
-        printedAt: new Date(),
+        printedAt: new Date(), // optional but useful
       },
     },
   };

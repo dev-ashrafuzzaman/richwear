@@ -34,9 +34,14 @@ async function upsertStock({
   session,
   branchId,
   variantId,
+  productId,
   sku,
+  productName,
+  attributes,
   qty,
+  salePrice,
   costPrice,
+  searchableText
 }) {
   const stock = await db
     .collection(COLLECTIONS.STOCKS)
@@ -47,6 +52,11 @@ async function upsertStock({
       {
         branchId,
         variantId,
+        productId,
+        productName,
+        attributes,
+        salePrice,
+        searchableText,
         sku,
         qty,
         avgCost: roundMoney(costPrice),
@@ -238,6 +248,11 @@ export const createPurchase = async ({ db, body, req }) => {
             session,
             branchId,
             variantId: variant._id,
+            productId: product._id,
+            productName: product.name,
+            attributes: variant.attributes,
+            salePrice: item.salePrice,
+            searchableText: `${product.name} ${product.productCode} ${variant.sku} ${size} ${color}`,
             sku: variant.sku,
             qty,
             costPrice: item.costPrice,
@@ -364,7 +379,7 @@ export const createPurchase = async ({ db, body, req }) => {
     throw error;
   } finally {
     await session.endSession();
-  }
+  } 
 };
 
 export const getAllPurchases = async (req, res, next) => {

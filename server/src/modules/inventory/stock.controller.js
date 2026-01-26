@@ -173,3 +173,100 @@ export const getAllStocks = async (req, res, next) => {
     next(err);
   }
 };
+
+const isNumeric = (val) => /^[0-9]+$/.test(val);
+export const getPosItems = async (req, res, next) => {
+  try {
+    const db = req.app.locals.db;
+
+    const {
+      search = "",
+      limit = 20,
+      lastSku,       // cursor pagination
+      lastId,
+    } = req.query;
+
+    /* ---------------- Resolve Branch ---------------- */
+    let branchId = req.user?.branchId;
+
+    if (!branchId && req.user?.isSuperAdmin) {
+      const main = await db.collection(COLLECTIONS.BRANCHES)
+        .findOne({ isMain: true }, { projection: { _id: 1 } });
+
+      if (!main) {
+        return res.status(400).json({
+          success: false,
+          message: "Main branch not found",
+        });
+      }
+      branchId = main._id;
+    }
+
+    if (!branchId) {
+      return res.status(400).json({
+        success: false,
+        message: "Branch unresolved",
+      });
+    }
+
+    /* ---------------- Match (SOURCE OF TRUTH) ---------------- */
+    const match = {
+      branchId: new ObjectId(branchId),
+      qty: { $gt: 0 },
+    };
+
+    /* ---------------- Search Strategy ---------------- */
+    if (search) {
+      // 🔥 Barcode / SKU mode
+      if (isNumeric(search) && search.length >= 6) {
+        match.sku = search;
+      } 
+      // 🔥 Typing mode (indexed)
+      else {
+        match.$text = { $search: search };
+      }
+    }
+
+    /* ---------------- Cursor Pagination ---------------- */
+    if (lastSku && lastId) {
+      match.$or = [
+        { sku: { $gt: lastSku } },
+        {
+          sku: lastSku,
+          _id: { $gt: new ObjectId(lastId) },
+        },
+      ];
+    }
+
+    /* ---------------- Query ---------------- */
+    const data = await db.collection(COLLECTIONS.STOCKS)
+      .find(match)
+      .sort({ sku: 1, _id: 1 })
+      .limit(Number(limit))
+      .project({
+        productId: 1,
+        variantId: 1,
+        sku: 1,
+        productName: 1,
+        attributes: 1,
+        salePrice: 1,
+        qty: 1,
+        unit: 1,
+      })
+      .toArray();
+
+    const last = data[data.length - 1];
+    res.json({
+      success: true,
+      data,
+      pagination: {
+        limit: Number(limit),
+        hasMore: data.length === Number(limit),
+        lastSku: last?.sku || null,
+        lastId: last?._id || null,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+};

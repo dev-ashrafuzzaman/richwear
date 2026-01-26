@@ -413,164 +413,32 @@ await db
   }
 };
 
-export const getPosItems = async (req, res, next) => {
-  try {
-    const db = req.app.locals.db;
-
-    const {
-      search = "",
-      page = 1,
-      limit = 20,
-    } = req.query;
-
-    const skip = (Number(page) - 1) * Number(limit);
-console.log("user",req.user)
-    /* ------------------------------------------------
-     * Resolve Branch
-     * ------------------------------------------------ */
-    let branchId = req.user?.branchId || null;
-
-    // Super Admin → Main Warehouse
-    if (!branchId && req.user?.isSuperAdmin === true) {
-      const mainBranch = await db
-        .collection(COLLECTIONS.BRANCHES)
-        .findOne(
-          { isMain: true },
-          { projection: { _id: 1 } }
-        );
-
-      if (!mainBranch) {
-        return res.status(400).json({
-          success: false,
-          message: "Main warehouse branch not found",
-        });
-      }
-
-      branchId = mainBranch._id;
-    }
-
-    if (!branchId) {
-      return res.status(400).json({
-        success: false,
-        message: "Branch could not be resolved",
-      });
-    }
-
-    /* ------------------------------------------------
-     * STOCK Match (Source of truth)
-     * ------------------------------------------------ */
-    const stockMatch = {
-      branchId: new ObjectId(branchId),
-      qty: { $gt: 0 }, // 🔒 sellable only
-    };
-
-    if (search) {
-      stockMatch.sku = { $regex: search, $options: "i" };
-    }
-
-    /* ------------------------------------------------
-     * Aggregation Pipeline
-     * ------------------------------------------------ */
-    const pipeline = [
-      /* 1️⃣ STOCK */
-      { $match: stockMatch },
-
-      /* 2️⃣ VARIANT */
-      {
-        $lookup: {
-          from: COLLECTIONS.VARIANTS,
-          localField: "variantId",
-          foreignField: "_id",
-          as: "variant",
-        },
-      },
-      { $unwind: "$variant" },
-
-      /* 3️⃣ PRODUCT */
-      {
-        $lookup: {
-          from: COLLECTIONS.PRODUCTS,
-          localField: "variant.productId",
-          foreignField: "_id",
-          as: "product",
-        },
-      },
-      { $unwind: "$product" },
-
-      /* 4️⃣ Status validation */
-      {
-        $match: {
-          "variant.status": "active",
-          "product.status": "active",
-        },
-      },
-
-      /* 5️⃣ POS Projection (CLEAN) */
-      {
-        $project: {
-          _id: 0,
-
-          stockId: "$_id",
-          variantId: "$variant._id",
-          productId: "$product._id",
-
-          sku: "$variant.sku",
-          name: "$product.name",
-
-          qty: "$qty",                // stock qty
-          salePrice: "$variant.salePrice",
-
-          attributes: "$variant.attributes",
-
-          unit: "$product.unit",
-        },
-      },
-
-      { $sort: { name: 1 } },
-      { $skip: skip },
-      { $limit: Number(limit) },
-    ];
-
-    const data = await db
-      .collection(COLLECTIONS.STOCKS)
-      .aggregate(pipeline)
-      .toArray();
-
-    /* ------------------------------------------------
-     * Total Count (for pagination)
-     * ------------------------------------------------ */
-    const total = await db
-      .collection(COLLECTIONS.STOCKS)
-      .countDocuments(stockMatch);
-
-    res.json({
-      success: true,
-      pagination: {
-        page: Number(page),
-        limit: Number(limit),
-        total,
-        hasMore: skip + data.length < total,
-      },
-      data
-    });
-  } catch (err) {
-    next(err);
-  }
-};
 
 export const getPaymentMethods = async (req, res, next) => {
   const db = req.app.locals.db;
   const { parentCode, search = "", page = 1, limit = 20 } = req.query;
 
-  const skip = (page - 1) * limit;
+  const skip = (page - 1) * Number(limit);
 
+  /* ----------------------------------------
+   * Find parent account (e.g. 1002)
+   * ---------------------------------------- */
   const parent = await db.collection(COLLECTIONS.ACCOUNTS).findOne({
     code: parentCode,
     status: "ACTIVE",
   });
 
-  if (!parent) return res.json({ success: true, data: [] });
+  if (!parent) {
+    return res.json({
+      success: true,
+      data: [],
+      pagination: { page: 1, limit, total: 0, hasMore: false },
+    });
+  }
 
+  /* ----------------------------------------
+   * Base match (NON-CASH)
+   * ---------------------------------------- */
   const match = {
     parentId: parent._id,
     status: "ACTIVE",
@@ -583,14 +451,52 @@ export const getPaymentMethods = async (req, res, next) => {
     ];
   }
 
-  const cursor = db.collection(COLLECTIONS.ACCOUNTS)
-    .find(match)
-    .sort({ name: 1 })
-    .skip(skip)
-    .limit(Number(limit));
+  /* ----------------------------------------
+   * CASH condition (special)
+   * ---------------------------------------- */
+  const cashMatch = {
+    code: "1001",
+    status: "ACTIVE",
+    ...(search && {
+      $or: [
+        { name: { $regex: search, $options: "i" } },
+        { code: { $regex: search, $options: "i" } },
+      ],
+    }),
+  };
 
-  const data = await cursor.toArray();
-  const total = await db.collection(COLLECTIONS.ACCOUNTS).countDocuments(match);
+  /* ----------------------------------------
+   * Aggregation (Cash first)
+   * ---------------------------------------- */
+  const pipeline = [
+    {
+      $match: {
+        $or: [cashMatch, match],
+      },
+    },
+    {
+      $addFields: {
+        __order: {
+          $cond: [{ $eq: ["$code", "1001"] }, 0, 1],
+        },
+      },
+    },
+    { $sort: { __order: 1, name: 1 } },
+    { $skip: skip },
+    { $limit: Number(limit) },
+  ];
+
+  const data = await db
+    .collection(COLLECTIONS.ACCOUNTS)
+    .aggregate(pipeline)
+    .toArray();
+
+  /* ----------------------------------------
+   * Total count
+   * ---------------------------------------- */
+  const total = await db.collection(COLLECTIONS.ACCOUNTS).countDocuments({
+    $or: [cashMatch, match],
+  });
 
   res.json({
     success: true,

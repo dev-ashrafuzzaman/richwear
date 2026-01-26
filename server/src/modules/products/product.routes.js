@@ -22,6 +22,7 @@ import { permit } from "../../middlewares/permission.middleware.js";
 import { PERMISSIONS } from "../../config/permissions.js";
 import { COLLECTIONS } from "../../database/collections.js";
 import { attachSession } from "../../middlewares/attachSession.js";
+import { getProducts } from "./product.controller.js";
 
 const router = Router();
 const COLLECTION = COLLECTIONS.PRODUCTS;
@@ -50,14 +51,20 @@ router.post(
   })
 );
 
+// router.get(
+//   "/",
+//   permit(PERMISSIONS.PRODUCT_VIEW),
+//   getAll({
+//     collection: COLLECTION,
+//     searchableFields: ["name", "sku", "brand"],
+//     filterableFields: ["status", "categoryId"]
+//   })
+// );
+
 router.get(
   "/",
   permit(PERMISSIONS.PRODUCT_VIEW),
-  getAll({
-    collection: COLLECTION,
-    searchableFields: ["name", "sku", "brand"],
-    filterableFields: ["status", "categoryId"]
-  })
+  getProducts
 );
 router.get(
   "/types",

@@ -9,7 +9,8 @@ import {
 
 import { beforeCreateSale } from "./sales.hook.js";
 import { createSale } from "./sales.controller.js";
-import { getPaymentMethods, getPosItems } from "./sales.service.js";
+import { getPaymentMethods } from "./sales.service.js";
+import { getAll } from "../../controllers/base.controller.js";
 
 const router = Router();
 
@@ -27,6 +28,15 @@ router.get(
   permit(PERMISSIONS.SALES_VIEW),
   reprintSale,
 );
+router.get(
+  "/",
+  permit(PERMISSIONS.SALE_VIEW),
+  getAll({
+    collection: "sales",
+    searchableFields: ["name", "invoiceNo"],
+    filterableFields: ["status", "type"]
+  })
+);
 
 router.get(
   "/reprint/:invoiceNo",
@@ -34,12 +44,7 @@ router.get(
   reprintSaleByInvoice,
 );
 
-// POS CONTROLLER
-router.get(
-  "/pos-items",
-  permit(PERMISSIONS.SALES_VIEW),
-  getPosItems,
-);
+
 router.get(
   "/payment-methods",
   permit(PERMISSIONS.SALES_VIEW),
