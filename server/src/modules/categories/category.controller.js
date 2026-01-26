@@ -1,4 +1,5 @@
 import { ObjectId } from "mongodb";
+import { formatDocuments } from "../../utils/formatedDocument.js";
 
 export const getCategories = () => {
   return async (req, res, next) => {
@@ -68,7 +69,7 @@ export const getCategories = () => {
           totalPages: Math.ceil(total / limit),
           hasMore: skip + data.length < total,
         },
-        data,
+        data: formatDocuments(data),
       });
     } catch (err) {
       next(err);

@@ -157,6 +157,7 @@ export const getProducts = async (req, res, next) => {
                 brand: 1,
                 productCode: 1,
                 unit: 1,
+                status: 1,
                 defaultCostPrice: 1,
                 defaultSalePrice: 1,
                 sizeConfig: 1,
