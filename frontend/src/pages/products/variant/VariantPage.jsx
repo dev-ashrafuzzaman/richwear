@@ -45,9 +45,7 @@ const VariantPage = () => {
                     {r.category.parent.name} →
                   </span>
                 )}
-                <strong className="ml-1">
-                  {r.category?.sub?.name}
-                </strong>
+                <strong className="ml-1">{r.category?.sub?.name}</strong>
               </span>
             ),
           },
@@ -84,19 +82,21 @@ const VariantPage = () => {
           },
           { key: "createdAt", label: "Created At" },
         ]}
-        actions={[
-          // { type: "edit", label: "Edit" },
-          // {
-          //   type: "status",
-          //   label: "Change Status",
-          //   api: (row) => `/variants/${row._id}/status`,
-          // },
-          // {
-          //   type: "delete",
-          //   label: "Delete",
-          //   api: (row) => `/variants/${row._id}`,
-          // },
-        ]}
+        actions={
+          [
+            // { type: "edit", label: "Edit" },
+            // {
+            //   type: "status",
+            //   label: "Change Status",
+            //   api: (row) => `/variants/${row._id}/status`,
+            // },
+            // {
+            //   type: "delete",
+            //   label: "Delete",
+            //   api: (row) => `/variants/${row._id}`,
+            // },
+          ]
+        }
       />
     </Page>
   );

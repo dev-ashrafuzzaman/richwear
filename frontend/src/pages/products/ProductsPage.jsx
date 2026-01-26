@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import DataTable from "../../components/table/DataTable";
 import useModalManager from "../../hooks/useModalManager";
 import useTableManager from "../../hooks/useTableManager";
@@ -8,7 +7,6 @@ import ProductCreateModal from "./ProductCreateModal";
 const ProductsPage = () => {
   const { modals, openModal, closeModal } = useModalManager();
   const table = useTableManager("/products");
-console.log(table)
   return (
     <Page title="Products" subTitle="Manage your organization products">
       {modals.addProduct?.isOpen && (
@@ -33,19 +31,15 @@ console.log(table)
           { key: "productCode", label: "productCode" },
           { key: "name", label: "Name" },
           { key: "unit", label: "Unit" },
-        {
+          {
             key: "category",
             label: "Category",
             render: (r) => (
               <span className="text-sm">
-                {r.category?.parent&& (
-                  <span className="text-gray-500">
-                    {r.category.parent} →
-                  </span>
+                {r.category?.parent && (
+                  <span className="text-gray-500">{r.category.parent} →</span>
                 )}
-                <strong className="ml-1">
-                  {r.category?.sub}
-                </strong>
+                <strong className="ml-1">{r.category?.sub}</strong>
               </span>
             ),
           },

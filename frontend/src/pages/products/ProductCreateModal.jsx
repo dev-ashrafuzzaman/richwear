@@ -1,5 +1,5 @@
 import { useForm, Controller, useWatch } from "react-hook-form";
-import { Loader2, ChevronRight } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 import Modal from "../../components/modals/Modal";
 import Button from "../../components/ui/Button";

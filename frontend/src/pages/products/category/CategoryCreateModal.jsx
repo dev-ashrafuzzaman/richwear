@@ -11,7 +11,6 @@ import Select from "../../../components/ui/Select";
 export default function CategoryCreateModal({ isOpen, setIsOpen, refetch }) {
   const { request, loading } = useApi();
 
-  // fetch level 1 categories for parent
   const parentTable = useTableManager("/categories?level=1");
   const {
     register,
@@ -30,7 +29,7 @@ export default function CategoryCreateModal({ isOpen, setIsOpen, refetch }) {
   const level = useWatch({ control, name: "level" });
 
   const onSubmit = async (data) => {
-    console.log("data",data)
+    console.log("data", data);
     if (data.level === 1) {
       data.parentId = null;
     }
@@ -67,7 +66,6 @@ export default function CategoryCreateModal({ isOpen, setIsOpen, refetch }) {
         </div>
       }>
       <div className="flex flex-col gap-4">
-        {/* Level */}
         <Controller
           name="level"
           control={control}
@@ -86,7 +84,6 @@ export default function CategoryCreateModal({ isOpen, setIsOpen, refetch }) {
           )}
         />
 
-        {/* Parent Category (only if level > 1) */}
         {level > 1 && (
           <Controller
             name="parentId"
@@ -106,7 +103,6 @@ export default function CategoryCreateModal({ isOpen, setIsOpen, refetch }) {
           />
         )}
 
-        {/* Name */}
         <Input
           label="Category Name"
           placeholder="Men's Wear"

@@ -8,7 +8,6 @@ const CategoriesPage = () => {
   const { modals, openModal, closeModal } = useModalManager();
   const table = useTableManager("/categories");
 
-
   return (
     <Page title="Categories" subTitle="Manage your organization categories">
       {modals.addCategory?.isOpen && (
@@ -54,19 +53,21 @@ const CategoriesPage = () => {
             label: "Created At",
           },
         ]}
-        actions={[
-          // { type: "edit", label: "Edit" },
-          // {
-          //   type: "status",
-          //   label: "Change Status",
-          //   api: (row) => `/categories/${row._id}/status`,
-          // },
-          // {
-          //   type: "delete",
-          //   label: "Delete",
-          //   api: (row) => `/categories/${row._id}`,
-          // },
-        ]}
+        actions={
+          [
+            // { type: "edit", label: "Edit" },
+            // {
+            //   type: "status",
+            //   label: "Change Status",
+            //   api: (row) => `/categories/${row._id}/status`,
+            // },
+            // {
+            //   type: "delete",
+            //   label: "Delete",
+            //   api: (row) => `/categories/${row._id}`,
+            // },
+          ]
+        }
       />
     </Page>
   );

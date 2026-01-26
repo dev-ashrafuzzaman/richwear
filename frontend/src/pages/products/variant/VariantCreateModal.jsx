@@ -3,7 +3,6 @@ import { Loader2 } from "lucide-react";
 import useApi from "../../../hooks/useApi";
 import Modal from "../../../components/modals/Modal";
 import Button from "../../../components/ui/Button";
-import Input from "../../../components/ui/Input";
 import Checkbox from "../../../components/ui/Checkbox";
 import AsyncSelect from "../../../components/ui/AsyncSelect";
 
@@ -30,50 +29,48 @@ export default function VariantCreateModal({ isOpen, setIsOpen, refetch }) {
   const color = useWatch({ control, name: "color" });
   const confirmed = useWatch({ control, name: "confirm" });
 
-const loadProducts = async (search) => {
- 
-  const res = await request(
-    "/products",
-    "GET",
-    { search, limit: 10 },
-    { useToast: false }   // 🔕 important
-  );
+  const loadProducts = async (search) => {
+    const res = await request(
+      "/products",
+      "GET",
+      { search, limit: 10 },
+      { useToast: false },
+    );
 
-     console.log("res", res);
-  return res?.data?.map((p) => ({
-    label: p.name,
-    value: p._id,
-  }));
-};
+    console.log("res", res);
+    return res?.data?.map((p) => ({
+      label: p.name,
+      value: p._id,
+    }));
+  };
 
-const loadSizes = async (search) => {
-  const res = await request(
-    "/variants/attributes",
-    "GET",
-    { type: "size", search },
-    { useToast: false }
-  );
+  const loadSizes = async (search) => {
+    const res = await request(
+      "/variants/attributes",
+      "GET",
+      { type: "size", search },
+      { useToast: false },
+    );
 
-  return res?.data?.map((s) => ({
-    label: s.name,
-    value: s.name,
-  }));
-};
+    return res?.data?.map((s) => ({
+      label: s.name,
+      value: s.name,
+    }));
+  };
 
-const loadColors = async (search) => {
-  const res = await request(
-    "/variants/attributes",
-    "GET",
-    { type: "color", search },
-    { useToast: false }
-  );
+  const loadColors = async (search) => {
+    const res = await request(
+      "/variants/attributes",
+      "GET",
+      { type: "color", search },
+      { useToast: false },
+    );
 
-  return res?.data?.map((c) => ({
-    label: c.name,
-    value: c.name,
-  }));
-};
-
+    return res?.data?.map((c) => ({
+      label: c.name,
+      value: c.name,
+    }));
+  };
 
   /* 📦 Submit */
   const onSubmit = async (data) => {
@@ -94,7 +91,7 @@ const loadColors = async (search) => {
           setIsOpen(false);
           refetch();
         },
-      }
+      },
     );
   };
 
@@ -114,16 +111,12 @@ const loadColors = async (search) => {
             onClick={handleSubmit(onSubmit)}
             disabled={!confirmed || loading}
             prefix={loading && <Loader2 className="w-4 h-4 animate-spin" />}
-            variant="gradient"
-          >
+            variant="gradient">
             Create Variant
           </Button>
         </div>
-      }
-    >
+      }>
       <div className="flex flex-col gap-4">
-
-        {/* 🔍 Product Search */}
         <Controller
           name="productId"
           control={control}
@@ -140,7 +133,6 @@ const loadColors = async (search) => {
           )}
         />
 
-        {/* 📏 Size */}
         <Controller
           name="size"
           control={control}
@@ -158,7 +150,6 @@ const loadColors = async (search) => {
           )}
         />
 
-        {/* 🎨 Color */}
         <Controller
           name="color"
           control={control}
@@ -176,7 +167,6 @@ const loadColors = async (search) => {
           )}
         />
 
-        {/* ✅ Confirmation */}
         <Controller
           name="confirm"
           control={control}
