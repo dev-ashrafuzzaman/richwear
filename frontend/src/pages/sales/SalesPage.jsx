@@ -11,7 +11,7 @@ const SalesPage = () => {
   const { modals, openModal, closeModal } = useModalManager();
   const [invoiceData, setInvoiceData] = useState(null);
   const table = useTableManager("/sales");
-  const { request, loading } = useApi();
+  const { request } = useApi();
   const handlePrintInvoice = async (row) => {
     try {
       const saleId =row._id;
@@ -48,8 +48,9 @@ const SalesPage = () => {
         table={table}
         title="Sales"
         columns={[
-          { key: "code", label: "Code" },
-          { key: "name", label: "Name" },
+          { key: "invoiceNo", label: "Invoice" },
+          { key: "grandTotal", label: "Grand Total" },
+          { key: "createdAt", label: "Created At" },
           {
             key: "status",
             label: "Status",

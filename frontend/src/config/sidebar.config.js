@@ -53,7 +53,7 @@ export const SIDEBAR_MENU = [
         submenu: [
           { title: "Sales Manage", to: "/sales" },
           { title: "Sales Return", to: "/sales/return" },
-          { title: "Customer Statement", to: "/sales/statements" },
+          // { title: "Customer Statement", to: "/sales/statements" },
         ],
       },
     ],

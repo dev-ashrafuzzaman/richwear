@@ -9,7 +9,7 @@ export default function PaginationBar({ pagination = {}, setQuery }) {
   if (!totalPages || totalPages <= 1) return null;
 
   return (
-    <div className="bg-white p-3 border rounded-lg flex justify-between items-center">
+    <div className="bg-white p-3 border border-gray-100 rounded-lg flex justify-between items-center">
       <span className="text-sm text-gray-500">
         Page {page} of {totalPages} • {total} records
       </span>
@@ -18,7 +18,7 @@ export default function PaginationBar({ pagination = {}, setQuery }) {
         <select
           value={limit}
           onChange={(e) => setQuery("limit", Number(e.target.value))}
-          className="border px-2 py-1 rounded text-sm"
+          className="border border-gray-200 px-2 py-1.5 rounded text-sm"
         >
           {[10, 25, 50, 100].map((l) => (
             <option key={l} value={l}>
@@ -30,7 +30,7 @@ export default function PaginationBar({ pagination = {}, setQuery }) {
         <button
           disabled={page <= 1}
           onClick={() => setQuery("page", page - 1)}
-          className="border px-3 py-1 rounded disabled:opacity-50"
+          className="border border-gray-200 px-3 hover:border-gray-500 py-1 rounded disabled:opacity-50"
         >
           Prev
         </button>
@@ -38,7 +38,7 @@ export default function PaginationBar({ pagination = {}, setQuery }) {
         <button
           disabled={page >= totalPages}
           onClick={() => setQuery("page", page + 1)}
-          className="border px-3 py-1 rounded disabled:opacity-50"
+          className="border border-gray-200 hover:border-gray-500 px-3 py-1 rounded disabled:opacity-50"
         >
           Next
         </button>
