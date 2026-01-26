@@ -22,7 +22,7 @@ import { permit } from "../../middlewares/permission.middleware.js";
 import { PERMISSIONS } from "../../config/permissions.js";
 import { COLLECTIONS } from "../../database/collections.js";
 import { attachSession } from "../../middlewares/attachSession.js";
-import { getProducts } from "./product.controller.js";
+import { getProducts, getProductsForPurchase } from "./product.controller.js";
 
 const router = Router();
 const COLLECTION = COLLECTIONS.PRODUCTS;
@@ -65,6 +65,11 @@ router.get(
   "/",
   permit(PERMISSIONS.PRODUCT_VIEW),
   getProducts
+);
+router.get(
+  "/purchase",
+  permit(PERMISSIONS.PRODUCT_VIEW),
+  getProductsForPurchase
 );
 router.get(
   "/types",

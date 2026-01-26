@@ -29,6 +29,20 @@ const toId = (id, label) => {
 /* ---------------------------------------
   Stock Upsert (AVG Cost Safe)
 ---------------------------------------- */
+const resolvePrice = (item, variant) => {
+  if (item.pricingMode === "GLOBAL") {
+    return {
+      costPrice: item.globalPrice.costPrice,
+      salePrice: item.globalPrice.salePrice,
+    };
+  }
+
+  return {
+    costPrice: variant.costPrice,
+    salePrice: variant.salePrice,
+  };
+};
+
 async function upsertStock({
   db,
   session,
@@ -41,45 +55,92 @@ async function upsertStock({
   qty,
   salePrice,
   costPrice,
-  searchableText
+  searchableText,
 }) {
-  const stock = await db
-    .collection(COLLECTIONS.STOCKS)
-    .findOne({ branchId, variantId }, { session });
-
-  if (!stock) {
-    await db.collection(COLLECTIONS.STOCKS).insertOne(
-      {
-        branchId,
-        variantId,
-        productId,
-        productName,
-        attributes,
-        salePrice,
-        searchableText,
-        sku,
-        qty,
-        avgCost: roundMoney(costPrice),
-        createdAt: new Date(),
-      },
-      { session },
-    );
-  } else {
-    const newQty = stock.qty + qty;
-    const newAvg = (stock.qty * stock.avgCost + qty * costPrice) / newQty;
-
-    await db.collection(COLLECTIONS.STOCKS).updateOne(
-      { _id: stock._id },
+  const result = await db.collection(COLLECTIONS.STOCKS).findOneAndUpdate(
+    { branchId, variantId },
+    [
       {
         $set: {
-          qty: newQty,
-          avgCost: roundMoney(newAvg),
+          branchId,
+          variantId,
+          productId,
+          productName,
+          attributes,
+          sku,
+          searchableText,
+          salePrice,
           updatedAt: new Date(),
         },
       },
-      { session },
-    );
-  }
+      {
+        $set: {
+          qty: {
+            $add: [{ $ifNull: ["$qty", 0] }, qty],
+          },
+          avgCost: {
+            $round: [
+              {
+                $divide: [
+                  {
+                    $add: [
+                      {
+                        $multiply: [
+                          { $ifNull: ["$qty", 0] },
+                          { $ifNull: ["$avgCost", 0] },
+                        ],
+                      },
+                      { $multiply: [qty, costPrice] },
+                    ],
+                  },
+                  {
+                    $add: [{ $ifNull: ["$qty", 0] }, qty],
+                  },
+                ],
+              },
+              2,
+            ],
+          },
+        },
+      },
+    ],
+    {
+      upsert: true,
+      returnDocument: "after",
+      session,
+    },
+  );
+
+  /* ======================
+     SAFE BALANCE QTY
+  ====================== */
+  const balanceQty =
+    result.value?.qty ??
+    (
+      await db
+        .collection(COLLECTIONS.STOCKS)
+        .findOne({ branchId, variantId }, { session })
+    )?.qty ??
+    qty;
+
+  /* ======================
+     STOCK MOVEMENT LOG
+  ====================== */
+  await db.collection(COLLECTIONS.STOCK_MOVEMENTS).insertOne(
+    {
+      branchId,
+      variantId,
+      productId,
+      type: "PURCHASE",
+      qty,
+      costPrice,
+      salePrice,
+      balanceQty,
+      refType: "PURCHASE",
+      createdAt: new Date(),
+    },
+    { session },
+  );
 }
 
 /* ---------------------------------------
@@ -88,25 +149,44 @@ async function upsertStock({
 export const createPurchase = async ({ db, body, req }) => {
   const session = db.client.startSession();
   let purchaseNo = null;
-  let transactionStarted = false;
+
   try {
-    const payload = body;
     session.startTransaction();
-    transactionStarted = true;
-    /* =====================
-       Branch
+
+    /* ======================
+       BASIC CONTEXT
     ====================== */
+    const payload = body;
+
+    for (const item of payload.items) {
+      if (!item.variants || !item.variants.length) {
+        throw new Error("Purchase item has no variants");
+      }
+
+      for (const v of item.variants) {
+        if (v.qty == null || v.qty <= 0) {
+          throw new Error(
+            `Invalid qty for product ${item.productId} (${v.size}-${v.color})`,
+          );
+        }
+
+        if (v.costPrice == null || v.costPrice <= 0) {
+          throw new Error(
+            `Invalid cost price for product ${item.productId} (${v.size}-${v.color})`,
+          );
+        }
+      }
+    }
+
+    const paidAmount = roundMoney(payload.paidAmount || 0);
+
     const mainBranch = await getMainBranch(db, session);
     const branchId = mainBranch._id;
 
-    /* =====================
-       Core Data
-    ====================== */
     const supplierId = toId(payload.supplierId, "supplierId");
-    const paidAmount = roundMoney(payload.paidAmount || 0);
 
-    /* =====================
-       Purchase No
+    /* ======================
+       PURCHASE NO
     ====================== */
     purchaseNo = await generateCode({
       db,
@@ -117,12 +197,8 @@ export const createPurchase = async ({ db, body, req }) => {
       session,
     });
 
-    let totalQty = 0;
-    let totalAmount = 0;
-    const barcodePayload = [];
-
-    /* =====================
-       Preload Categories (NO N+1)
+    /* ======================
+       PRELOAD PRODUCTS (NO N+1)
     ====================== */
     const productIds = payload.items.map((i) => toId(i.productId, "productId"));
 
@@ -156,126 +232,148 @@ export const createPurchase = async ({ db, body, req }) => {
 
     const productMap = new Map(products.map((p) => [String(p._id), p]));
 
-    /* =====================
+    /* ======================
+       TOTALS
+    ====================== */
+    const purchaseItemsForDB = [];
+    let totalQty = 0;
+    let totalAmount = 0;
+    const barcodePayload = [];
+
+    /* ======================
        ITEM LOOP
     ====================== */
     for (const item of payload.items) {
       const product = productMap.get(item.productId);
-      if (!product) throw new Error("Product not found");
+      if (!product) {
+        throw new Error("Product not found");
+      }
 
-      const colors =
-        Array.isArray(product.colors) && product.colors.length
-          ? product.colors
-          : ["NA"];
+      const dbItem = {
+        productId: product._id,
+        pricingMode: item.pricingMode,
+        variants: [],
+      };
 
-      for (const [size, colorMap] of Object.entries(item.sizes)) {
-        for (const color of colors) {
-          const qty = Number(colorMap?.[color] || 0);
-          if (qty <= 0) continue;
+      if (item.pricingMode === "GLOBAL") {
+        dbItem.globalPrice = item.globalPrice;
+      }
 
-          /* =====================
-             Variant Find/Create
-          ====================== */
-          let variant = await db.collection(COLLECTIONS.VARIANTS).findOne(
+      for (const variantInput of item.variants) {
+        const { size, color, qty } = variantInput;
+        if (qty <= 0) continue;
+
+        const { costPrice, salePrice } = resolvePrice(item, variantInput);
+
+        /* ======================
+           VARIANT FIND / CREATE
+        ====================== */
+        let variant = await db.collection(COLLECTIONS.VARIANTS).findOne(
+          {
+            productId: product._id,
+            "attributes.size": size,
+            "attributes.color": color,
+          },
+          { session },
+        );
+
+        let oldSalePrice = null;
+
+        if (!variant) {
+          const sku = await generateVariantSKU({
+            db,
+            productId: product._id,
+            productCode: product.productCode,
+            session,
+          });
+
+          const insert = await db.collection(COLLECTIONS.VARIANTS).insertOne(
             {
               productId: product._id,
-              "attributes.size": size,
-              "attributes.color": color,
+              sku,
+              attributes: { size, color },
+              costPrice,
+              salePrice,
+              priceHistory: [],
+              status: "active",
+              createdAt: new Date(),
             },
             { session },
           );
 
-          let oldSalePrice = null;
+          variant = {
+            _id: insert.insertedId,
+            sku,
+            attributes: { size, color },
+            salePrice,
+          };
+        } else if (variant.salePrice !== salePrice) {
+          oldSalePrice = variant.salePrice;
 
-          if (!variant) {
-            const sku = await generateVariantSKU({
-              db,
-              productId: product._id,
-              productCode: product.productCode,
-              session,
-            });
-
-            const insert = await db.collection(COLLECTIONS.VARIANTS).insertOne(
-              {
-                productId: product._id,
-                sku,
-                attributes: { size, color },
-                costPrice: item.costPrice,
-                salePrice: item.salePrice,
-                priceHistory: [],
-                status: "active",
-                createdAt: new Date(),
+          await db.collection(COLLECTIONS.VARIANTS).updateOne(
+            { _id: variant._id },
+            {
+              $set: {
+                salePrice,
+                updatedAt: new Date(),
               },
-              { session },
-            );
-
-            variant = {
-              _id: insert.insertedId,
-              sku,
-              attributes: { size, color },
-              salePrice: item.salePrice,
-            };
-          } else if (item.salePrice !== variant.salePrice) {
-            oldSalePrice = variant.salePrice;
-
-            await db.collection(COLLECTIONS.VARIANTS).updateOne(
-              { _id: variant._id },
-              {
-                $set: {
-                  salePrice: item.salePrice,
-                  updatedAt: new Date(),
-                },
-                $push: {
-                  priceHistory: {
-                    oldPrice: oldSalePrice,
-                    newPrice: item.salePrice,
-                    source: "PURCHASE",
-                    refType: "PURCHASE",
-                    refId: purchaseNo,
-                    date: new Date(),
-                  },
+              $push: {
+                priceHistory: {
+                  oldPrice: oldSalePrice,
+                  newPrice: salePrice,
+                  source: "PURCHASE",
+                  refType: "PURCHASE",
+                  refId: purchaseNo,
+                  date: new Date(),
                 },
               },
-              { session },
-            );
-          }
-
-          /* =====================
-             Stock Update
-          ====================== */
-          await upsertStock({
-            db,
-            session,
-            branchId,
-            variantId: variant._id,
-            productId: product._id,
-            productName: product.name,
-            attributes: variant.attributes,
-            salePrice: item.salePrice,
-            searchableText: `${product.name} ${product.productCode} ${variant.sku} ${size} ${color}`,
-            sku: variant.sku,
-            qty,
-            costPrice: item.costPrice,
-          });
-
-          /* =====================
-             Barcode Payload (PER UNIT)
-          ====================== */
-          for (let i = 0; i < qty; i++) {
-            barcodePayload.push({
-              productName: product.name,
-              sku: variant.sku,
-              parentCategory: product.parentCategory.name,
-              subCategory: product.category.name,
-              salesPrice: item.salePrice,
-              qtn: item.qtn,
-              attribute: variant.attributes,
-            });
-          }
-
-          totalQty += qty;
-          totalAmount += qty * item.costPrice;
+            },
+            { session },
+          );
         }
+
+        /* ======================
+           STOCK UPSERT
+        ====================== */
+        await upsertStock({
+          db,
+          session,
+          branchId,
+          variantId: variant._id,
+          productId: product._id,
+          productName: product.name,
+          attributes: variant.attributes,
+          sku: variant.sku,
+          qty,
+          costPrice,
+          salePrice,
+          searchableText: `${product.name} ${product.productCode} ${variant.sku} ${size} ${color}`,
+        });
+
+        /* ======================
+           BARCODE (PER UNIT)
+        ====================== */
+        for (let i = 0; i < qty; i++) {
+          barcodePayload.push({
+            productName: product.name,
+            sku: variant.sku,
+            parentCategory: product.parentCategory.name,
+            subCategory: product.category.name,
+            salesPrice: salePrice,
+            attribute: { size, color },
+          });
+        }
+        dbItem.variants.push({
+          variantId: variant._id,
+          qty,
+          costPrice,
+          salePrice,
+        });
+        totalQty += qty;
+        totalAmount += qty * costPrice;
+      }
+      if (dbItem.variants.length) {
+        purchaseItemsForDB.push(dbItem);
       }
     }
 
@@ -285,8 +383,8 @@ export const createPurchase = async ({ db, body, req }) => {
     const paymentStatus =
       dueAmount === 0 ? "PAID" : paidAmount > 0 ? "PARTIAL" : "DUE";
 
-    /* =====================
-       Purchase Insert
+    /* ======================
+       PURCHASE INSERT
     ====================== */
     const insertResult = await db.collection(COLLECTIONS.PURCHASES).insertOne(
       {
@@ -295,7 +393,7 @@ export const createPurchase = async ({ db, body, req }) => {
         branchId,
         invoiceNumber: payload.invoiceNumber,
         invoiceDate: payload.invoiceDate,
-        items: payload.items,
+        items: purchaseItemsForDB,
         totalQty,
         totalAmount,
         paidAmount,
@@ -307,8 +405,8 @@ export const createPurchase = async ({ db, body, req }) => {
       { session },
     );
 
-    /* =====================
-       Accounting
+    /* ======================
+       ACCOUNTING
     ====================== */
     await purchaseAccounting({
       db,
@@ -322,8 +420,8 @@ export const createPurchase = async ({ db, body, req }) => {
       narration: `Purchase #${purchaseNo}`,
     });
 
-    /* =====================
-       Audit Log
+    /* ======================
+       AUDIT LOG
     ====================== */
     await writeAuditLog({
       db,
@@ -358,12 +456,11 @@ export const createPurchase = async ({ db, body, req }) => {
       barcodes: barcodePayload,
     };
   } catch (error) {
-    if (transactionStarted) {
-      await session.abortTransaction();
-    }
+    await session.abortTransaction();
 
     await writeAuditLog({
       db,
+      session,
       userId: toId(req?.user?._id, "userId"),
       action: "PURCHASE_CREATE_FAILED",
       collection: COLLECTIONS.PURCHASES,
@@ -379,7 +476,7 @@ export const createPurchase = async ({ db, body, req }) => {
     throw error;
   } finally {
     await session.endSession();
-  } 
+  }
 };
 
 export const getAllPurchases = async (req, res, next) => {
@@ -445,59 +542,39 @@ export const getSinglePurchaseInvoice = async (req, res, next) => {
   try {
     const db = req.app.locals.db;
     const purchaseId = toObjectId(req.params.id, "purchaseId");
-
+    console.log("purchases id", purchaseId);
     const data = await db
       .collection(COLLECTIONS.PURCHASES)
       .aggregate([
         { $match: { _id: purchaseId } },
 
-        /* =====================
-           CAST variantId STRING → ObjectId
-        ====================== */
-        {
-          $addFields: {
-            items: {
-              $map: {
-                input: "$items",
-                as: "i",
-                in: {
-                  variantIdObj: { $toObjectId: "$$i.variantId" },
-                  qty: "$$i.qty",
-                  costPrice: "$$i.costPrice",
-                  salePrice: "$$i.salePrice",
-                },
-              },
-            },
-          },
-        },
+        /* ---------- UNWIND ---------- */
+        { $unwind: "$items" },
+        { $unwind: "$items.variants" },
 
-        /* =====================
-           VARIANT LOOKUP (NOW WORKS)
-        ====================== */
+        /* ---------- VARIANT LOOKUP ---------- */
         {
           $lookup: {
             from: COLLECTIONS.VARIANTS,
-            localField: "items.variantIdObj",
+            localField: "items.variants.variantId",
             foreignField: "_id",
-            as: "variants",
+            as: "variant",
           },
         },
+        { $unwind: "$variant" },
 
-        /* =====================
-           PRODUCT LOOKUP
-        ====================== */
+        /* ---------- PRODUCT LOOKUP ---------- */
         {
           $lookup: {
             from: COLLECTIONS.PRODUCTS,
-            localField: "variants.productId",
+            localField: "variant.productId",
             foreignField: "_id",
-            as: "products",
+            as: "product",
           },
         },
+        { $unwind: "$product" },
 
-        /* =====================
-           SUPPLIER (LIMITED)
-        ====================== */
+        /* ---------- SUPPLIER ---------- */
         {
           $lookup: {
             from: COLLECTIONS.SUPPLIERS,
@@ -508,9 +585,7 @@ export const getSinglePurchaseInvoice = async (req, res, next) => {
         },
         { $unwind: "$supplier" },
 
-        /* =====================
-           BRANCH (LIMITED)
-        ====================== */
+        /* ---------- BRANCH ---------- */
         {
           $lookup: {
             from: COLLECTIONS.BRANCHES,
@@ -521,86 +596,50 @@ export const getSinglePurchaseInvoice = async (req, res, next) => {
         },
         { $unwind: "$branch" },
 
-        /* =====================
-           MERGE ITEMS (FINAL)
-        ====================== */
+        /* ---------- GROUP BACK ---------- */
         {
-          $addFields: {
+          $group: {
+            _id: "$_id",
+
+            purchaseNo: { $first: "$purchaseNo" },
+            invoiceNumber: { $first: "$invoiceNumber" },
+            invoiceDate: { $first: "$invoiceDate" },
+
+            supplier: { $first: "$supplier" },
+            branch: { $first: "$branch" },
+
             items: {
-              $map: {
-                input: "$items",
-                as: "item",
-                in: {
-                  $let: {
-                    vars: {
-                      variant: {
-                        $first: {
-                          $filter: {
-                            input: "$variants",
-                            as: "v",
-                            cond: {
-                              $eq: ["$$v._id", "$$item.variantIdObj"],
-                            },
-                          },
-                        },
-                      },
-                    },
-                    in: {
-                      qty: "$$item.qty",
-                      costPrice: "$$item.costPrice",
-                      salePrice: "$$item.salePrice",
+              $push: {
+                variantId: "$variant._id",
+                sku: "$variant.sku",
+                attributes: "$variant.attributes",
+                productName: "$product.name",
 
-                      sku: "$$variant.sku",
-                      variantId: "$$variant._id",
-                      attributes: "$$variant.attributes",
+                qty: "$items.variants.qty",
+                costPrice: "$items.variants.costPrice",
+                salePrice: "$items.variants.salePrice",
 
-                      productName: {
-                        $first: {
-                          $map: {
-                            input: {
-                              $filter: {
-                                input: "$products",
-                                as: "p",
-                                cond: {
-                                  $eq: ["$$p._id", "$$variant.productId"],
-                                },
-                              },
-                            },
-                            as: "p",
-                            in: "$$p.name",
-                          },
-                        },
-                      },
-
-                      lineTotal: {
-                        $multiply: ["$$item.qty", "$$item.costPrice"],
-                      },
-                    },
-                  },
+                lineTotal: {
+                  $multiply: [
+                    "$items.variants.qty",
+                    "$items.variants.costPrice",
+                  ],
                 },
               },
             },
           },
         },
 
-        /* =====================
-           CLEAN RESPONSE
-        ====================== */
+        /* ---------- CLEAN ---------- */
         {
           $project: {
-            variants: 0,
-            products: 0,
-
             "supplier._id": 0,
-            "supplier.account": 0,
             "supplier.status": 0,
-            "supplier.code": 0,
             "supplier.createdAt": 0,
             "supplier.updatedAt": 0,
 
             "branch._id": 0,
             "branch.status": 0,
-            "branch.isMain": 0,
             "branch.createdAt": 0,
             "branch.updatedAt": 0,
           },
@@ -614,10 +653,10 @@ export const getSinglePurchaseInvoice = async (req, res, next) => {
         message: "Purchase invoice not found",
       });
     }
-    const formattedData = formatDocuments(data);
+
     res.json({
       success: true,
-      data: formattedData[0],
+      data: formatDocuments(data)[0],
     });
   } catch (err) {
     next(err);
@@ -627,6 +666,7 @@ export const getSinglePurchaseInvoice = async (req, res, next) => {
 export const createPurchaseReturn = async ({ db, body, req }) => {
   const session = db.client.startSession();
 
+  let purchase = null;
   let returnNo;
   let totalQty = 0;
   let totalAmount = 0;
@@ -635,26 +675,20 @@ export const createPurchaseReturn = async ({ db, body, req }) => {
   try {
     session.startTransaction();
 
-    /* =====================
-       1️⃣ MAIN BRANCH
-    ====================== */
+    /* 1️⃣ MAIN BRANCH */
     mainBranch = await getMainBranch(db, session);
     const branchId = mainBranch._id;
 
-    /* =====================
-       2️⃣ PURCHASE FETCH
-    ====================== */
+    /* 2️⃣ PURCHASE FETCH */
     const purchaseId = toObjectId(body.purchaseId, "purchaseId");
 
-    const purchase = await db
+    purchase = await db
       .collection(COLLECTIONS.PURCHASES)
       .findOne({ _id: purchaseId }, { session });
 
     if (!purchase) throw new Error("Purchase not found");
 
-    /* =====================
-       3️⃣ RETURN NUMBER
-    ====================== */
+    /* 3️⃣ RETURN NUMBER */
     returnNo = await generateCode({
       db,
       module: "PURCHASE_RETURN",
@@ -664,15 +698,13 @@ export const createPurchaseReturn = async ({ db, body, req }) => {
       session,
     });
 
-    /* =====================
-       4️⃣ ITEM LOOP
-    ====================== */
+    /* 4️⃣ ITEM LOOP */
     for (const item of body.items) {
       const variantId = toObjectId(item.variantId, "variantId");
 
-      const purchaseItem = purchase.items.find(
-        (i) => i.variantId.toString() === variantId.toString(),
-      );
+      const purchaseItem = purchase.items
+        .flatMap(i => i.variants)
+        .find(v => v.variantId.toString() === variantId.toString());
 
       if (!purchaseItem) {
         throw new Error("Variant not found in purchase");
@@ -691,6 +723,8 @@ export const createPurchaseReturn = async ({ db, body, req }) => {
         throw new Error("Insufficient stock for return");
       }
 
+      const newBalanceQty = stock.qty - item.qty;
+
       /* ---------- STOCK UPDATE ---------- */
       await db.collection(COLLECTIONS.STOCKS).updateOne(
         { _id: stock._id },
@@ -701,15 +735,35 @@ export const createPurchaseReturn = async ({ db, body, req }) => {
         { session },
       );
 
+      /* ---------- STOCK MOVEMENT (🔥 CORRECT PLACE) ---------- */
+      await db.collection(COLLECTIONS.STOCK_MOVEMENTS).insertOne(
+        {
+          branchId,
+          variantId,
+          productId: stock.productId,
+
+          type: "PURCHASE_RETURN",
+          qty: -item.qty,
+          costPrice: purchaseItem.costPrice,
+          salePrice: purchaseItem.salePrice || null,
+
+          balanceQty: newBalanceQty,
+
+          refType: "PURCHASE_RETURN",
+          refId: returnNo,
+
+          createdAt: new Date(),
+        },
+        { session },
+      );
+
       totalQty += item.qty;
       totalAmount += item.qty * purchaseItem.costPrice;
     }
 
     totalAmount = roundMoney(totalAmount);
 
-    /* =====================
-       5️⃣ PURCHASE RETURN INSERT
-    ====================== */
+    /* 5️⃣ PURCHASE RETURN INSERT */
     const insertResult = await db
       .collection(COLLECTIONS.PURCHASE_RETURNS)
       .insertOne(
@@ -718,22 +772,17 @@ export const createPurchaseReturn = async ({ db, body, req }) => {
           purchaseId,
           supplierId: purchase.supplierId,
           branchId,
-
           returnDate: body.returnDate || new Date(),
           reason: body.reason || null,
-
           items: body.items,
           totalQty,
           totalAmount,
-
           createdAt: new Date(),
         },
         { session },
       );
 
-    /* =====================
-       6️⃣ PURCHASE BALANCE UPDATE
-    ====================== */
+    /* 6️⃣ PURCHASE BALANCE UPDATE */
     const newTotalAmount = roundMoney(
       Math.max(purchase.totalAmount - totalAmount, 0),
     );
@@ -758,9 +807,7 @@ export const createPurchaseReturn = async ({ db, body, req }) => {
       { session },
     );
 
-    /* =====================
-       7️⃣ ACCOUNTING (TX SAFE)
-    ====================== */
+    /* 7️⃣ ACCOUNTING */
     await purchaseReturnAccounting({
       db,
       session,
@@ -773,9 +820,7 @@ export const createPurchaseReturn = async ({ db, body, req }) => {
       narration: `Purchase Return #${returnNo}`,
     });
 
-    /* =====================
-       8️⃣ AUDIT LOG
-    ====================== */
+    /* 8️⃣ AUDIT LOG */
     await writeAuditLog({
       db,
       session,
@@ -811,11 +856,12 @@ export const createPurchaseReturn = async ({ db, body, req }) => {
 
     await writeAuditLog({
       db,
+      session,
       userId: toObjectId(req?.user?._id),
       action: "PURCHASE_RETURN_FAILED",
       collection: COLLECTIONS.PURCHASE_RETURNS,
       refType: "PURCHASE_RETURN",
-      refId: purchase._id || null,
+      refId: purchase ? purchase._id : null,
       payload: {
         returnNo: returnNo || null,
         error: error.message,
@@ -830,6 +876,7 @@ export const createPurchaseReturn = async ({ db, body, req }) => {
     await session.endSession();
   }
 };
+
 
 export const getAllPurchaseReturns = async (req, res, next) => {
   try {

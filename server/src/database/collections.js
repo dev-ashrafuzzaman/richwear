@@ -25,6 +25,8 @@ export const COLLECTIONS = {
   AUDIT_LOGS: "audit_logs",
   LEDGERS: "ledgers",
   TAX_CONFIGS: "tax_configs",
+  STOCK_MOVEMENTS: "stock_movements",
+
   ACCOUNTS: "accounts",
   PRODUCT_TYPES: "product_types",
 };
