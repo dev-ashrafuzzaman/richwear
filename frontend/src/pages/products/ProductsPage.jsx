@@ -8,17 +8,7 @@ import ProductCreateModal from "./ProductCreateModal";
 const ProductsPage = () => {
   const { modals, openModal, closeModal } = useModalManager();
   const table = useTableManager("/products");
-  const categories = useTableManager("/categories"); 
-
-  /* ✅ Optimized category lookup */
-  const categoryMap = useMemo(() => {
-    const map = {};
-    categories.rows.forEach((c) => {
-      map[c._id] = c.name;
-    });
-    return map;
-  }, [categories.rows]);
-
+console.log(table)
   return (
     <Page title="Products" subTitle="Manage your organization products">
       {modals.addProduct?.isOpen && (
@@ -43,10 +33,21 @@ const ProductsPage = () => {
           { key: "productCode", label: "productCode" },
           { key: "name", label: "Name" },
           { key: "unit", label: "Unit" },
-          {
-            key: "categoryId",
+        {
+            key: "category",
             label: "Category",
-            render: (r) => categoryMap[r.categoryId] || "—",
+            render: (r) => (
+              <span className="text-sm">
+                {r.category?.parent&& (
+                  <span className="text-gray-500">
+                    {r.category.parent} →
+                  </span>
+                )}
+                <strong className="ml-1">
+                  {r.category?.sub}
+                </strong>
+              </span>
+            ),
           },
           {
             key: "status",
@@ -60,7 +61,7 @@ const ProductsPage = () => {
               </span>
             ),
           },
-          { key: "createdAt", label: "Created At" },
+          // { key: "createdAt", label: "Created At" },
         ]}
         actions={[
           // { type: "edit", label: "Edit" },
