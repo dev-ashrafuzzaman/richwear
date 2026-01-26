@@ -20,8 +20,6 @@ import {
 } from "./branch.hooks.js";
 
 import { authenticate } from "../../middlewares/auth.middleware.js";
-import { permit } from "../../middlewares/permission.middleware.js";
-import { PERMISSIONS } from "../../config/permissions.js";
 import { COLLECTIONS } from "../../database/collections.js";
 
 const router = Router();
@@ -31,7 +29,6 @@ router.use(authenticate);
 
 router.post(
   "/",
-  permit(PERMISSIONS.BRANCH_MANAGE),
   beforeCreateBranch,
   createOne({
     collection: COLLECTION,
@@ -41,7 +38,6 @@ router.post(
 
 router.get(
   "/",
-  permit(PERMISSIONS.BRANCH_VIEW),
   getAll({
     collection: COLLECTION,
     searchableFields: ["name", "code", "address"],
@@ -51,7 +47,6 @@ router.get(
 
 router.get(
   "/:id",
-  permit(PERMISSIONS.BRANCH_VIEW),
   getOneById({
     collection: COLLECTION
   })
@@ -59,7 +54,6 @@ router.get(
 
 router.put(
   "/:id",
-  permit(PERMISSIONS.BRANCH_MANAGE),
   beforeUpdateBranch,
   updateOne({
     collection: COLLECTION,
@@ -69,7 +63,6 @@ router.put(
 
 router.post(
   "/:id/status",
-  permit(PERMISSIONS.BRANCH_MANAGE),
   toggleStatus({
     collection: COLLECTION,
   })
@@ -77,7 +70,6 @@ router.post(
 
 router.delete(
   "/:id",
-  permit(PERMISSIONS.BRANCH_MANAGE),
   deleteOne({
     collection: COLLECTION
   })

@@ -1,7 +1,5 @@
 import { Router } from "express";
 import { authenticate } from "../../../middlewares/auth.middleware.js";
-import { permit } from "../../../middlewares/permission.middleware.js";
-import { PERMISSIONS } from "../../../config/permissions.js";
 import { smartAttendance } from "./attendance.smart.controller.js";
 import { attendanceReport } from "./attendance.report.controller.js";
 
@@ -10,15 +8,11 @@ router.use(authenticate);
 
 router.post(
   "/today",
-  authenticate,
-  permit(PERMISSIONS.ATTENDANCE_MANAGE),
   smartAttendance,
 );
 
 router.get(
   "/",
-  authenticate,
-  permit(PERMISSIONS.ATTENDANCE_VIEW),
   attendanceReport,
 );
 

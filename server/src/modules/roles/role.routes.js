@@ -4,67 +4,53 @@ import {
   getAll,
   getOneById,
   updateOne,
-  deleteOne
+  deleteOne,
 } from "../../controllers/base.controller.js";
 
-import {
-  createRoleSchema,
-  updateRoleSchema
-} from "./role.validation.js";
+import { createRoleSchema, updateRoleSchema } from "./role.validation.js";
+import { authenticate } from "../../middlewares/auth.middleware.js";
 
-import { permit } from "../../middlewares/permission.middleware.js";
-import { PERMISSIONS } from "../../config/permissions.js";
 
 const router = Router();
 const COLLECTION = "roles";
-
-
+router.use(authenticate);
 router.post(
   "/",
-  permit(PERMISSIONS.ROLE_MANAGE),
   createOne({
     collection: COLLECTION,
-    schema: createRoleSchema
-  })
+    schema: createRoleSchema,
+  }),
 );
-
 
 router.get(
   "/",
-  permit(PERMISSIONS.ROLE_MANAGE),
   getAll({
     collection: COLLECTION,
     searchableFields: ["name"],
-    filterableFields: ["status"]
-  })
+    filterableFields: ["status"],
+  }),
 );
-
 
 router.get(
   "/:id",
-  permit(PERMISSIONS.ROLE_MANAGE),
   getOneById({
-    collection: COLLECTION
-  })
+    collection: COLLECTION,
+  }),
 );
-
 
 router.put(
   "/:id",
-  permit(PERMISSIONS.ROLE_MANAGE),
   updateOne({
     collection: COLLECTION,
-    schema: updateRoleSchema
-  })
+    schema: updateRoleSchema,
+  }),
 );
-
 
 router.delete(
   "/:id",
-  permit(PERMISSIONS.ROLE_MANAGE),
   deleteOne({
-    collection: COLLECTION
-  })
+    collection: COLLECTION,
+  }),
 );
 
 export default router;

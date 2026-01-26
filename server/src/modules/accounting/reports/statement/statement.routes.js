@@ -1,9 +1,10 @@
 // statement.routes.js
 import { Router } from "express";
 import { getPartyInvoiceStatement, getPartyStatement } from "./statement.controller.js";
+import { authenticate } from "../../../../middlewares/auth.middleware.js";
 
 const router = Router();
-
+router.use(authenticate);
 /**
  * Universal Ledger Statement
  * GET /api/accounting/reports/statement/:accountId

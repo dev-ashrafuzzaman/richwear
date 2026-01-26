@@ -8,11 +8,10 @@ import {
 } from "./customer.schema.js";
 import { deleteOne, getAll, getAllSmart, toggleStatus } from "../../controllers/base.controller.js";
 import { COLLECTIONS } from "../../database/collections.js";
-import { permit } from "../../middlewares/permission.middleware.js";
-import { PERMISSIONS } from "../../config/permissions.js";
+import { authenticate } from "../../middlewares/auth.middleware.js";
 
 const router = express.Router();
-
+router.use(authenticate);
 router.post(
   "/",
   validate(createCustomerSchema),
@@ -21,7 +20,6 @@ router.post(
 );
 router.get(
   "/",
-  permit(PERMISSIONS.CUSTOMERS_VIEW),
   getAll({
     collection: COLLECTIONS.CUSTOMERS,
     searchableFields: ["name", "phone", "email"],
@@ -31,7 +29,6 @@ router.get(
 
 router.get(
   "/pos",
-  permit(PERMISSIONS.CUSTOMERS_VIEW),
   getAllSmart({
     collection: COLLECTIONS.CUSTOMERS,
     searchableFields: ["name", "phone"],
@@ -44,7 +41,6 @@ router.patch("/:id", validate(updateCustomerSchema), controller.update);
 
 router.post(
   "/:id/status",
-  permit(PERMISSIONS.CUSTOMERS_MANAGE),
   toggleStatus({
     collection: COLLECTIONS.CUSTOMERS,
   })
@@ -52,7 +48,6 @@ router.post(
 
 router.delete(
   "/:id",
-  permit(PERMISSIONS.CUSTOMERS_MANAGE),
   deleteOne({ collection: COLLECTIONS.CUSTOMERS })
 );
 

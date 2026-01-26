@@ -1,9 +1,5 @@
 import { Router } from "express";
 import { ObjectId } from "mongodb";
-
-import { authenticate } from "../../middlewares/auth.middleware.js";
-import { permit } from "../../middlewares/permission.middleware.js";
-import { PERMISSIONS } from "../../config/permissions.js";
 import { COLLECTIONS } from "../../database/collections.js";
 
 import {
@@ -14,14 +10,13 @@ import {
 import { beforeGenerateSalary } from "./payroll.hook.js";
 import { calculateSalary } from "./payroll.utils.js";
 import { validate } from "../../middlewares/validate.middleware.js";
+import { authenticate } from "../../../middlewares/auth.middleware.js";
 
 const router = Router();
 router.use(authenticate);
 
-/* 🟢 Generate Monthly Salary */
 router.post(
   "/generate",
-  permit(PERMISSIONS.PAYROLL_MANAGE),
   validate(generateSalarySchema),
   beforeGenerateSalary,
   async (req, res, next) => {
@@ -125,7 +120,6 @@ router.post(
 /* 💵 Pay Salary */
 router.put(
   "/:id/pay",
-  permit(PERMISSIONS.PAYROLL_MANAGE),
   validate(paySalarySchema),
   async (req, res, next) => {
     try {

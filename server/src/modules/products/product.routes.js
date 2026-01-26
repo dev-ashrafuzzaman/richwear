@@ -18,8 +18,6 @@ import {
 import { beforeCreateProduct } from "./product.hooks.js";
 
 import { authenticate } from "../../middlewares/auth.middleware.js";
-import { permit } from "../../middlewares/permission.middleware.js";
-import { PERMISSIONS } from "../../config/permissions.js";
 import { COLLECTIONS } from "../../database/collections.js";
 import { attachSession } from "../../middlewares/attachSession.js";
 import { getProducts, getProductsForPurchase } from "./product.controller.js";
@@ -42,7 +40,6 @@ router.use(authenticate);
 
 router.post(
   "/",
-  permit(PERMISSIONS.PRODUCT_MANAGE),
   attachSession,
   beforeCreateProduct,
   createOneTx({
@@ -63,17 +60,14 @@ router.post(
 
 router.get(
   "/",
-  permit(PERMISSIONS.PRODUCT_VIEW),
   getProducts
 );
 router.get(
   "/purchase",
-  permit(PERMISSIONS.PRODUCT_VIEW),
   getProductsForPurchase
 );
 router.get(
   "/types",
-  permit(PERMISSIONS.PRODUCT_VIEW),
   getAll({
     collection: COLLECTIONS.PRODUCT_TYPES,
     searchableFields: ["name", "code"],
@@ -83,7 +77,6 @@ router.get(
 
 router.get(
   "/:id",
-  permit(PERMISSIONS.PRODUCT_VIEW),
   getOneById({
     collection: COLLECTION
   })
@@ -92,7 +85,6 @@ router.get(
 
 router.put(
   "/:id",
-  permit(PERMISSIONS.PRODUCT_MANAGE),
   updateOne({
     collection: COLLECTION,
     schema: updateProductSchema
@@ -102,7 +94,6 @@ router.put(
 
 router.post(
   "/:id/status",
-  permit(PERMISSIONS.PRODUCT_MANAGE),
   toggleStatus({
     collection: COLLECTION,
   })
@@ -111,7 +102,6 @@ router.post(
 
 router.delete(
   "/:id",
-  permit(PERMISSIONS.PRODUCT_MANAGE),
   deleteOne({
     collection: COLLECTION
   })

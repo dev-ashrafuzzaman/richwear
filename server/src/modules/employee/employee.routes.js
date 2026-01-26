@@ -18,8 +18,6 @@ import {
 import { beforeCreateEmployee } from "./employee.hook.js";
 
 import { authenticate } from "../../middlewares/auth.middleware.js";
-import { permit } from "../../middlewares/permission.middleware.js";
-import { PERMISSIONS } from "../../config/permissions.js";
 import { COLLECTIONS } from "../../database/collections.js";
 
 const router = Router();
@@ -29,7 +27,6 @@ router.use(authenticate);
 
 router.post(
   "/",
-  permit(PERMISSIONS.EMPLOYEE_MANAGE),
   beforeCreateEmployee,
   createOne({
     collection: COLLECTION,
@@ -39,7 +36,6 @@ router.post(
 
 router.get(
   "/",
-  permit(PERMISSIONS.EMPLOYEE_VIEW),
   getAll({
     collection: COLLECTION,
     searchableFields: ["name", "phone", "email"],
@@ -49,7 +45,6 @@ router.get(
 
 router.get(
   "/pos",
-  permit(PERMISSIONS.EMPLOYEE_VIEW),
   getAllSmart({
     collection: COLLECTIONS.EMPLOYEES,
     searchableFields: ["code", "name", "phone"],
@@ -59,7 +54,6 @@ router.get(
 
 router.get(
   "/:id",
-  permit(PERMISSIONS.EMPLOYEE_VIEW),
   getOneById({
     collection: COLLECTION,
   }),
@@ -67,7 +61,6 @@ router.get(
 
 router.put(
   "/:id",
-  permit(PERMISSIONS.EMPLOYEE_MANAGE),
   updateOne({
     collection: COLLECTION,
     schema: updateEmployeeSchema,
@@ -76,7 +69,6 @@ router.put(
 
 router.post(
   "/:id/status",
-  permit(PERMISSIONS.EMPLOYEE_MANAGE),
   toggleStatus({
     collection: COLLECTION,
   })
@@ -84,7 +76,6 @@ router.post(
 
 router.delete(
   "/:id",
-  permit(PERMISSIONS.EMPLOYEE_MANAGE),
   deleteOne({
     collection: COLLECTION,
   }),

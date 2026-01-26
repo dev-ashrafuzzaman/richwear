@@ -1,7 +1,5 @@
 import { Router } from "express";
 import { authenticate } from "../../middlewares/auth.middleware.js";
-import { permit } from "../../middlewares/permission.middleware.js";
-import { PERMISSIONS } from "../../config/permissions.js";
 import {
   reprintSale,
   reprintSaleByInvoice,
@@ -18,19 +16,16 @@ router.use(authenticate);
 
 router.post(
   "/",
-  permit(PERMISSIONS.SALES_CREATE),
   beforeCreateSale,
   createSale,
 );
 
 router.get(
   "/:saleId/reprint",
-  permit(PERMISSIONS.SALES_VIEW),
   reprintSale,
 );
 router.get(
   "/",
-  permit(PERMISSIONS.SALE_VIEW),
   getAll({
     collection: "sales",
     searchableFields: ["name", "invoiceNo"],
@@ -40,14 +35,12 @@ router.get(
 
 router.get(
   "/reprint/:invoiceNo",
-  permit(PERMISSIONS.SALES_VIEW),
   reprintSaleByInvoice,
 );
 
 
 router.get(
   "/payment-methods",
-  permit(PERMISSIONS.SALES_VIEW),
   getPaymentMethods,
 );
 

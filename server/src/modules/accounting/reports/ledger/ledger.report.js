@@ -1,9 +1,6 @@
 // modules/accounting/reports/ledger/ledger.report.js
 import { ObjectId } from "mongodb";
 
-/**
- * Dynamic Ledger Report Engine
- */
 export const ledgerReport = async ({
   db,
   accountId,
