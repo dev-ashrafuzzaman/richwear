@@ -49,7 +49,6 @@ export default function PurchaseReturnCreatePage() {
   /* ---------------- LOAD PURCHASE ---------------- */
   const onSelectPurchase = async (purchaseId) => {
     const res = await request(`/purchases/${purchaseId}`, "GET");
-
     const data = res?.data;
     setPurchase(data);
 
@@ -110,7 +109,7 @@ export default function PurchaseReturnCreatePage() {
       cashRefund,
       dueAdjust,
     };
-
+console.log("payload",payload)
     await request("/purchases/return", "POST", payload, {
       successMessage: "Purchase return completed successfully",
       onSuccess: () => {
@@ -125,7 +124,7 @@ export default function PurchaseReturnCreatePage() {
     <div className="min-h-screen bg-linear-to-b from-gray-50 to-gray-100 p-6">
       <form
         onSubmit={handleSubmit(onSubmit)}
-        className="max-w-6xl mx-auto space-y-8">
+        className="mx-auto space-y-8">
         {/* Header */}
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
           <div className="flex items-center justify-between mb-6">
@@ -298,12 +297,12 @@ export default function PurchaseReturnCreatePage() {
                       </td>
                       <td className="py-4 px-6">
                         <div className="text-gray-700 font-medium">
-                          {item.costPrice.toFixed(2)}
+                          {item.costPrice}
                         </div>
                       </td>
                       <td className="py-4 px-6">
                         <div className="font-medium text-blue-600">
-                          {(item.returnQty * item.costPrice).toFixed(2)}
+                          {(item.returnQty * item.costPrice)}
                         </div>
                       </td>
                     </tr>
@@ -328,21 +327,21 @@ export default function PurchaseReturnCreatePage() {
                 <div className="flex justify-between items-center pb-3 border-b border-orange-200">
                   <span className="text-gray-600">Return Amount:</span>
                   <span className="text-xl font-bold text-gray-800">
-                    {returnAmount.toFixed(2)}
+                    {returnAmount}
                   </span>
                 </div>
 
                 <div className="flex justify-between items-center text-gray-600">
                   <span>Cash Refund:</span>
                   <span className="font-medium text-green-600">
-                    {cashRefund.toFixed(2)}
+                    {cashRefund}
                   </span>
                 </div>
 
                 <div className="flex justify-between items-center text-gray-600">
                   <span>Due Adjust:</span>
                   <span className="font-medium text-blue-600">
-                    {dueAdjust.toFixed(2)}
+                    {dueAdjust}
                   </span>
                 </div>
 

@@ -1,25 +1,49 @@
-import { useEffect, useRef } from "react";
+import {
+  useEffect,
+  useRef,
+  forwardRef,
+  useImperativeHandle,
+} from "react";
 import SmartSelect from "../../../components/common/SmartSelect";
 
-export default function PosItemSearch({ onSelect }) {
+const PosItemSearch = forwardRef(({ onSelect }, ref) => {
   const selectRef = useRef(null);
+
+  /* 🔥 Expose focus / clear to parent */
+  useImperativeHandle(ref, () => ({
+    focus: () => {
+      selectRef.current?.focus?.();
+    },
+    clear: () => {
+      selectRef.current?.clearValue?.();
+    },
+    clearAndFocus: () => {
+      selectRef.current?.clearValue?.();
+      selectRef.current?.focus?.();
+    },
+  }));
+
+  /* 🔥 AUTO FOCUS ON POS SCREEN LOAD */
+  useEffect(() => {
+    requestAnimationFrame(() => {
+      selectRef.current?.focus?.();
+    });
+  }, []);
 
   /* ---------------- Keyboard Shortcuts ---------------- */
   useEffect(() => {
     const handleKey = (e) => {
-      // 🔥 F2 → focus search
+      // F2 → focus search
       if (e.key === "F2") {
         e.preventDefault();
-        selectRef.current?.focus();
+        selectRef.current?.focus?.();
       }
 
-      // 🔥 ESC → clear + focus
+      // ESC → clear + focus
       if (e.key === "Escape") {
         e.preventDefault();
-
-        // react-select way to clear input
         selectRef.current?.clearValue?.();
-        selectRef.current?.focus();
+        selectRef.current?.focus?.();
       }
     };
 
@@ -28,11 +52,11 @@ export default function PosItemSearch({ onSelect }) {
   }, []);
 
   return (
-    <div className="relative ">
+    <div className="relative">
       <SmartSelect
         ref={selectRef}
         customRoute="/stocks/pos-items"
-        barcode={true}
+        barcode
         displayField={["sku", "productName"]}
         idField="variantId"
         placeholder="Scan barcode or search item"
@@ -43,4 +67,6 @@ export default function PosItemSearch({ onSelect }) {
       />
     </div>
   );
-}
+});
+
+export default PosItemSearch;

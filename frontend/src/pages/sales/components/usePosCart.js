@@ -6,7 +6,10 @@ const LOW_STOCK_THRESHOLD = 3;
 export default function usePosCart() {
   const [cart, setCart] = useState([]);
   const [billDiscount, setBillDiscount] = useState(0);
-
+  const resetCart = () => {
+    setCart([]);
+    setBillDiscount(0);
+  };
   /* ---------------- Add Item (SCAN / SELECT) ---------------- */
   const addItem = useCallback((item) => {
     setCart((prev) => {
@@ -136,5 +139,6 @@ export default function usePosCart() {
     setBillDiscount,
     grandTotal,
     isLowStock,
+    resetCart
   };
 }

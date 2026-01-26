@@ -4,11 +4,36 @@ import Button from "../../../../components/ui/Button";
 import PosInvoicePreview from "./PosInvoicePreview";
 import { renderToStaticMarkup } from "react-dom/server";
 import PosInvoicePrint from "./PosInvoicePrint";
+import { useEffect, useRef } from "react";
 
-export default function PosInvoiceModal({ isOpen, setIsOpen, data }) {
+export default function PosInvoiceModal({
+  isOpen,
+  setIsOpen,
+  data,
+  onAfterClose,
+}) {
+  const hasPrintedRef = useRef(false);
+
+  useEffect(() => {
+    if (!isOpen || !data) return;
+    if (hasPrintedRef.current) return;
+
+    hasPrintedRef.current = true;
+
+    setTimeout(() => {
+      handlePrint();
+    }, 150);
+  }, [isOpen, data]);
+
   const handlePrint = () => {
     const win = window.open("about:blank", "_blank");
+    if (!win) {
+      setIsOpen(false);
+      onAfterClose?.();
+      return;
+    }
 
+    win.document.open();
     win.document.write(`
       <html>
         <head>
@@ -19,12 +44,7 @@ export default function PosInvoiceModal({ isOpen, setIsOpen, data }) {
         </head>
         <body>
           <div id="print-root"></div>
-          <script>
-            window.onload = function () {
-              window.print();
-              window.onafterprint = () => window.close();
-            }
-          </script>
+
         </body>
       </html>
     `);
@@ -32,8 +52,32 @@ export default function PosInvoiceModal({ isOpen, setIsOpen, data }) {
     win.document.close();
 
     win.document.getElementById("print-root").innerHTML =
-      renderToStaticMarkup(<PosInvoicePrint data={data} />);
+      `${renderToStaticMarkup(<PosInvoicePrint data={data} />)}`;
+
+    win.focus();
+
+    setTimeout(() => {
+      try {
+        win.print();
+      } catch {}
+    }, 100);
+
+    // 🔥 GUARANTEED CLEANUP
+    setTimeout(() => {
+      try {
+        win.close();
+      } catch {}
+
+      setIsOpen(false);
+      onAfterClose?.(); // 🔥 SIGNAL POS IS READY AGAIN
+    }, 1200);
   };
+
+  useEffect(() => {
+    if (isOpen && data) {
+      setTimeout(handlePrint, 150);
+    }
+  }, [isOpen, data]);
 
   return (
     <Modal
@@ -50,8 +94,7 @@ export default function PosInvoiceModal({ isOpen, setIsOpen, data }) {
             Print
           </Button>
         </div>
-      }
-    >
+      }>
       <PosInvoicePreview data={data} />
     </Modal>
   );

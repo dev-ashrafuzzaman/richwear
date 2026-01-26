@@ -1,6 +1,13 @@
-import { useEffect, useState } from "react";
-import { X, Plus, Check, Wallet, AlertCircle, CreditCard, Receipt } from "lucide-react";
-import useApi from "../../../hooks/useApi";
+import { useEffect, useRef } from "react";
+import {
+  X,
+  Plus,
+  Check,
+  Wallet,
+  AlertCircle,
+  CreditCard,
+  Receipt,
+} from "lucide-react";
 import usePosPayment from "./usePosPayment";
 import Modal from "../../../components/modals/Modal";
 import Button from "../../../components/ui/Button";
@@ -13,31 +20,7 @@ export default function PosPaymentModal({
   onClose,
   onConfirm,
 }) {
-  const { request } = useApi();
-  const [cashAccount, setCashAccount] = useState(null);
-
-  useEffect(() => {
-    if (!open) return;
-
-    (async () => {
-      const res = await request(
-        "/sales/payment-methods",
-        "GET",
-        { code: "1001", limit: 1 },
-        { useToast: false }
-      );
-
-      if (res?.data?.length) {
-        const cash = res.data[0];
-        setCashAccount({
-          accountId: cash._id,
-          method: cash.name,
-          raw: cash,
-        });
-      }
-    })();
-  }, [open, request]);
-
+  const firstSelectRef = useRef(null);
   const {
     payments,
     addPayment,
@@ -49,10 +32,59 @@ export default function PosPaymentModal({
     isValid,
     markManualClear,
     clearManualClear,
-  } = usePosPayment(totalAmount, cashAccount);
+    resetPayment,
+  } = usePosPayment(totalAmount);
+
+  useEffect(() => {
+    if (!open) return;
+
+    requestAnimationFrame(() => {
+      firstSelectRef.current?.focus?.();
+    });
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const handleKeyDown = (e) => {
+      const el = document.activeElement;
+      const tag = el?.tagName;
+
+      /* ENTER inside input → next field */
+      if (e.key === "Enter" && !e.ctrlKey && !e.shiftKey) {
+        if (tag === "INPUT" || tag === "TEXTAREA") {
+          e.preventDefault();
+
+          const focusables = Array.from(
+            document.querySelectorAll(
+              'input, select, textarea, button, [tabindex]:not([tabindex="-1"])',
+            ),
+          ).filter((el) => !el.disabled);
+
+          const idx = focusables.indexOf(el);
+          focusables[idx + 1]?.focus();
+          return;
+        }
+      }
+
+      /* CTRL + ENTER or SHIFT + ENTER → Confirm */
+      if (
+        (e.ctrlKey && e.key === "Enter") ||
+        (e.shiftKey && e.key === "Enter")
+      ) {
+        e.preventDefault();
+        if (!isValid || remaining > 0) return;
+        handleConfirm();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [open, isValid, remaining, payments]);
 
   const handleConfirm = () => {
-    onConfirm(payments);
+    if (!isValid || remaining > 0) return;
+    onConfirm(payments, resetPayment);
     onClose();
   };
 
@@ -70,22 +102,17 @@ export default function PosPaymentModal({
             <Receipt className="w-4 h-4" />
             <span>Receipt will be printed automatically</span>
           </div>
-          
+
           <div className="flex gap-3">
-            <Button
-              variant="outline"
-              onClick={onClose}
-              className="px-6"
-            >
+            <Button variant="outline" onClick={onClose} className="px-6">
               Cancel
             </Button>
-            
+
             <Button
               disabled={!isValid || remaining > 0}
               onClick={handleConfirm}
               variant="gradient"
-              className="px-8"
-            >
+              className="px-8">
               <div className="flex items-center gap-2">
                 <Check className="w-4 h-4" />
                 Confirm Sale
@@ -93,23 +120,27 @@ export default function PosPaymentModal({
             </Button>
           </div>
         </div>
-      }
-    >
+      }>
       <div className="space-y-6">
         {/* Header Summary */}
         <div className="bg-linear-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-xl p-5">
           <div className="grid grid-cols-3 gap-4">
             <div className="text-center">
               <div className="text-sm text-gray-600">Total Amount</div>
-              <div className="text-2xl font-bold text-gray-900">BDT {totalAmount}</div>
+              <div className="text-2xl font-bold text-gray-900">
+                BDT {totalAmount}
+              </div>
             </div>
             <div className="text-center">
               <div className="text-sm text-gray-600">Paid Amount</div>
-              <div className="text-2xl font-bold text-green-600">BDT {paidAmount}</div>
+              <div className="text-2xl font-bold text-green-600">
+                BDT {paidAmount}
+              </div>
             </div>
             <div className="text-center">
               <div className="text-sm text-gray-600">Remaining</div>
-              <div className={`text-2xl font-bold BDT {remaining > 0 ? 'text-red-600' : 'text-green-600'}`}>
+              <div
+                className={`text-2xl font-bold BDT {remaining > 0 ? 'text-red-600' : 'text-green-600'}`}>
                 BDT {remaining}
               </div>
             </div>
@@ -119,13 +150,14 @@ export default function PosPaymentModal({
         {/* Payment Methods Section */}
         <div>
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold text-gray-800">Payment Methods</h3>
+            <h3 className="text-lg font-semibold text-gray-800">
+              Payment Methods
+            </h3>
             <Button
               onClick={addPayment}
               size="sm"
               variant="outline"
-              className="flex items-center gap-2"
-            >
+              className="flex items-center gap-2">
               <Plus className="w-4 h-4" />
               Add Payment
             </Button>
@@ -135,8 +167,7 @@ export default function PosPaymentModal({
             {payments.map((p, index) => (
               <div
                 key={index}
-                className="bg-gray-50 border border-gray-200 rounded-lg p-4"
-              >
+                className="bg-gray-50 border border-gray-200 rounded-lg p-4">
                 <div className="grid grid-cols-12 gap-3 items-center">
                   {/* Payment Method */}
                   <div className="col-span-5">
@@ -144,6 +175,7 @@ export default function PosPaymentModal({
                       Method
                     </label>
                     <SmartSelect
+                      ref={index === 0 ? firstSelectRef : null}
                       customRoute="/sales/payment-methods"
                       displayField={["name", "code"]}
                       idField="_id"
@@ -186,7 +218,9 @@ export default function PosPaymentModal({
                       Amount
                     </label>
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">BDT </span>
+                      <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                        BDT{" "}
+                      </span>
                       <Input
                         type="number"
                         value={p.amount}
@@ -220,8 +254,7 @@ export default function PosPaymentModal({
                     {payments.length > 1 && (
                       <button
                         onClick={() => removePayment(index)}
-                        className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"
-                      >
+                        className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-red-50 rounded">
                         <X className="w-4 h-4" />
                       </button>
                     )}
@@ -238,9 +271,12 @@ export default function PosPaymentModal({
             <div className="flex items-start gap-3">
               <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
               <div>
-                <div className="font-medium text-amber-800">Full Payment Required</div>
+                <div className="font-medium text-amber-800">
+                  Full Payment Required
+                </div>
                 <div className="text-sm text-amber-700 mt-1">
-                  Due system is disabled. Please add payment to cover the remaining BDT {remaining}.
+                  Due system is disabled. Please add payment to cover the
+                  remaining BDT {remaining}.
                 </div>
               </div>
             </div>
@@ -252,7 +288,9 @@ export default function PosPaymentModal({
           <div className="bg-green-50 border border-green-200 rounded-lg p-4">
             <div className="flex items-center justify-between">
               <div className="font-medium text-green-800">Change Amount</div>
-              <div className="text-lg font-bold text-green-700">BDT {changeAmount}</div>
+              <div className="text-lg font-bold text-green-700">
+                BDT {changeAmount}
+              </div>
             </div>
           </div>
         )}

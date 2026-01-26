@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import usePosCart from "./components/usePosCart";
 import PosItemSearch from "./components/PosItemSearch";
 import PosCart from "./components/PosCart";
@@ -24,15 +24,16 @@ export default function PosPage() {
     setBillDiscount,
     grandTotal,
     isLowStock,
+    resetCart,
   } = usePosCart();
 
   const [customer, setCustomer] = useState(null);
   const [salesman, setSalesman] = useState(null);
   const [payOpen, setPayOpen] = useState(false);
   const [modalData, setModalData] = useState({});
-
+  const searchRef = useRef(null);
   /* ---------------- Confirm Sale ---------------- */
-  const confirmSale = async (payments) => {
+  const confirmSale = async (payments, resetPayment) => {
     const payload = {
       type: "RETAIL",
       customerId: customer?._id,
@@ -56,12 +57,17 @@ export default function PosPage() {
         reference: p.method === "Cash" ? "Hand Cash" : p.reference,
       })),
     };
-    console.log("payload", payload);
     const res = await request("/sales", "POST", payload);
-    console.log("after sales", res);
     setModalData(res.data);
     openModal("printPosInvoice");
+    resetCart();
+    setCustomer(null);
+    setSalesman(null);
     setPayOpen(false);
+    resetPayment();
+    requestAnimationFrame(() => {
+      searchRef.current?.clearAndFocus();
+    });
   };
 
   useEffect(() => {
@@ -91,6 +97,11 @@ export default function PosPage() {
           isOpen={modals.printPosInvoice.isOpen}
           setIsOpen={() => closeModal("printPosInvoice")}
           data={modalData}
+          onAfterClose={() => {
+            requestAnimationFrame(() => {
+              searchRef.current?.clearAndFocus();
+            });
+          }}
         />
       )}
       {/* POS Header – Professional UI/UX */}
@@ -141,7 +152,7 @@ export default function PosPage() {
       <div className="py-2 grid grid-cols-12 gap-2">
         {/* LEFT */}
         <div className="col-span-8 space-y-2">
-          <PosItemSearch onSelect={addItem} />
+          <PosItemSearch ref={searchRef} onSelect={addItem} />
           <PosCart
             cart={cart}
             updateQty={updateQty}

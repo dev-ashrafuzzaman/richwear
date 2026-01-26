@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback,  useMemo, useState } from "react";
 
 const EMPTY_ROW = {
   method: "",
@@ -9,26 +9,11 @@ const EMPTY_ROW = {
   manualClear: false,
 };
 
-export default function usePosPayment(totalAmount, defaultCashAccount) {
+export default function usePosPayment(totalAmount) {
   const [payments, setPayments] = useState([EMPTY_ROW]);
-  const [cashApplied, setCashApplied] = useState(false);
-
-  /* 🔥 Apply CASH only once when fetched */
-  useEffect(() => {
-    if (!defaultCashAccount || cashApplied) return;
-
-    setPayments([
-      {
-        ...EMPTY_ROW,
-        method: defaultCashAccount.method,
-        accountId: defaultCashAccount.accountId,
-        raw: defaultCashAccount.raw,
-        amount: totalAmount,
-      },
-    ]);
-
-    setCashApplied(true);
-  }, [defaultCashAccount, totalAmount, cashApplied]);
+  const resetPayment = () => {
+    setPayments([EMPTY_ROW]);
+  };
 
   const paidAmount = useMemo(
     () =>
@@ -117,5 +102,6 @@ export default function usePosPayment(totalAmount, defaultCashAccount) {
     isValid,
     markManualClear,
     clearManualClear,
+    resetPayment,
   };
 }

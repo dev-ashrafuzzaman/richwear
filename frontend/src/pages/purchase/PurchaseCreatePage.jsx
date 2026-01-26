@@ -1,4 +1,4 @@
-// purchase/PurchaseCreatePage.jsx - Updated (removing isSubmitting)
+// purchase/PurchaseCreatePage.jsx
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import useApi from "../../hooks/useApi";
@@ -32,35 +32,55 @@ export default function PurchaseCreatePage() {
 
   const paidAmount = Number(watch("paidAmount")) || 0;
 
-  const totalAmount = items.reduce((sum, item) => {
-    let qty = 0;
-    Object.values(item.sizes).forEach(c =>
-      Object.values(c).forEach(q => (qty += q))
-    );
-    return sum + qty * item.costPrice;
-  }, 0);
+  /* ======================
+     TOTAL QTY
+  ====================== */
+  const totalQty = items.reduce(
+    (sum, item) => sum + item.variants.reduce((s, v) => s + v.qty, 0),
+    0,
+  );
+
+  /* ======================
+     TOTAL AMOUNT
+  ====================== */
+  const totalAmount = items.reduce(
+    (sum, item) =>
+      sum +
+      item.variants.reduce((itemSum, v) => itemSum + v.qty * v.costPrice, 0),
+    0,
+  );
 
   const dueAmount = Math.max(totalAmount - paidAmount, 0);
 
+  /* ======================
+     SUBMIT
+  ====================== */
   const onSubmit = async (data) => {
     if (!supplier) {
       alert("Please select a supplier");
       return;
     }
-    if (!items.length) {
-      alert("Please add at least one product");
+
+    if (!items.length || items.every((i) => i.variants.length === 0)) {
+      alert("Please add at least one product with quantity");
       return;
     }
 
     const payload = {
       supplierId: supplier._id,
       ...data,
-      items: items.map(({ productId, costPrice, salePrice, sizes }) => ({
-        productId,
-        costPrice,
-        salePrice,
-        sizes,
-      })),
+      items: items.map((i) => {
+        const variants = i.variants.filter((v) => v.qty > 0);
+
+        return {
+          productId: i.productId,
+          pricingMode: i.pricingMode,
+          ...(i.pricingMode === "GLOBAL" && {
+            globalPrice: i.globalPrice,
+          }),
+          variants,
+        };
+      }),
     };
 
     await request("/purchases", "POST", payload, {
@@ -90,8 +110,7 @@ export default function PurchaseCreatePage() {
 
       <form
         onSubmit={handleSubmit(onSubmit)}
-        className="max-w-7xl mx-auto p-4 lg:p-6 space-y-6"
-      >
+        className="mx-auto p-4 lg:p-6 space-y-6">
         <PurchaseHeader />
 
         <SupplierInvoiceCard
@@ -102,27 +121,21 @@ export default function PurchaseCreatePage() {
 
         <ProductSearchCard items={items} setItems={setItems} />
 
-        {/* Products List */}
+        {/* ======================
+           PRODUCTS
+        ====================== */}
         {items.length > 0 && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold text-gray-900">
                 Products ({items.length})
               </h2>
+
               <div className="text-sm text-gray-500">
-                Total Items:{" "}
-                <span className="font-semibold">
-                  {items.reduce((sum, item) => {
-                    let total = 0;
-                    Object.values(item.sizes).forEach(c =>
-                      Object.values(c).forEach(q => (total += q))
-                    );
-                    return sum + total;
-                  }, 0)}
-                </span>
+                Total Qty: <span className="font-semibold">{totalQty}</span>
               </div>
             </div>
-            
+
             <div className="space-y-4">
               {items.map((item, idx) => (
                 <ProductMatrixCard
@@ -136,29 +149,23 @@ export default function PurchaseCreatePage() {
           </div>
         )}
 
+        {/* ======================
+           EMPTY STATE
+        ====================== */}
         {items.length === 0 && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
-            <div className="max-w-md mx-auto">
-              <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
-                <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                No Products Added
-              </h3>
-              <p className="text-gray-600">
-                Search and add products to start creating your purchase order
-              </p>
-            </div>
+          <div className="bg-white rounded-xl shadow-sm border p-12 text-center">
+            <h3 className="text-lg font-semibold mb-2">No Products Added</h3>
+            <p className="text-gray-600">
+              Search and add products to start creating your purchase
+            </p>
           </div>
         )}
 
+        {/* ======================
+           SUMMARY
+        ====================== */}
         {items.length > 0 && (
-          <PurchaseSummaryBar
-            totalAmount={totalAmount}
-            dueAmount={dueAmount}
-          />
+          <PurchaseSummaryBar totalAmount={totalAmount} dueAmount={dueAmount} />
         )}
       </form>
     </div>
