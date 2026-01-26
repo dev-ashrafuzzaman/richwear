@@ -1,0 +1,78 @@
+import { ObjectId } from "mongodb";
+
+export const getCategories = () => {
+  return async (req, res, next) => {
+    try {
+      const db = req.app.locals.db;
+
+      const page = Math.max(+req.query.page || 1, 1);
+      const limit = Math.min(+req.query.limit || 10, 100);
+      const skip = (page - 1) * limit;
+
+      const sortField = req.query.sortBy || "createdAt";
+      const sortOrder = req.query.sort === "asc" ? 1 : -1;
+
+      const filter = {};
+      if (req.query.status) filter.status = req.query.status;
+      if (req.query.level) filter.level = Number(req.query.level);
+
+      if (req.query.search) {
+        filter.name = { $regex: req.query.search, $options: "i" };
+      }
+
+      const pipeline = [
+        { $match: filter },
+
+        {
+          $lookup: {
+            from: "categories",
+            localField: "parentId",
+            foreignField: "_id",
+            as: "parent",
+          },
+        },
+
+        {
+          $addFields: {
+            parentName: {
+              $cond: [
+                { $eq: ["$level", 1] },
+                null,
+                { $arrayElemAt: ["$parent.name", 0] },
+              ],
+            },
+          },
+        },
+
+        { $project: { parent: 0 } },
+        { $sort: { [sortField]: sortOrder } },
+        { $skip: skip },
+        { $limit: limit },
+      ];
+
+      const data = await db
+        .collection("categories")
+        .aggregate(pipeline, { allowDiskUse: true })
+        .toArray();
+
+      const total = req.query.search
+        ? await db.collection("categories").countDocuments(filter)
+        : await db.collection("categories").estimatedDocumentCount();
+
+      res.json({
+        success: true,
+        pagination: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+          hasMore: skip + data.length < total,
+        },
+        data,
+      });
+    } catch (err) {
+      next(err);
+    }
+  };
+};
+
