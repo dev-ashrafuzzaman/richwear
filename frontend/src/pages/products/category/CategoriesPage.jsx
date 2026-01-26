@@ -8,10 +8,6 @@ const CategoriesPage = () => {
   const { modals, openModal, closeModal } = useModalManager();
   const table = useTableManager("/categories");
 
-  const parentMap = (id) => {
-    const parent = table.rows.find((r) => r._id === id);
-    return parent?.name || "—";
-  };
 
   return (
     <Page title="Categories" subTitle="Manage your organization categories">
@@ -35,16 +31,12 @@ const CategoriesPage = () => {
         ]}
         columns={[
           { key: "name", label: "Name" },
-          {
-            key: "level",
-            label: "Level",
-            render: (r) => `Level ${r.level}`,
-          },
-          {
-            key: "parent",
-            label: "Parent Category",
-            render: (r) => (r.level === 1 ? "—" : parentMap(r.parentId) || "—"),
-          },
+          // {
+          //   key: "level",
+          //   label: "Level",
+          //   render: (r) => `Level ${r.level}`,
+          // },
+          { key: "parentName", label: "Parent Category" },
           {
             key: "status",
             label: "Status",
