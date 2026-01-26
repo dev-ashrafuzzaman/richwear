@@ -161,6 +161,23 @@ const SmartSelect = forwardRef(
 
     useEffect(() => () => loadOptions.cancel(), [loadOptions]);
 
+    /* ---------------- Selected Value Mapper ---------------- */
+    const selectedOption = useMemo(() => {
+      if (!value) return null;
+
+      // already option হলে 그대로 দাও (backward safety)
+      if (value?.value && value?.label) {
+        return value;
+      }
+
+      // raw object → option
+      return {
+        value: value[idField],
+        label: getLabel(value),
+        raw: value,
+      };
+    }, [value, idField, getLabel]);
+
     /* ---------------- Infinite Scroll ---------------- */
     const handleScrollBottom = async () => {
       if (!hasMore || loading) return;
@@ -224,7 +241,7 @@ const SmartSelect = forwardRef(
         defaultOptions={preLoad ? options : false}
         loadOptions={loadOptions}
         onMenuScrollToBottom={handleScrollBottom}
-        value={value}
+        value={selectedOption}
         onChange={onChange}
         placeholder={placeholder}
         isDisabled={disabled}

@@ -1,78 +1,60 @@
-import Table from "../../../components/common/Table";
-import useTableManager from "../../../hooks/useTableManager";
-import { usersTableToolbar } from "../../../config/tableToolbarConfig";
-import Skeleton from "../../../components/skeletons/SkeletonCard";
+import UserCreateModalPage from "./UserCreateModalPage";
+import useModalManager from "../../../hooks/useModalManager";
 import Page from "../../../components/common/Page";
-import { Edit, RefreshCcw, Trash } from "lucide-react";
+import DataTable from "../../../components/table/DataTable";
+import useTableManager from "../../../hooks/useTableManager";
 
-const UserListPage = () => {
-  const { data, loading, error, query,refetch, setQuery } = useTableManager(
-    "/users/",
-    {
-      queryKey: "users",
-      transform: (res) => res?.data ?? [],
-    }
-  );
+const UsersPage = () => {
+  const { modals, openModal, closeModal } = useModalManager();
+  const table = useTableManager("/users");
   return (
-    <Page title="System Users">
-      <div>
-        {/* Table */}
-        {loading ? (
-          <Skeleton type="table" />
-        ) : (
-          <Table
-            query={query}
-            setQuery={setQuery}
-            config={usersTableToolbar}
-            onSuccess={refetch}
-            columns={[
-              { key: "code", label: "ID", width: "80px" },
-              { key: "name", label: "Name", sortable: true },
-              { key: "role", label: "Role", sortable: true },
-              { key: "email", label: "Email", sortable: true },
-              { key: "mobile", label: "Mobile", sortable: true },
-              { key: "created_at", label: "Create At", sortable: true },
-              {
-                key: "is_active",
-                label: "Status",
-                sortable: true,
-                render: (value) => (
-                  <span
-                    className={`${value === true ? "status approved" : "status rejected"
-                      }`}>
-                    {value === true ? "Active" : "Inactive"}
-                  </span>
-                ),
-              },
-            ]}
-            data={data}
-            actions={[
-              {
-                label: "",
-                icon: <Edit size={14} />,
-                onClick: (row) => alert("Edit " + row.name),
-                className: "action edit",
-              },
-              {
-                label: "",
-                icon: <Trash size={14} />,
-                type: "delete",
-                className: "action delete",
-                getApi: (row) => `/users/${row.id}/`, // ✅ pass as function
-              },
-              {
-                label: "",
-                icon: <RefreshCcw size={14} />,
-                type: "status",
-                className: "action status",
-                getApi: (row) => `/users/${row.id}/toggle_status/`, // ✅ pass as function
-              },
-              ]}
-          />
-        )}
-      </div>
+    <Page title="Users" subTitle="Manage your organization users">
+      {modals.createUser?.isOpen && (
+        <UserCreateModalPage
+          isOpen={modals.createUser.isOpen}
+          setIsOpen={() => closeModal("createUser")}
+          refetch={table.refetch}
+        />
+      )}
+      <DataTable
+        table={table}
+        title="Users"
+        headerActions={[{variant: "gradient", label: "Add User", onClick: () => openModal("createUser")}]}
+        columns={[
+          { key: "email", label: "Email" },
+          { key: "name", label: "Name" },
+          { key: "roleName", label: "Role" },
+          {
+            key: "status",
+            label: "Status",
+            render: (r) => (
+              <span
+                className={`${
+                  r.status === "active" ? "status approved" : "status rejected"
+                }`}>
+                {r.status === "active" ? "Active" : "Inactive"}
+              </span>
+            ),
+          },
+        ]}
+        actions={[
+          // { type: "view", label: "View" },
+          // { type: "edit", label: "Edit" },
+          {
+            type: "status",
+            label: "Change Status",
+            api: (row) => `/users/${row._id}/status`,
+          },
+          // {
+          //   type: "delete",
+          //   label: "Delete",
+          //   api: (row) => `/branches/${row._id}`,
+          //   hidden: (row) => row.isSystem === true,
+          // },
+        ]}
+      />
     </Page>
   );
 };
 
-export default UserListPage;
+export default UsersPage;

@@ -1,297 +1,210 @@
-import React, { useState } from "react";
 import { useForm, Controller } from "react-hook-form";
-import {
-  ChevronDown,
-  ChevronRight,
-  Building2,
-  User2,
-  ShieldCheck,
-  Loader2,
-  Plus,
-} from "lucide-react";
-import Page from "../../../components/common/Page";
-import Input from "../../../components/ui/Input";
-import Button from "../../../components/ui/Button";
-import Card from "../../../components/ui/Card";
-import Divider from "../../../components/ui/Divider";
-import useApi from "../../../hooks/useApi";
-import { useNavigate } from "react-router-dom";
-import PageHeader from "../../../components/common/PageHeader";
-import { useAuth } from "../../../context/useAuth";
+import { useEffect, useState } from "react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 
-export default function UserCreatePage() {
-  const { user } = useAuth();
-  const permissions = user?.permissions || {};
+import useApi from "../../../hooks/useApi";
+import Modal from "../../../components/modals/Modal";
+import Button from "../../../components/ui/Button";
+import Input from "../../../components/ui/Input";
+import Checkbox from "../../../components/ui/Checkbox";
+import SmartSelect from "../../../components/common/SmartSelect";
+
+export default function UserCreateModal({ isOpen, setIsOpen, refetch }) {
   const { request, loading } = useApi();
-  const navigate = useNavigate();
+  const [showPass, setShowPass] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+
   const {
+    control,
     register,
     handleSubmit,
-    control,
+    watch,
     reset,
     formState: { errors },
   } = useForm({
     defaultValues: {
-      company_name: "",
-      company_details: "",
-      user_name: "",
-      user_email: "",
-      user_mobile: "",
-      user_password: "",
-      user_role: "",
-      permissions: {},
+      employee: null,
+      role: null,
+      branch: null,
+      password: "",
+      confirmPassword: "",
     },
   });
 
-  const [expandedModules, setExpandedModules] = useState({});
+  const isSuperAdmin = watch("isSuperAdmin");
+  const password = watch("password");
 
-  const toggleModule = (module) => {
-    setExpandedModules((prev) => ({ ...prev, [module]: !prev[module] }));
-  };
+  /* 🔄 HARD RESET on modal open */
+  useEffect(() => {
+    if (isOpen) {
+      reset({
+        employee: null,
+        role: null,
+        branch: null,
+        password: "",
+        confirmPassword: "",
+      });
+    }
+  }, [isOpen, reset]);
 
   const onSubmit = async (data) => {
-    await request("/users/", "POST", data, {
-      retries: 2,
-      successMessage: "Created successfully!",
-      errorMessage: "Failed to create company.",
+    const payload = {
+      password: data.password,
+    };
+
+    if (!data.isSuperAdmin) {
+      payload.employeeId = data.employee?._id;
+      payload.roleId = data.role?._id;
+      payload.branchId = data.branch?._id || null;
+    }
+
+    await request("/users", "POST", payload, {
+      successMessage: "User created successfully",
       onSuccess: () => {
-        reset(), navigate("/settings/users");
+        setIsOpen(false);
+        refetch();
       },
     });
   };
 
   return (
-    <Page title="Create Company Users">
-      <PageHeader
-        title="Create New User"
-        subTitle="Fill in details to register a user & permission setup."
-        icon={Building2}
-      />
-
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        {/* User Info */}
-        <Card>
-          {/* user information */}
-          <section className="mb-6">
-            <div className="flex items-center gap-2 mb-4">
-              <User2 className="w-5 h-5 text-blue-600" />
-              <h2 className="text-lg font-semibold text-gray-800">
-                User Information
-              </h2>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-5">
-              <Input
-                label="User Name"
-                placeholder="User Name"
-                {...register("user_name", {
-                  required: "User name is required",
-                })}
-                error={errors.user_name?.message}
-              />
-              <Input
-                label="User Email"
-                type="email"
-                placeholder="Email address"
-                {...register("user_email", { required: "Email is required" })}
-                error={errors.user_email?.message}
-              />
-              <Input
-                label="Mobile"
-                placeholder="Phone number"
-                {...register("user_mobile")}
-              />
-              <Input
-                label="Password"
-                type="password"
-                placeholder="Password"
-                {...register("user_password", {
-                  required: "Password is required",
-                })}
-                error={errors.user_password?.message}
-              />
-              <Input
-                label="Role"
-                placeholder="Role"
-                {...register("user_role", { required: "Role is required" })}
-                error={errors.user_role?.message}
-              />
-            </div>
-          </section>
-          <Divider color="blue" />
-          {/* permission */}
-          {/* permission */}
-          <section className="my-4">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-blue-600" />
-                <h2 className="text-lg font-semibold text-gray-800">
-                  Permissions
-                </h2>
-              </div>
-
-              {/* Select All Global */}
-              <label className="flex items-center gap-2 text-sm text-gray-700 hover:text-blue-600 cursor-pointer">
-                <input
-                  type="checkbox"
-                  onChange={(e) => {
-                    const checked = e.target.checked;
-                    const newPermissions = {};
-                    Object.keys(permissions).forEach((module) => {
-                      newPermissions[module] = {};
-                      Object.keys(permissions[module]).forEach((entity) => {
-                        newPermissions[module][entity] = {};
-                        permissions[module][entity].forEach((perm) => {
-                          newPermissions[module][entity][perm] = checked;
-                        });
-                      });
-                    });
-                    reset((prev) => ({ ...prev, permissions: newPermissions }));
-                  }}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 rounded"
-                />
-                Select All
-              </label>
-            </div>
-
-            <div className="border border-gray-200 rounded-lg p-4 max-h-[420px] overflow-y-auto custom-scroll">
-              {Object.keys(permissions).map((module) => {
-                const allChecked = Object.keys(permissions[module] || {}).every(
-                  (entity) => {
-                    const perms = permissions[module][entity];
-                    // perms can be array or object depending on shape
-                    if (Array.isArray(perms)) return false; // initial structure, no values yet
-                    return Object.values(perms || {}).every(Boolean);
-                  }
-                );
-
-                return (
-                  <div
-                    key={module}
-                    className="mb-3 border-b border-gray-100 pb-2">
-                    {/* Module Header */}
-                    <div
-                      className="flex items-center justify-between cursor-pointer hover:bg-gray-50 px-2 py-1 rounded-md transition"
-                      onClick={() => toggleModule(module)}>
-                      <span className="font-medium capitalize text-gray-800">
-                        {module}
-                      </span>
-                      <div className="flex items-center gap-2">
-                        {/* Select All per module */}
-                        <label
-                          onClick={(e) => e.stopPropagation()}
-                          className="flex items-center gap-1 text-xs text-gray-600 hover:text-blue-600 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            onChange={(e) => {
-                              const checked = e.target.checked;
-                              const modulePermissions = {};
-                              Object.keys(permissions[module]).forEach(
-                                (entity) => {
-                                  modulePermissions[entity] = {};
-                                  permissions[module][entity].forEach(
-                                    (perm) => {
-                                      modulePermissions[entity][perm] = checked;
-                                    }
-                                  );
-                                }
-                              );
-                              reset((prev) => ({
-                                ...prev,
-                                permissions: {
-                                  ...prev.permissions,
-                                  [module]: modulePermissions,
-                                },
-                              }));
-                            }}
-                            className="h-3.5 w-3.5 text-blue-600 rounded"
-                          />
-                          All
-                        </label>
-
-                        {expandedModules[module] ? (
-                          <ChevronDown size={16} />
-                        ) : (
-                          <ChevronRight size={16} />
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Entities */}
-                    {expandedModules[module] && (
-                      <div className="ml-4 mt-2 space-y-2 animate-fadeIn">
-                        {Object.keys(permissions[module]).map((entity) => (
-                          <div key={entity}>
-                            <p className="text-sm font-medium text-gray-700">
-                              {entity}
-                            </p>
-                            <div className="ml-4 grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                              {permissions[module][entity].map((perm) => (
-                                <Controller
-                                  key={perm}
-                                  name={`permissions.${module}.${entity}.${perm}`}
-                                  control={control}
-                                  render={({ field }) => (
-                                    <label className="flex items-center gap-2 text-sm text-gray-600 hover:text-blue-600 cursor-pointer">
-                                      <input
-                                        type="checkbox"
-                                        checked={field.value || false}
-                                        onChange={(e) =>
-                                          field.onChange(e.target.checked)
-                                        }
-                                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 rounded"
-                                      />
-                                      {perm}
-                                    </label>
-                                  )}
-                                />
-                              ))}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        </Card>
-
-        {/* Submit */}
-        <div className="w-full">
+    <Modal
+      isOpen={isOpen}
+      setIsOpen={setIsOpen}
+      title="Create System User"
+      subTitle="Assign login access with role & permissions"
+      size="lg"
+      footer={
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost" onClick={() => setIsOpen(false)}>
+            Cancel
+          </Button>
           <Button
+            onClick={handleSubmit(onSubmit)}
             disabled={loading}
             prefix={loading && <Loader2 className="w-4 h-4 animate-spin" />}
-            type="submit"
             variant="gradient"
-            className="w-full"
-            size="md">
-            Create Company
+          >
+            Create User
           </Button>
         </div>
-      </form>
+      }
+    >
+      <div className="space-y-4">
 
-      {/* subtle animation */}
-      <style>{`
-        .animate-fadeIn {
-          animation: fadeIn 0.3s ease-in-out;
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(-4px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .custom-scroll::-webkit-scrollbar {
-          width: 8px;
-        }
-        .custom-scroll::-webkit-scrollbar-thumb {
-          background-color: #cbd5e1;
-          border-radius: 4px;
-        }
-        .custom-scroll::-webkit-scrollbar-thumb:hover {
-          background-color: #94a3b8;
-        }
-      `}</style>
-    </Page>
+        {/* 👤 Employee */}
+        {!isSuperAdmin && (
+          <Controller
+            name="employee"
+            control={control}
+            rules={{ required: "Employee is required" }}
+            render={({ field }) => (
+              <SmartSelect 
+                key={`emp-${isOpen}`}
+                label="Employee"
+                customRoute="/employees"
+                displayField={["code", "personal.name"]}
+                idField="_id"
+                preLoad={true}
+                placeholder="Search employee"
+                value={field.value}
+                onChange={(opt) => field.onChange(opt?.raw || null)}
+                error={errors.employee?.message}
+              />
+            )}
+          />
+        )}
+
+        {/* 🎭 Role */}
+        {!isSuperAdmin && (
+          <Controller
+            name="role"
+            control={control}
+            rules={{ required: "Role is required" }}
+            render={({ field }) => (
+              <SmartSelect
+                key={`role-${isOpen}`}
+                label="Role"
+                preLoad={true}
+                customRoute="/roles"
+                displayField={["name"]}
+                idField="_id"
+                placeholder="Select role"
+                value={field.value}
+                onChange={(opt) => field.onChange(opt?.raw || null)}
+                error={errors.role?.message}
+              />
+            )}
+          />
+        )}
+
+        {/* 🏢 Branch */}
+        {!isSuperAdmin && (
+          <Controller
+            name="branch"
+            control={control}
+            render={({ field }) => (
+              <SmartSelect
+                key={`branch-${isOpen}`}
+                label="Branch"
+                preLoad={true}
+                customRoute="/branches"
+                displayField={["code", "name"]}
+                idField="_id"
+                placeholder="Select branch (optional)"
+                value={field.value}
+                onChange={(opt) => field.onChange(opt?.raw || null)}
+              />
+            )}
+          />
+        )}
+
+        {/* 🔑 Password */}
+        <div className="relative">
+          <Input
+            type={showPass ? "text" : "password"}
+            label="Password"
+            autoComplete="new-password"
+            placeholder="••••••••"
+            error={errors.password?.message}
+            {...register("password", {
+              required: "Password is required",
+              minLength: { value: 6, message: "Min 6 characters" },
+            })}
+          />
+          <button
+            type="button"
+            className="absolute right-3 top-9 text-gray-400"
+            onClick={() => setShowPass(!showPass)}
+          >
+            {showPass ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
+        </div>
+
+        {/* 🔁 Confirm Password */}
+        <div className="relative">
+          <Input
+            type={showConfirm ? "text" : "password"}
+            label="Confirm Password"
+            autoComplete="new-password"
+            placeholder="••••••••"
+            error={errors.confirmPassword?.message}
+            {...register("confirmPassword", {
+              required: "Confirm password",
+              validate: (v) =>
+                v === password || "Passwords do not match",
+            })}
+          />
+          <button
+            type="button"
+            className="absolute right-3 top-9 text-gray-400"
+            onClick={() => setShowConfirm(!showConfirm)}
+          >
+            {showConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
+        </div>
+
+      </div>
+    </Modal>
   );
 }
