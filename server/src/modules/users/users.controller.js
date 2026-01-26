@@ -110,3 +110,85 @@ export const createUser = async (req, res, next) => {
     next(err);
   }
 };
+
+export const getUsersController = async (req, res, next) => {
+  try {
+    const db = req.app.locals.db;
+
+    /* ---------------- Pagination ---------------- */
+    const page = Math.max(parseInt(req.query.page) || 1, 1);
+    const limit = Math.min(parseInt(req.query.limit) || 10, 50);
+    const skip = (page - 1) * limit;
+
+    /* ---------------- Search ---------------- */
+    const search = req.query.search?.trim();
+    const searchQuery = search
+      ? {
+          $or: [
+            { name: { $regex: search, $options: "i" } },
+            { email: { $regex: search, $options: "i" } },
+            { roleName: { $regex: search, $options: "i" } },
+          ],
+        }
+      : {};
+
+    /* ---------------- Base Match ---------------- */
+    const matchStage = {
+      isSuperAdmin: { $ne: true }, // 🔥 hide super admin
+      ...searchQuery,
+    };
+
+    /* ---------------- Aggregation ---------------- */
+    const pipeline = [
+      { $match: matchStage },
+
+      /* ---- Branch Join ---- */
+      {
+        $lookup: {
+          from: "branches",
+          let: { branchId: { $toObjectId: "$branchId" } },
+          pipeline: [
+            { $match: { $expr: { $eq: ["$_id", "$$branchId"] } } },
+            { $project: { name: 1, code: 1 } },
+          ],
+          as: "branch",
+        },
+      },
+      { $unwind: { path: "$branch", preserveNullAndEmptyArrays: true } },
+
+      /* ---- Projection ---- */
+      {
+        $project: {
+          password: 0,
+          refreshToken: 0,
+          refreshTokenHash: 0,
+          loginAttempts: 0,
+          lockUntil: 0,
+        },
+      },
+
+      /* ---- Sort + Pagination ---- */
+      { $sort: { createdAt: -1 } },
+      { $skip: skip },
+      { $limit: limit },
+    ];
+
+    const [rows, total] = await Promise.all([
+      db.collection("users").aggregate(pipeline).toArray(),
+      db.collection("users").countDocuments(matchStage),
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: rows,
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+};

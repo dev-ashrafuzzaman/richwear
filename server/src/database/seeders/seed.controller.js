@@ -5,16 +5,14 @@ import { seedcommissionRules } from "../../modules/sales/commission.seed.js";
 import { seedAttributes } from "../../modules/variants/seed.attributes.js";
 import { seedProductTypes } from "../../modules/products/productType.seed.js";
 import { seedRoles } from "../../modules/roles/seed.roles.js";
-import { seedSuperAdmin } from "../../modules/users/user.seed.js";
+import { seedSystemUsers } from "../../modules/users/user.seed.js";
 
-
-console.log("🔥 SEED CONTROLLER HIT");
 export const seedAllController = async (req, res, next) => {
 
     try {
         const db = req.app.locals.db;
 
-        //  await seedSuperAdmin(db);
+         await seedSystemUsers(db);
         // await seedBranches(db);
         // await seedChartOfAccounts(db);
         // await seedAttributes(db);
