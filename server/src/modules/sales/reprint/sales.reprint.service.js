@@ -216,9 +216,9 @@ export const reprintSalesReturnService = async ({
       /* ---------- ITEMS (RETURNED ITEMS) ---------- */
       items: returnItems.map((i) => ({
         sku: i.sku,
-        qty: i.qty, // returned qty
+        qty: i.qty, 
         unitPrice: roundMoney(i.refundAmount / i.qty),
-        discount: 0,
+        discount: 0, 
         vat: 0,
         lineTotal: i.refundAmount,
       })),
