@@ -5,9 +5,10 @@ export const upsertCustomerBranch = async ({
   db,
   customerId,
   branchId,
-  branchName
+  branchName,
+  session
 }) => {
-  await db.collection(COLLECTIONS.CUSTOMER_BRANCHES).updateOne(
+  return db.collection(COLLECTIONS.CUSTOMER_BRANCHES).updateOne(
     {
       customerId: new ObjectId(customerId),
       branchId: new ObjectId(branchId)
@@ -23,6 +24,9 @@ export const upsertCustomerBranch = async ({
         lastUsedAt: new Date()
       }
     },
-    { upsert: true }
+    {
+      upsert: true,
+      session
+    }
   );
 };

@@ -1,3 +1,4 @@
+import { COLLECTIONS } from "../../../../database/collections.js";
 import { postJournalEntry } from "../../journals/journals.service.js";
 
 
@@ -15,7 +16,7 @@ export const yearClosingService = async ({
   };
   if (branchId) match.branchId = branchId;
 
-  const pnl = await db.collection("ledgers").aggregate([
+  const pnl = await db.collection(COLLECTIONS.LEDGERS).aggregate([
     { $match: match },
     {
       $lookup: {

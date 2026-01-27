@@ -631,43 +631,35 @@ export const inventoryAdjustmentAccounting = async ({
 };
 
 /* ======================================================
-   OPENING BALANCE
+   OPENING BALANCE V0.1
 ====================================================== */
 export const openingBalanceAccounting = async ({
   db,
   session,
   openingDate,
-  balances,
-  openingOffsetAccountId,
+  amount,
   branchId,
+  narration = "Opening Balance",
 }) => {
-  const entries = [];
-  let debit = 0;
-  let credit = 0;
+  const openingAmount = roundMoney(amount);
 
-  for (const b of balances) {
-    if (b.amount <= 0) continue;
-
-    if (b.type === "ASSET") {
-      entries.push({ accountId: b.accountId, debit: b.amount });
-      debit += b.amount;
-    }
-
-    if (["LIABILITY", "EQUITY"].includes(b.type)) {
-      entries.push({ accountId: b.accountId, credit: b.amount });
-      credit += b.amount;
-    }
+  if (openingAmount <= 0) {
+    throw new Error("Opening balance amount must be greater than zero");
   }
 
-  const diff = debit - credit;
+  // 🔑 Resolve system accounts (GLOBAL COA)
+  const SYS = await resolveSystemAccounts(db);
 
-  if (diff > 0) {
-    entries.push({ accountId: openingOffsetAccountId, credit: diff });
-  }
-
-  if (diff < 0) {
-    entries.push({ accountId: openingOffsetAccountId, debit: Math.abs(diff) });
-  }
+  const entries = [
+    {
+      accountId: SYS.CASH,           // 💵 Business Cash
+      debit: openingAmount,
+    },
+    {
+      accountId: SYS.OWNER_CAPITAL,  // 👤 Owner Equity
+      credit: openingAmount,
+    },
+  ];
 
   return postJournalEntry({
     db,
@@ -675,7 +667,7 @@ export const openingBalanceAccounting = async ({
     date: openingDate,
     refType: "OPENING_BALANCE",
     refId: null,
-    narration: "Opening Balance",
+    narration,
     entries,
     branchId,
   });

@@ -16,8 +16,7 @@ export const COLLECTIONS = {
   SALES: "sales",
   SALES_RETURNS: "sales_returns",
   SALES_RETURN_ITEMS: "sales_return_items",
-  STOCK_LEDGERS: "stock_ledgers",
-  SALE_ITEMS: "sale_items",
+  SALE_ITEMS: "sale_items", 
   SALE_PAYMENTS: "sale_payments",
   TRANSACTIONS: "transactions",
   SUPPLIER_LEDGER: "supplier_ledger",
@@ -28,5 +27,7 @@ export const COLLECTIONS = {
   STOCK_MOVEMENTS: "stock_movements",
 
   ACCOUNTS: "accounts",
+  JOURNALS: "journals",
+  SETTINGS: "settings",
   PRODUCT_TYPES: "product_types",
 };

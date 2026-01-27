@@ -1,5 +1,6 @@
 // modules/accounting/ledgers/ledgers.collection.js
 import { ObjectId } from "mongodb";
+import { COLLECTIONS } from "../../../database/collections.js";
 
 export const insertLedger = async (db, payload) => {
   const doc = {
@@ -20,10 +21,11 @@ export const insertLedger = async (db, payload) => {
     journalId: payload.journalId ? new ObjectId(payload.journalId) : null,
 
     date: payload.date,
+    voucherNo: payload.voucherNo,
     createdAt: new Date(),
   };
 
   return db
-    .collection("ledgers")
+    .collection(COLLECTIONS.LEDGERS)
     .insertOne(doc, payload.session ? { session: payload.session } : undefined);
 };

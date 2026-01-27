@@ -1,14 +1,12 @@
 // modules/attributes/seed.attributes.js
-import { ObjectId } from "mongodb";
 import { COLLECTIONS } from "../../database/collections.js";
 
 export const seedAttributes = async (db) => {
   /**
-   * ⚠️ SYSTEM LOCKED ATTRIBUTE MASTER
+   * 🔒 SYSTEM LOCKED ATTRIBUTE MASTER
    * Used for Product Variants (Size, Color)
+   * Idempotent & Production Safe
    */
-
-  await db.collection(COLLECTIONS.ATTRIBUTES).deleteMany({ isSystem: true });
 
   const attributes = [
     /* ======================
@@ -37,17 +35,31 @@ export const seedAttributes = async (db) => {
     { type: "color", name: "GRAY" }
   ];
 
-  const docs = attributes.map((attr) => ({
-    _id: new ObjectId(),
-    type: attr.type,          // size | color
-    name: attr.name,          // M, RED, etc
-    isSystem: true,           // 🔒 system locked
-    status: "active",
-    createdAt: new Date(),
-    updatedAt: new Date()
+  const bulkOps = attributes.map((attr) => ({
+    updateOne: {
+      filter: {
+        type: attr.type,
+        name: attr.name
+      },
+      update: {
+        $setOnInsert: {
+          type: attr.type,
+          name: attr.name,
+          isSystem: true,        // 🔒 locked
+          status: "active",
+          createdAt: new Date()
+        },
+        $set: {
+          updatedAt: new Date()
+        }
+      },
+      upsert: true
+    }
   }));
 
-  await db.collection(COLLECTIONS.ATTRIBUTES).insertMany(docs);
+  await db
+    .collection(COLLECTIONS.ATTRIBUTES)
+    .bulkWrite(bulkOps, { ordered: false });
 
-  console.log("✅ Attribute Master (Size + Color) Seeded Successfully");
+  console.log("✅ Attribute Master (Size + Color) Seeded / Synced Successfully");
 };

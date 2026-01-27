@@ -4,7 +4,6 @@ import morgan from "morgan";
 
 import routes from "../routes.js";
 import { errorHandler } from "./middlewares/error.middleware.js";
-import seedRoutes from "./database/seeders/seed.routes.js";
 
 const app = express();
 
@@ -13,8 +12,8 @@ const app = express();
 =============================== */
 app.use(
   cors({
-    origin: "http://localhost:5173", // frontend URL
-    credentials: true,               // 🍪 REQUIRED
+    origin: "http://localhost:5173", 
+    credentials: true,              
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
@@ -36,7 +35,6 @@ if (process.env.NODE_ENV === "development") {
 /* ===============================
    ROUTES
 =============================== */
-app.use("/api/seed", seedRoutes);
 
 app.get("/health", (req, res) => {
   res.status(200).json({

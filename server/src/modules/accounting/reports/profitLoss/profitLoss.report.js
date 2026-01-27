@@ -1,5 +1,7 @@
 // modules/accounting/reports/profitLoss.report.js
 
+import { COLLECTIONS } from "../../../../database/collections.js";
+
 export const profitLossReport = async ({
   db,
   fromDate,
@@ -11,7 +13,7 @@ export const profitLossReport = async ({
   };
   if (branchId) match.branchId = branchId;
 
-  const rows = await db.collection("ledgers").aggregate([
+  const rows = await db.collection(COLLECTIONS.LEDGERS).aggregate([
     { $match: match },
     {
       $lookup: {

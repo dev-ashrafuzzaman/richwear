@@ -3,8 +3,8 @@ import { ObjectId } from "mongodb";
 
 export const seedChartOfAccounts = async (db) => {
   /**
-   * ⚠️ SYSTEM LOCKED CHART OF ACCOUNTS
-   * Bangladesh ERP / POS Standard
+   * 🔒 SYSTEM LOCKED CHART OF ACCOUNTS
+   * Bangladesh ERP / POS Standard (FINAL)
    */
 
   await db.collection("accounts").deleteMany({});
@@ -121,7 +121,6 @@ export const seedChartOfAccounts = async (db) => {
       parent: "1002",
     },
 
-    // --- Central Bank ---
     {
       code: "100499",
       name: "Bangladesh Bank",
@@ -137,11 +136,21 @@ export const seedChartOfAccounts = async (db) => {
       subType: "INVENTORY",
       parent: "1000",
     },
+
     {
       code: "1004",
       name: "Accounts Receivable",
       type: "ASSET",
       subType: "CUSTOMER",
+      parent: "1000",
+    },
+
+    // ✅ VAT / TAX RECEIVABLE (IMPORTANT)
+    {
+      code: "1005",
+      name: "VAT Receivable",
+      type: "ASSET",
+      subType: "TAX",
       parent: "1000",
     },
 
@@ -157,6 +166,7 @@ export const seedChartOfAccounts = async (db) => {
       subType: "SUPPLIER",
       parent: "2000",
     },
+
     {
       code: "2002",
       name: "Salary Payable",
@@ -164,6 +174,7 @@ export const seedChartOfAccounts = async (db) => {
       subType: "SALARY",
       parent: "2000",
     },
+
     {
       code: "2003",
       name: "Tax Payable",
@@ -172,10 +183,20 @@ export const seedChartOfAccounts = async (db) => {
       parent: "2000",
     },
 
+    // ✅ Optional but recommended
+    {
+      code: "2004",
+      name: "Bank Overdraft",
+      type: "LIABILITY",
+      subType: "BANK",
+      parent: "2000",
+    },
+
     /* ======================
        INCOME (3000)
     ====================== */
     { code: "3000", name: "Income", type: "INCOME", subType: "GROUP" },
+
     {
       code: "3001",
       name: "Sales Income",
@@ -183,6 +204,7 @@ export const seedChartOfAccounts = async (db) => {
       subType: "SALES",
       parent: "3000",
     },
+
     {
       code: "3002",
       name: "Other Income",
@@ -192,17 +214,13 @@ export const seedChartOfAccounts = async (db) => {
     },
 
     /* ======================
-       EXPENSE (4000)
+       EXPENSES (4000)
     ====================== */
     { code: "4000", name: "Expenses", type: "EXPENSE", subType: "GROUP" },
 
-    {
-      code: "4001",
-      name: "Purchase Expense",
-      type: "EXPENSE",
-      subType: "PURCHASE",
-      parent: "4000",
-    },
+    // ❌ Inventory purchase is NOT expense
+    // ✅ Only non-inventory expenses here
+
     {
       code: "4002",
       name: "Salary Expense",
@@ -238,6 +256,8 @@ export const seedChartOfAccounts = async (db) => {
       subType: "DISCOUNT",
       parent: "4000",
     },
+
+    // ✅ COGS (VERY IMPORTANT)
     {
       code: "4007",
       name: "Cost of Goods Sold",
@@ -245,6 +265,7 @@ export const seedChartOfAccounts = async (db) => {
       subType: "COGS",
       parent: "4000",
     },
+
     /* ======================
        EQUITY (5000)
     ====================== */
@@ -257,6 +278,7 @@ export const seedChartOfAccounts = async (db) => {
       subType: "CAPITAL",
       parent: "5000",
     },
+
     {
       code: "5002",
       name: "Retained Earnings",
@@ -287,5 +309,7 @@ export const seedChartOfAccounts = async (db) => {
     inserted[acc.code] = res.insertedId;
   }
 
-  console.log("✅ FINAL Chart of Accounts (Bank + MFS) Seeded Successfully");
+  console.log(
+    "✅ FINAL Chart of Accounts seeded successfully (Accounting Safe)",
+  );
 };

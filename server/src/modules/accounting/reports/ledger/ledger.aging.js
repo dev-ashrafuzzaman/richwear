@@ -1,5 +1,6 @@
 // modules/accounting/reports/ledger/ledger.aging.js
 import { ObjectId } from "mongodb";
+import { COLLECTIONS } from "../../../../database/collections.js";
 
 export const ledgerAgingReport = async ({
   db,
@@ -13,7 +14,7 @@ export const ledgerAgingReport = async ({
     date: { $lte: asOfDate }
   };
 
-  const rows = await db.collection("ledgers")
+  const rows = await db.collection(COLLECTIONS.LEDGERS)
     .find(match)
     .sort({ date: 1 })
     .toArray();

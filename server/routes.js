@@ -15,12 +15,14 @@ import saleRoutes from "./src/modules/sales/sales.routes.js";
 
 // REPORTS ROUTES
 import ledgerRoutes from "./src/modules/accounting/reports/ledger/ledger.routes.js";
+import profitAndLossAdvanceRoutes from "./src/modules/accounting/reports/profitLoss/profitLoss.routes.js";
 import balanceSheetRoutes from "./src/modules/accounting/reports/balanceSheet/balanceSheet.routes.js";
 import closingRoutes from "./src/modules/accounting/reports/closing/yearClosing.routes.js";
 import statementRoutes from "./src/modules/accounting/reports/statement/statement.routes.js";
 import trialBalanceRoutes from "./src/modules/accounting/reports/trialBalance/trialBalance.routes.js";
 import stockRoutes from "./src/modules/inventory/stock.routes.js";
 import adminRoutes from "./src/modules/administration/admin.route.js";
+import dashboardRoutes from "./src/modules/dashboard/dashboard.route.js";
 
 
 import { authenticate } from "./src/middlewares/auth.middleware.js";
@@ -44,13 +46,15 @@ router.use("/purchases", purchaseRoutes);
 router.use("/attendance", attendanceRoutes);
 router.use("/sales", saleRoutes);
 router.use("/stocks", stockRoutes); 
+router.use("/dashboard", dashboardRoutes); 
 
 // REPORTS ROUTES
-router.use("/accounting/reports/ledgers", ledgerRoutes);
-router.use("/accounting/reports/balance-sheet", balanceSheetRoutes);
-router.use("/accounting/reports/close-year", closingRoutes);
-router.use("/accounting/reports/statement", statementRoutes);
-router.use("/accounting/reports/trial-balance", trialBalanceRoutes);
+router.use("/reports/profit-loss", profitAndLossAdvanceRoutes);
+router.use("/reports/ledgers", ledgerRoutes);
+router.use("/reports/balance-sheet", balanceSheetRoutes);
+router.use("/reports/close-year", closingRoutes);
+router.use("/reports/statement", statementRoutes);
+router.use("/reports/trial-balance", trialBalanceRoutes);
 
 
 export default router;

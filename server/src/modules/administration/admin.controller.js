@@ -1,4 +1,5 @@
 import { ObjectId } from "mongodb";
+import { COLLECTIONS } from "../../database/collections";
 
 export const getActivityLogs = async (req, res, next) => {
   try {
@@ -90,10 +91,10 @@ export const getActivityLogs = async (req, res, next) => {
 
     const [data, total] = await Promise.all([
       db
-        .collection("activity_logs")
+        .collection(COLLECTIONS.AUDIT_LOGS)
         .aggregate([...pipeline, { $skip: skip }, { $limit: Number(limit) }])
         .toArray(),
-      db.collection("activity_logs").countDocuments(match),
+      db.collection(COLLECTIONS.AUDIT_LOGS).countDocuments(match),
     ]);
 
     res.json({

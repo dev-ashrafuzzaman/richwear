@@ -14,8 +14,8 @@ import { resolveBranch } from "../../utils/resolveBranch.js";
 import { consumeStockFIFO } from "../inventory/consumeStockFIFO.js";
 import { decrementStockCache } from "../inventory/decrementStockCache.js";
 import { ensureObjectId } from "../../utils/ensureObjectId.js";
-
-
+import { upsertCustomerBranch } from "../customers/customerBranch.service.js";
+import { addLoyaltyPoints } from "../customers/customerLoyalty.service.js";
 
 export const createSaleService = async ({ db, payload, user }) => {
   const session = db.client.startSession();
@@ -161,6 +161,22 @@ export const createSaleService = async ({ db, payload, user }) => {
         },
         { session },
       );
+
+    await upsertCustomerBranch({
+      db,
+      customerId: payload.customerId,
+      branchId,
+      branchName: branch.name || "Branch not found",
+      session,
+    });
+    await addLoyaltyPoints({
+      db,
+      customerId: payload.customerId,
+      invoiceAmount: grandTotal,
+      refType: "SALE",
+      refId: saleId,
+      session,
+    });
 
     await db.collection(COLLECTIONS.SALE_ITEMS).insertMany(
       saleItems.map((i) => ({ ...i, saleId })),

@@ -3,6 +3,7 @@ import { Router } from "express";
 import { authenticate } from "../../../../middlewares/auth.middleware.js";
 
 import { getBalanceSheet } from "./balanceSheet.controller.js";
+import { createOpeningBalance, getOpeningBalanceStatus } from "../../openingBalance.service.js";
 
 const router = Router();
 
@@ -11,6 +12,14 @@ router.use(authenticate);
 router.get(
   "/",
   getBalanceSheet
+);
+router.post(
+  "/opening-balance",
+  createOpeningBalance
+);
+router.get(
+  "/opening-balance/status",
+  getOpeningBalanceStatus
 );
 
 export default router;

@@ -1,15 +1,15 @@
+// src/modules/stocks/stocks.indexes.js
 import { ensureIndex } from "../../database/indexManager.js";
 
 export async function stocksIndexes(db) {
-  const col = db.collection("stocks");
+  /* ============================
+     STOCKS (Current Snapshot)
+  ============================ */
+  const stocksCol = db.collection("stocks");
 
-  /* ------------------------------------------------
-   * 1️⃣ Uniqueness (Data Integrity)
-   * ------------------------------------------------
-   * One variant per branch (ERP rule)
-   */
+  // 1️⃣ One variant per branch
   await ensureIndex(
-    col,
+    stocksCol,
     { branchId: 1, variantId: 1 },
     {
       unique: true,
@@ -17,31 +17,18 @@ export async function stocksIndexes(db) {
     }
   );
 
-  /* ------------------------------------------------
-   * 2️⃣ POS Barcode / SKU lookup (🔥 MOST IMPORTANT)
-   * ------------------------------------------------
-   * Used for:
-   * - Barcode scan
-   * - ENTER key select
-   */
+  // 2️⃣ POS Barcode / SKU lookup
   await ensureIndex(
-    col,
+    stocksCol,
     { branchId: 1, sku: 1 },
     {
       name: "idx_pos_branch_sku",
     }
   );
 
-  /* ------------------------------------------------
-   * 3️⃣ POS Typing Search (TEXT INDEX)
-   * ------------------------------------------------
-   * Used for:
-   * - Product name
-   * - SKU partial
-   * - Size / color
-   */
+  // 3️⃣ POS Typing Search
   await ensureIndex(
-    col,
+    stocksCol,
     { branchId: 1, searchableText: "text" },
     {
       name: "idx_pos_search_text",
@@ -51,29 +38,78 @@ export async function stocksIndexes(db) {
     }
   );
 
-  /* ------------------------------------------------
-   * 4️⃣ Cursor Pagination Safety
-   * ------------------------------------------------
-   * Used for:
-   * - Infinite scroll
-   * - Stable ordering
-   */
+  // 4️⃣ Cursor pagination safety
   await ensureIndex(
-    col,
+    stocksCol,
     { branchId: 1, sku: 1, _id: 1 },
     {
       name: "idx_pos_cursor",
     }
   );
 
-  /* ------------------------------------------------
-   * 5️⃣ Optional: Low stock alert / dashboard
-   * ------------------------------------------------ */
+  // 5️⃣ Low stock / dashboard
   await ensureIndex(
-    col,
+    stocksCol,
     { branchId: 1, qty: 1 },
     {
       name: "idx_stock_qty",
+    }
+  );
+
+  /* ============================
+     STOCK MOVEMENTS (Ledger)
+  ============================ */
+  const movementsCol = db.collection("stock_movements");
+
+  // 6️⃣ FIFO consume (🔥 MOST IMPORTANT)
+  await ensureIndex(
+    movementsCol,
+    {
+      branchId: 1,
+      variantId: 1,
+      type: 1,
+      balanceQty: 1,
+      createdAt: 1,
+    },
+    {
+      name: "idx_fifo_consume",
+    }
+  );
+
+  // 7️⃣ Stock ledger report
+  await ensureIndex(
+    movementsCol,
+    {
+      branchId: 1,
+      variantId: 1,
+      createdAt: 1,
+    },
+    {
+      name: "idx_stock_ledger",
+    }
+  );
+
+  // 8️⃣ Audit / closing stock
+  await ensureIndex(
+    movementsCol,
+    {
+      branchId: 1,
+      createdAt: 1,
+    },
+    {
+      name: "idx_stock_audit",
+    }
+  );
+
+  // 9️⃣ Reference lookup (SALE / PURCHASE / TRANSFER)
+  await ensureIndex(
+    movementsCol,
+    {
+      refType: 1,
+      refId: 1,
+    },
+    {
+      name: "idx_stock_ref",
     }
   );
 }

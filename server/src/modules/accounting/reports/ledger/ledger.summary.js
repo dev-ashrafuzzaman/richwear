@@ -1,5 +1,6 @@
 // modules/accounting/reports/ledger/ledger.summary.js
 import { ObjectId } from "mongodb";
+import { COLLECTIONS } from "../../../../database/collections.js";
 
 export const ledgerSummary = async ({
   db,
@@ -13,7 +14,7 @@ export const ledgerSummary = async ({
     match.accountId = { $in: accountIds.map(id => new ObjectId(id)) };
   }
 
-  return db.collection("ledgers").aggregate([
+  return db.collection(COLLECTIONS.LEDGERS).aggregate([
     { $match: match },
     { $sort: { date: 1 } },
     {

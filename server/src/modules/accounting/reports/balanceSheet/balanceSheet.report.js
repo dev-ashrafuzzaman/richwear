@@ -1,65 +1,17 @@
+// modules/accounting/reports/balanceSheet.report.js
 import { ObjectId } from "mongodb";
+import { trialBalanceReport } from "../trialBalance/trialBalance.report.js";
 
 export const balanceSheetReport = async ({ db, toDate, branchId = null }) => {
-  /* =========================
-     MATCH
-  ========================== */
-  const match = {
-    date: { $lte: toDate },
-  };
+  /**
+   * STEP 1: Get Trial Balance (single source of truth)
+   */
+  const tb = await trialBalanceReport({
+    db,
+    toDate,
+    branchId,
+  });
 
-  if (branchId) {
-    match.branchId = new ObjectId(branchId);
-  }
-
-  /* =========================
-     AGGREGATE LEDGER
-  ========================== */
-  const rows = await db
-    .collection("ledgers")
-    .aggregate([
-      { $match: match },
-
-      {
-        $group: {
-          _id: "$accountId",
-          totalDebit: { $sum: "$debit" },
-          totalCredit: { $sum: "$credit" },
-        },
-      },
-
-      {
-        $lookup: {
-          from: "accounts",
-          localField: "_id",
-          foreignField: "_id",
-          as: "account",
-        },
-      },
-      { $unwind: "$account" },
-
-      {
-        $addFields: {
-          net: { $subtract: ["$totalDebit", "$totalCredit"] },
-        },
-      },
-
-      {
-        $project: {
-          code: "$account.code",
-          name: "$account.name",
-          type: "$account.type",
-          net: 1,
-        },
-      },
-
-      { $sort: { code: 1 } },
-    ])
-    .toArray();
-
-  /* =========================
-     SPLIT SECTIONS
-  ========================== */
   const assets = [];
   const liabilities = [];
   const equity = [];
@@ -67,97 +19,69 @@ export const balanceSheetReport = async ({ db, toDate, branchId = null }) => {
   let totalAssets = 0;
   let totalLiabilities = 0;
   let totalEquity = 0;
-  for (const r of rows) {
-    const net = r.net;
-    const amount = Math.abs(net);
-    if (amount === 0) continue;
 
-    if (r.type === "ASSET") {
-      if (net > 0) {
-        assets.push({ code: r.code, name: r.name, amount: net });
-        totalAssets += net;
-      } else if (net < 0) {
-        // negative asset → liability (overdraft)
-        liabilities.push({
-          code: r.code,
-          name: `${r.name} (Overdraft)`,
-          amount: Math.abs(net),
-        });
-        totalLiabilities += Math.abs(net);
-      }
+  /**
+   * STEP 2: Classify using ACCOUNT TYPE + DR/CR
+   * (NO net calculation here)
+   */
+  for (const row of tb.rows) {
+    // ASSETS → Debit balance
+    if (row.type === "ASSET" && row.closingDebit > 0) {
+      assets.push({
+        code: row.code,
+        name: row.name,
+        amount: row.closingDebit,
+      });
+      totalAssets += row.closingDebit;
     }
 
-    // LIABILITY
-    if (r.type === "LIABILITY" && net < 0) {
+    // LIABILITIES → Credit balance
+    if (row.type === "LIABILITY" && row.closingCredit > 0) {
       liabilities.push({
-        code: r.code,
-        name: r.name,
-        amount: Math.abs(net),
+        code: row.code,
+        name: row.name,
+        amount: row.closingCredit,
       });
-      totalLiabilities += Math.abs(net);
+      totalLiabilities += row.closingCredit;
     }
 
-    // EQUITY
-    if (r.type === "EQUITY" && net < 0) {
+    // EQUITY → Credit balance
+    if (row.type === "EQUITY" && row.closingCredit > 0) {
       equity.push({
-        code: r.code,
-        name: r.name,
-        amount: Math.abs(net),
+        code: row.code,
+        name: row.name,
+        amount: row.closingCredit,
       });
-      totalEquity += Math.abs(net);
+      totalEquity += row.closingCredit;
     }
   }
 
-  /* =========================
-     CURRENT PROFIT / LOSS
-  ========================== */
-  const pnl = await db
-    .collection("ledgers")
-    .aggregate([
-      { $match: match },
+  /**
+   * STEP 3: Add Current Period Profit/Loss (ONCE)
+   * (Only if Income & Expense are NOT closed)
+   */
+  let income = 0;
+  let expense = 0;
 
-      {
-        $lookup: {
-          from: "accounts",
-          localField: "accountId",
-          foreignField: "_id",
-          as: "acc",
-        },
-      },
-      { $unwind: "$acc" },
+  for (const row of tb.rows) {
+    if (row.type === "INCOME") income += row.closingCredit;
+    if (row.type === "EXPENSE") expense += row.closingDebit;
+  }
 
-      {
-        $match: {
-          "acc.type": { $in: ["INCOME", "EXPENSE"] },
-        },
-      },
-
-      {
-        $group: {
-          _id: "$acc.type",
-          debit: { $sum: "$debit" },
-          credit: { $sum: "$credit" },
-        },
-      },
-    ])
-    .toArray();
-
-  const income = pnl.find((x) => x._id === "INCOME")?.credit || 0;
-  const expense = pnl.find((x) => x._id === "EXPENSE")?.debit || 0;
   const profit = income - expense;
 
   if (profit !== 0) {
     equity.push({
       code: "P&L",
-      name: "Current Period Profit/Loss",
+      name: "Current Period Profit / Loss",
       amount: profit,
     });
     totalEquity += profit;
   }
 
-  /* =========================
-     FINAL
-  ========================== */
+  /**
+   * STEP 4: FINAL OUTPUT
+   */
   return {
     asOf: toDate,
     assets,

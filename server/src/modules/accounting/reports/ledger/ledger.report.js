@@ -1,5 +1,6 @@
 // modules/accounting/reports/ledger/ledger.report.js
 import { ObjectId } from "mongodb";
+import { COLLECTIONS } from "../../../../database/collections.js";
 
 export const ledgerReport = async ({
   db,
@@ -23,7 +24,7 @@ export const ledgerReport = async ({
   // Opening Balance
   let openingBalance = 0;
   if (includeOpening && fromDate) {
-    const ob = await db.collection("ledgers").aggregate([
+    const ob = await db.collection(COLLECTIONS.LEDGERS).aggregate([
       {
         $match: {
           accountId: new ObjectId(accountId),
