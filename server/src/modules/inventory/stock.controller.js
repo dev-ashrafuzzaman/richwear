@@ -1,6 +1,7 @@
 import { ObjectId } from "mongodb";
 import { COLLECTIONS } from "../../database/collections.js";
 import { formatDocuments } from "../../utils/formatedDocument.js";
+import { ensureObjectId } from "../../utils/ensureObjectId.js";
 
 export const getAllStocks = async (req, res, next) => {
   try {
@@ -274,6 +275,93 @@ export const getPosItems = async (req, res, next) => {
   }
 };
 
+export const getTransferItems = async (req, res, next) => {
+  try {
+    const db = req.app.locals.db;
+
+    const {
+      fromBranchId,
+      search = "",
+      limit = 20,
+      lastSku,
+      lastId,
+    } = req.query;
+
+    /* ---------------- Validate Branch ---------------- */
+    if (!fromBranchId || !ObjectId.isValid(fromBranchId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Source branch is required for stock transfer",
+      });
+    }
+
+    const branchId = new ObjectId(fromBranchId);
+
+    /* ---------------- Match (STRICT) ---------------- */
+    const match = {
+      branchId,
+      qty: { $gt: 0 },
+    };
+
+    /* ---------------- Search Strategy ---------------- */
+    if (search) {
+      // Barcode / SKU scan
+      if (isNumeric(search) && search.length >= 6) {
+        match.sku = search;
+      }
+      // Typing search (TEXT INDEX)
+      else {
+        match.$text = { $search: search };
+      }
+    }
+
+    /* ---------------- Cursor Pagination ---------------- */
+    if (lastSku && lastId && ObjectId.isValid(lastId)) {
+      match.$or = [
+        { sku: { $gt: lastSku } },
+        {
+          sku: lastSku,
+          _id: { $gt: new ObjectId(lastId) },
+        },
+      ];
+    }
+
+    /* ---------------- Query ---------------- */
+    const data = await db
+      .collection(COLLECTIONS.STOCKS)
+      .find(match)
+      .sort({ sku: 1, _id: 1 })
+      .limit(Number(limit))
+      .project({
+        _id: 1,
+        productId: 1,
+        variantId: 1,
+        sku: 1,
+        productName: 1,
+        attributes: 1,
+        qty: 1,
+        unit: 1,
+      })
+      .toArray();
+
+    const last = data[data.length - 1];
+
+    res.json({
+      success: true,
+      data,
+      pagination: {
+        limit: Number(limit),
+        hasMore: data.length === Number(limit),
+        lastSku: last?.sku || null,
+        lastId: last?._id || null,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+
 export const getLowStock = async (req, res, next) => {
   try {
     const db = req.app.locals.db;
@@ -388,3 +476,207 @@ export const getLowStock = async (req, res, next) => {
     next(err);
   }
 };
+
+export const createStockTransfer = async (req, res) => {
+  const db = req.app.locals.db;
+  const session = db.client.startSession();
+
+  try {
+    const { fromBranchId, toBranchId, items } = req.body;
+    const userId = req.user?._id;
+
+    /* ===================== BASIC VALIDATION ===================== */
+    if (!fromBranchId || !toBranchId)
+      throw new Error("Both branches are required");
+
+    if (fromBranchId === toBranchId)
+      throw new Error("Source and destination branch cannot be same");
+
+    if (!Array.isArray(items) || !items.length)
+      throw new Error("Transfer items are required");
+
+    const normalizedItems = items.map((i) => {
+      if (!i.variantId || !i.qty || i.qty <= 0)
+        throw new Error("Invalid item payload");
+
+      return {
+        variantId: ensureObjectId(i.variantId),
+        qty: Number(i.qty),
+      };
+    });
+
+    /* ===================== TRANSACTION ===================== */
+    await session.withTransaction(async () => {
+      const fromBranch = ensureObjectId(fromBranchId);
+      const toBranch = ensureObjectId(toBranchId);
+
+      /* ===================== CREATE TRANSFER MASTER ===================== */
+      const { insertedId: transferId } = await db
+        .collection("stock_transfers")
+        .insertOne(
+          {
+            fromBranchId: fromBranch,
+            toBranchId: toBranch,
+            items: normalizedItems,
+            status: "COMPLETED",
+            createdBy: userId ? ensureObjectId(userId) : null,
+            createdAt: new Date(),
+          },
+          { session }
+        );
+
+      /* ===================== PROCESS EACH ITEM ===================== */
+      for (const item of normalizedItems) {
+        let remainingQty = item.qty;
+
+        /* ---------- Load source stock snapshot (VERY IMPORTANT) ---------- */
+        const sourceStockSnapshot = await db.collection("stocks").findOne(
+          {
+            branchId: fromBranch,
+            variantId: item.variantId,
+          },
+          { session }
+        );
+
+        if (!sourceStockSnapshot)
+          throw new Error("Source stock snapshot not found");
+
+        if (sourceStockSnapshot.qty < item.qty)
+          throw new Error("Insufficient stock for transfer");
+
+        /* ---------- FIFO layers from stock_movements ---------- */
+        const fifoLayers = await db
+          .collection("stock_movements")
+          .find(
+            {
+              branchId: fromBranch,
+              variantId: item.variantId,
+              balanceQty: { $gt: 0 },
+              type: { $in: ["PURCHASE", "SALE_RETURN"] },
+            },
+            { session }
+          )
+          .sort({ createdAt: 1 }) // FIFO
+          .toArray();
+
+        const totalAvailable = fifoLayers.reduce(
+          (sum, l) => sum + l.balanceQty,
+          0
+        );
+
+        if (totalAvailable < remainingQty)
+          throw new Error("FIFO layers mismatch with stock snapshot");
+
+        /* ===================== FIFO CONSUMPTION ===================== */
+        for (const layer of fifoLayers) {
+          if (remainingQty <= 0) break;
+
+          const consumeQty = Math.min(layer.balanceQty, remainingQty);
+          remainingQty -= consumeQty;
+
+          /* Reduce balanceQty of PURCHASE / RETURN layer */
+          await db.collection("stock_movements").updateOne(
+            { _id: layer._id },
+            { $inc: { balanceQty: -consumeQty } },
+            { session }
+          );
+
+          /* ---------- TRANSFER OUT (ledger only) ---------- */
+          await db.collection("stock_movements").insertOne(
+            {
+              branchId: fromBranch,
+              variantId: item.variantId,
+              productId: sourceStockSnapshot.productId,
+              type: "TRANSFER_OUT",
+              qty: -consumeQty,
+              costPrice: layer.costPrice,
+              salePrice: layer.salePrice,
+              refType: "STOCK_TRANSFER",
+              refId: transferId,
+              createdAt: new Date(),
+            },
+            { session }
+          );
+
+          /* ---------- DESTINATION PURCHASE LAYER (FIFO preserved) ---------- */
+          await db.collection("stock_movements").insertOne(
+            {
+              branchId: toBranch,
+              variantId: item.variantId,
+              productId: sourceStockSnapshot.productId,
+              type: "PURCHASE",
+              qty: consumeQty,
+              balanceQty: consumeQty,
+              costPrice: layer.costPrice,
+              salePrice: layer.salePrice,
+              refType: "STOCK_TRANSFER",
+              refId: transferId,
+              createdAt: new Date(),
+            },
+            { session }
+          );
+        }
+
+        /* ===================== UPDATE STOCK SNAPSHOTS ===================== */
+
+        /* Source branch stock */
+        await db.collection("stocks").updateOne(
+          {
+            branchId: fromBranch,
+            variantId: item.variantId,
+            qty: { $gte: item.qty },
+          },
+          {
+            $inc: { qty: -item.qty },
+            $set: { updatedAt: new Date() },
+          },
+          { session }
+        );
+
+        /* Destination branch stock (FULL HYDRATION) */
+        await db.collection("stocks").updateOne(
+          {
+            branchId: toBranch,
+            variantId: item.variantId,
+          },
+          {
+            $inc: { qty: item.qty },
+
+            $setOnInsert: {
+              branchId: toBranch,
+              variantId: item.variantId,
+
+              productId: sourceStockSnapshot.productId,
+              productName: sourceStockSnapshot.productName,
+              attributes: sourceStockSnapshot.attributes,
+              sku: sourceStockSnapshot.sku,
+              salePrice: sourceStockSnapshot.salePrice,
+              searchableText: sourceStockSnapshot.searchableText,
+
+              createdAt: new Date(),
+            },
+
+            $set: {
+              updatedAt: new Date(),
+            },
+          },
+          { upsert: true, session }
+        );
+      }
+    });
+
+    /* ===================== SUCCESS ===================== */
+    res.status(201).json({
+      message: "Stock transferred successfully (FIFO compliant)",
+    });
+  } catch (err) {
+    console.error("Stock Transfer Error:", err);
+    res.status(400).json({
+      message: err.message || "Stock transfer failed",
+    });
+  } finally {
+    await session.endSession();
+  }
+};
+
+
