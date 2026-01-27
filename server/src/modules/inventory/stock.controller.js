@@ -183,7 +183,7 @@ export const getPosItems = async (req, res, next) => {
     const {
       search = "",
       limit = 20,
-      lastSku,       // cursor pagination
+      lastSku, // cursor pagination
       lastId,
     } = req.query;
 
@@ -191,7 +191,8 @@ export const getPosItems = async (req, res, next) => {
     let branchId = req.user?.branchId;
 
     if (!branchId && req.user?.isSuperAdmin) {
-      const main = await db.collection(COLLECTIONS.BRANCHES)
+      const main = await db
+        .collection(COLLECTIONS.BRANCHES)
         .findOne({ isMain: true }, { projection: { _id: 1 } });
 
       if (!main) {
@@ -221,7 +222,7 @@ export const getPosItems = async (req, res, next) => {
       // 🔥 Barcode / SKU mode
       if (isNumeric(search) && search.length >= 6) {
         match.sku = search;
-      } 
+      }
       // 🔥 Typing mode (indexed)
       else {
         match.$text = { $search: search };
@@ -240,7 +241,8 @@ export const getPosItems = async (req, res, next) => {
     }
 
     /* ---------------- Query ---------------- */
-    const data = await db.collection(COLLECTIONS.STOCKS)
+    const data = await db
+      .collection(COLLECTIONS.STOCKS)
       .find(match)
       .sort({ sku: 1, _id: 1 })
       .limit(Number(limit))
@@ -266,6 +268,121 @@ export const getPosItems = async (req, res, next) => {
         lastSku: last?.sku || null,
         lastId: last?._id || null,
       },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getLowStock = async (req, res, next) => {
+  try {
+    const db = req.app.locals.db;
+
+    const page = Math.max(+req.query.page || 1, 1);
+    const limit = Math.min(+req.query.limit || 10, 100);
+    const skip = (page - 1) * limit;
+
+    const match = {};
+
+    if (req.query.branchId) {
+      match.branchId = new ObjectId(req.query.branchId);
+    }
+
+    const pipeline = [
+      /* ---------- Base ---------- */
+      { $match: match },
+
+      /* ---------- Branch ---------- */
+      {
+        $lookup: {
+          from: "branches",
+          localField: "branchId",
+          foreignField: "_id",
+          as: "branch",
+        },
+      },
+      { $unwind: "$branch" },
+
+      /* ---------- Variant ---------- */
+      {
+        $lookup: {
+          from: "product_variants",
+          localField: "variantId",
+          foreignField: "_id",
+          as: "variant",
+        },
+      },
+      { $unwind: "$variant" },
+
+      /* ---------- Product ---------- */
+      {
+        $lookup: {
+          from: "products",
+          localField: "productId",
+          foreignField: "_id",
+          as: "product",
+        },
+      },
+      { $unwind: "$product" },
+
+      /* ---------- Low Stock Logic ---------- */
+      {
+        $addFields: {
+          reorderLevel: {
+            $ifNull: ["$product.reorderLevel", 3],
+          },
+        },
+      },
+      {
+        $match: {
+          $expr: { $lte: ["$qty", "$reorderLevel"] },
+        },
+      },
+
+      /* ---------- Projection ---------- */
+      {
+        $project: {
+          branchName: "$branch.name",
+          branchCode: "$branch.code",
+
+          productName: "$product.name",
+          brand: "$product.brand",
+
+          sku: "$variant.sku",
+          size: "$variant.attributes.size",
+          color: "$variant.attributes.color",
+
+          qty: 1,
+          salePrice: "$variant.salePrice",
+          reorderLevel: 1,
+
+          updatedAt: 1,
+        },
+      },
+
+      { $sort: { qty: 1 } },
+
+      {
+        $facet: {
+          data: [{ $skip: skip }, { $limit: limit }],
+          total: [{ $count: "count" }],
+        },
+      },
+    ];
+
+    const [result] = await db
+      .collection("stocks")
+      .aggregate(pipeline)
+      .toArray();
+
+    res.json({
+      success: true,
+      pagination: {
+        total: result.total[0]?.count || 0,
+        page,
+        limit,
+      },
+      data: result.data,
     });
   } catch (err) {
     next(err);
