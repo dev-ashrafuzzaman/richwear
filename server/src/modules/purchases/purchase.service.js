@@ -80,7 +80,7 @@ async function upsertStock({
       upsert: true,
       returnDocument: "after",
       session,
-    }
+    },
   );
 
   /* ======================
@@ -95,14 +95,13 @@ async function upsertStock({
       qty,
       costPrice,
       salePrice,
-      balanceQty: qty, 
+      balanceQty: qty,
       refType: "PURCHASE",
       createdAt: new Date(),
     },
-    { session }
+    { session },
   );
 }
-
 
 /* ---------------------------------------
   CREATE PURCHASE (NEW FLOW)
@@ -206,40 +205,39 @@ export const createPurchase = async ({ db, body, req }) => {
     ====================== */
     for (const item of payload.items) {
       const product = productMap.get(item.productId);
-      if (!product) {
-        throw new Error("Product not found");
-      }
+      if (!product) throw new Error("Product not found");
 
       const dbItem = {
         productId: product._id,
         pricingMode: item.pricingMode,
+        ...(item.pricingMode === "GLOBAL" && {
+          globalPrice: item.globalPrice,
+        }),
         variants: [],
       };
 
-      if (item.pricingMode === "GLOBAL") {
-        dbItem.globalPrice = item.globalPrice;
-      }
-
       for (const variantInput of item.variants) {
         const { size, color, qty } = variantInput;
-        if (qty <= 0) continue;
+        if (!qty || qty <= 0) continue;
 
         const { costPrice, salePrice } = resolvePrice(item, variantInput);
 
         /* ======================
-           VARIANT FIND / CREATE
-        ====================== */
+       FIND VARIANT
+    ====================== */
         let variant = await db.collection(COLLECTIONS.VARIANTS).findOne(
           {
             productId: product._id,
             "attributes.size": size,
             "attributes.color": color,
+            status: "active",
           },
           { session },
         );
 
-        let oldSalePrice = null;
-
+        /* ======================
+       CREATE VARIANT
+    ====================== */
         if (!variant) {
           const sku = await generateVariantSKU({
             db,
@@ -258,6 +256,7 @@ export const createPurchase = async ({ db, body, req }) => {
               priceHistory: [],
               status: "active",
               createdAt: new Date(),
+              updatedAt: new Date(),
             },
             { session },
           );
@@ -266,36 +265,52 @@ export const createPurchase = async ({ db, body, req }) => {
             _id: insert.insertedId,
             sku,
             attributes: { size, color },
+            costPrice,
             salePrice,
           };
-        } else if (variant.salePrice !== salePrice) {
-          oldSalePrice = variant.salePrice;
+        } else {
+          /* ======================
+         UPDATE VARIANT PRICES
+      ====================== */
+          const costChanged = variant.costPrice !== costPrice;
+          const saleChanged = variant.salePrice !== salePrice;
 
-          await db.collection(COLLECTIONS.VARIANTS).updateOne(
-            { _id: variant._id },
-            {
-              $set: {
-                salePrice,
-                updatedAt: new Date(),
+          if (costChanged || saleChanged) {
+            const update = {
+              costPrice, // ✅ ALWAYS overwrite
+              salePrice,
+              updatedAt: new Date(),
+            };
+
+            const history = [];
+
+            if (saleChanged) {
+              history.push({
+                oldPrice: variant.salePrice,
+                newPrice: salePrice,
+                source: "PURCHASE",
+                refType: "PURCHASE",
+                refId: purchaseNo,
+                date: new Date(),
+              });
+            }
+
+            await db.collection(COLLECTIONS.VARIANTS).updateOne(
+              { _id: variant._id },
+              {
+                $set: update,
+                ...(history.length && {
+                  $push: { priceHistory: { $each: history } },
+                }),
               },
-              $push: {
-                priceHistory: {
-                  oldPrice: oldSalePrice,
-                  newPrice: salePrice,
-                  source: "PURCHASE",
-                  refType: "PURCHASE",
-                  refId: purchaseNo,
-                  date: new Date(),
-                },
-              },
-            },
-            { session },
-          );
+              { session },
+            );
+          }
         }
 
         /* ======================
-           STOCK UPSERT
-        ====================== */
+       STOCK UPSERT
+    ====================== */
         await upsertStock({
           db,
           session,
@@ -303,7 +318,7 @@ export const createPurchase = async ({ db, body, req }) => {
           variantId: variant._id,
           productId: product._id,
           productName: product.name,
-          attributes: variant.attributes,
+          attributes: { size, color },
           sku: variant.sku,
           qty,
           costPrice,
@@ -312,8 +327,8 @@ export const createPurchase = async ({ db, body, req }) => {
         });
 
         /* ======================
-           BARCODE (PER UNIT)
-        ====================== */
+       BARCODE (PER UNIT)
+    ====================== */
         for (let i = 0; i < qty; i++) {
           barcodePayload.push({
             productName: product.name,
@@ -324,15 +339,21 @@ export const createPurchase = async ({ db, body, req }) => {
             attribute: { size, color },
           });
         }
+
+        /* ======================
+       PURCHASE ITEM SNAPSHOT
+    ====================== */
         dbItem.variants.push({
           variantId: variant._id,
           qty,
           costPrice,
           salePrice,
         });
+
         totalQty += qty;
         totalAmount += qty * costPrice;
       }
+
       if (dbItem.variants.length) {
         purchaseItemsForDB.push(dbItem);
       }
@@ -664,8 +685,8 @@ export const createPurchaseReturn = async ({ db, body, req }) => {
       const variantId = toObjectId(item.variantId, "variantId");
 
       const purchaseItem = purchase.items
-        .flatMap(i => i.variants)
-        .find(v => v.variantId.toString() === variantId.toString());
+        .flatMap((i) => i.variants)
+        .find((v) => v.variantId.toString() === variantId.toString());
 
       if (!purchaseItem) {
         throw new Error("Variant not found in purchase");
@@ -837,7 +858,6 @@ export const createPurchaseReturn = async ({ db, body, req }) => {
     await session.endSession();
   }
 };
-
 
 export const getAllPurchaseReturns = async (req, res, next) => {
   try {

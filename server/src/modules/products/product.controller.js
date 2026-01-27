@@ -215,25 +215,28 @@ export const getProductsForPurchase = async (req, res, next) => {
   try {
     const db = req.app.locals.db;
 
-    /* ---------------- Pagination ---------------- */
+    /* ======================
+       PAGINATION
+    ====================== */
     const page = Math.max(Number(req.query.page) || 1, 1);
     const limit = Math.min(Number(req.query.limit) || 20, 50);
     const skip = (page - 1) * limit;
 
-    /* ---------------- Query ---------------- */
     const { search, categoryId, parentCategoryId } = req.query;
 
+    /* ======================
+       BASE MATCH
+    ====================== */
     const match = { status: "active" };
+    if (categoryId) match.categoryId = new ObjectId(categoryId);
 
-    if (categoryId) {
-      match.categoryId = new ObjectId(categoryId);
-    }
-
-    /* ---------------- Pipeline ---------------- */
+    /* ======================
+       PIPELINE
+    ====================== */
     const pipeline = [
       { $match: match },
 
-      /* 🔗 Sub Category */
+      /* ---------- Sub Category ---------- */
       {
         $lookup: {
           from: "categories",
@@ -244,7 +247,7 @@ export const getProductsForPurchase = async (req, res, next) => {
       },
       { $unwind: "$subCategory" },
 
-      /* 🔗 Parent Category */
+      /* ---------- Parent Category ---------- */
       {
         $lookup: {
           from: "categories",
@@ -255,7 +258,7 @@ export const getProductsForPurchase = async (req, res, next) => {
       },
       { $unwind: "$parentCategory" },
 
-      /* 🎯 Parent Category Filter */
+      /* ---------- Parent Filter ---------- */
       ...(parentCategoryId
         ? [
             {
@@ -266,7 +269,9 @@ export const getProductsForPurchase = async (req, res, next) => {
           ]
         : []),
 
-      /* 🔗 EXISTING VARIANTS (PRICE MEMORY ONLY) */
+      /* ======================
+         LAST EFFECTIVE VARIANT PRICES
+      ====================== */
       {
         $lookup: {
           from: "product_variants",
@@ -275,6 +280,7 @@ export const getProductsForPurchase = async (req, res, next) => {
             {
               $match: {
                 $expr: { $eq: ["$productId", "$$productId"] },
+                status: "active",
               },
             },
             {
@@ -291,7 +297,45 @@ export const getProductsForPurchase = async (req, res, next) => {
         },
       },
 
-      /* 🔍 Search */
+      /* ======================
+         UNIFORM PRICE DETECTION
+      ====================== */
+      {
+        $addFields: {
+          isUniformLastPrice: {
+            $cond: [
+              // 🔑 MUST have more than 1 variant
+              { $gt: [{ $size: "$variantPrices" }, 1] },
+              {
+                $eq: [
+                  {
+                    $size: {
+                      $setUnion: [
+                        {
+                          $map: {
+                            input: "$variantPrices",
+                            as: "v",
+                            in: {
+                              cost: "$$v.costPrice",
+                              sale: "$$v.salePrice",
+                            },
+                          },
+                        },
+                      ],
+                    },
+                  },
+                  1,
+                ],
+              },
+              false,
+            ],
+          },
+        },
+      },
+
+      /* ======================
+         SEARCH
+      ====================== */
       ...(search
         ? [
             {
@@ -306,7 +350,9 @@ export const getProductsForPurchase = async (req, res, next) => {
           ]
         : []),
 
-      /* 📄 Facet */
+      /* ======================
+         FACET
+      ====================== */
       {
         $facet: {
           data: [
@@ -323,8 +369,8 @@ export const getProductsForPurchase = async (req, res, next) => {
                 sizeConfig: 1,
                 colors: 1,
 
-                /* 👇 OLD PRICE MEMORY */
                 variantPrices: 1,
+                isUniformLastPrice: 1,
 
                 category: {
                   parent: "$parentCategory.name",
@@ -338,6 +384,9 @@ export const getProductsForPurchase = async (req, res, next) => {
       },
     ];
 
+    /* ======================
+       EXECUTE
+    ====================== */
     const result = await db
       .collection("products")
       .aggregate(pipeline)
