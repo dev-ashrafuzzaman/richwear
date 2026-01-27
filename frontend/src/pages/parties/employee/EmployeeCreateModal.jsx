@@ -260,6 +260,9 @@ export default function EmployeeCreateModal({ isOpen, setIsOpen, refetch }) {
                 <option value="CASHIER" className="text-gray-800">
                   Cashier
                 </option>
+                <option value="SALESMAN" className="text-gray-800">
+                  Sales Man
+                </option>
               </select>
               {errors.employment?.role && (
                 <p className="mt-1 text-sm text-red-600">

@@ -17,6 +17,7 @@ import {
   GitBranch,
   Settings,
   Activity,
+  DollarSignIcon,
 } from "lucide-react";
 
 export const SIDEBAR_MENU = [
@@ -148,16 +149,16 @@ export const SIDEBAR_MENU = [
   {
     header: "Accounting",
     items: [
-      {
-        title: "Accounts",
-        icon: Calculator,
-        submenu: [
-          { title: "Chart of Accounts", to: "/accounting/coa" },
-          // { title: "Journal Entry", to: "/accounting/journal/create" },
-          { title: "Journal Manage", to: "/accounting/journal" },
-          { title: "Ledger Manage", to: "/accounting/ledger" },
-        ],
-      },
+      // {
+      //   title: "Accounts",
+      //   icon: Calculator,
+      //   submenu: [
+      //     { title: "Chart of Accounts", to: "/accounting/coa" },
+      //     // { title: "Journal Entry", to: "/journal/entries" },
+      //     { title: "Journal Manage", to: "/accounting/journal" },
+      //     { title: "Ledger Manage", to: "/accounting/ledger" },
+      //   ],
+      // },
       {
         title: "Reports",
         icon: BarChart3,
@@ -165,7 +166,7 @@ export const SIDEBAR_MENU = [
           { title: "Trial Balance", to: "/reports/trial-balance" },
           { title: "Profit & Loss", to: "/reports/profit-loss" },
           { title: "Balance Sheet", to: "/reports/balance-sheet" },
-          { title: "Ledger Report", to: "/reports/ledger" },
+          // { title: "Ledger Report", to: "/reports/ledger" },
           { title: "Party Statement", to: "/reports/statements" },
           { title: "Cash Flow", to: "/reports/cash-flow" },
         ],
@@ -212,6 +213,11 @@ export const SIDEBAR_MENU = [
         title: "User Management",
         icon: Users,
         to: "/settings/users",
+      },
+      {
+        title: "Opening Balance",
+        icon: DollarSignIcon,
+        to: "/settings/opening-balance",
       },
       // {
       //   title: "Activity Logs",

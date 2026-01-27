@@ -2,7 +2,7 @@
 
 import { Controller } from "react-hook-form";
 import { Trash2 } from "lucide-react";
-import SmartSelect from "../../components/common/SmartSelect";
+import SmartSelect from "../../../components/common/SmartSelect";
 
 const JournalRow = ({
   field,

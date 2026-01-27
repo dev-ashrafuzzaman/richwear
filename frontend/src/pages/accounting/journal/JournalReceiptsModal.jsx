@@ -1,8 +1,8 @@
 import { Printer } from "lucide-react";
-import Modal from "../../components/common/Modal";
-import Button from "../../components/ui/Button";
-import PrintWrapper from "../../components/print/PrintWrapper";
-import usePrint from "../../hooks/usePrint";
+import Modal from "../../../components/common/Modal";
+import Button from "../../../components/ui/Button";
+import PrintWrapper from "../../../components/print/PrintWrapper";
+import usePrint from "../../../hooks/usePrint";
 import JournalPrintContent from "./JournalPrintContent";
 import JournalSinglePage from "./JournalSinglePage";
 

@@ -54,6 +54,9 @@ const TrialBalance = React.lazy(() => import("./pages/report/TrialBalance"));
 const JournalVoucher = React.lazy(
   () => import("./pages/report/JournalVoucher"),
 );
+const BalanceSheetReport = React.lazy(
+  () => import("./pages/report/BalanceSheet"),
+);
 
 // POS ROUTE
 const BranchesPage = React.lazy(
@@ -118,6 +121,18 @@ const LowStockPage = React.lazy(
 const StockTransferPage = React.lazy(
   () => import("./pages/inventory/StockTransfer"),
 );
+const ProfitAndLossAdvanceReport = React.lazy(
+  () => import("./pages/report/ProfitLossAdvanced"),
+);
+const CashFlowReport = React.lazy(
+  () => import("./pages/report/CashFlow"),
+);
+const PartyInvoiceStatementReport = React.lazy(
+  () => import("./pages/report/PartyInvoiceStatement"),
+);
+const OpeningBalancePage = React.lazy(
+  () => import("./pages/accounting/OpeningBalancePage"),
+);
 
 export default function App() {
   return (
@@ -140,6 +155,11 @@ export default function App() {
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<Dashboard />} />
 
+          <Route path="/settings/opening-balance" element={<OpeningBalancePage />} />
+          <Route path="/reports/statements" element={<PartyInvoiceStatementReport />} />
+          <Route path="/reports/cash-flow" element={<CashFlowReport />} />
+          <Route path="/reports/profit-loss" element={<ProfitAndLossAdvanceReport />} />
+          <Route path="/reports/balance-sheet" element={<BalanceSheetReport />} />
           <Route path="/pos" element={<POSCreatePage />} />
           <Route path="/inventory/stock-transfer" element={<StockTransferPage />} />
           <Route path="/inventory/low-stock" element={<LowStockPage />} />

@@ -2,11 +2,11 @@ import React, { useState } from "react";
 import { Edit, RefreshCcw, Trash } from "lucide-react";
 import useModalManager from "../../hooks/useModalManager";
 import useTableManager from "../../hooks/useTableManager";
-import Page from "../../components/common/Page";
-import Skeleton from "../../components/skeletons/SkeletonCard";
-import Table from "../../components/common/Table";
+import Page from "../../../components/common/Page";
+import Skeleton from "../../../components/skeletons/SkeletonCard";
+import Table from "../../../components/common/Table";
 import JournalReceiptsModal from "./JournalReceiptsModal";
-import { journalTableToolbar } from "../../config/tableToolbarConfig";
+import { journalTableToolbar } from "../../../config/tableToolbarConfig";
 
 const JournalInvoices = () => {
   const { modals, openModal, closeModal } = useModalManager();

@@ -1,7 +1,7 @@
 import { Building2, Keyboard, XCircle } from "lucide-react";
 import { useState } from "react";
 import { motion } from "framer-motion";
-import Card from "../../components/ui/Card";
+import Card from "../../../components/ui/Card";
 
 export default function JournalHeader({ reset }) {
   const [showShortcuts, setShowShortcuts] = useState(false);

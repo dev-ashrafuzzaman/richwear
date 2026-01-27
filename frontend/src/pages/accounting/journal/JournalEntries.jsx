@@ -8,16 +8,16 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import "react-datepicker/dist/react-datepicker.css";
-import Card from "../../components/ui/Card";
-import Button from "../../components/ui/Button";
-import Divider from "../../components/ui/Divider";
-import useApi from "../../hooks/useApi";
+import Button from "../../../components/ui/Button";
+import Divider from "../../../components/ui/Divider";
+import useApi from "../../../hooks/useApi";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
-import Page from "../../components/common/Page";
-import SmartSelect from "../../components/common/SmartSelect";
+import Page from "../../../components/common/Page";
+import SmartSelect from "../../../components/common/SmartSelect";
 import JournalHeader from "./JournalHeader";
 import TotalsSection from "./TotalsSection";
+import Card from "../../../components/ui/Card";
 
 const JournalEntries = () => {
   const { request, loading } = useApi();

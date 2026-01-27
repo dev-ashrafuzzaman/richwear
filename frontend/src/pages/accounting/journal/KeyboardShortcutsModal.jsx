@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { Keyboard, XCircle } from "lucide-react";
-import Card from "../../components/ui/Card";
+import Card from "../../../components/ui/Card";
 
 const KeyboardShortcutsModal = ({ open, onClose }) => {
   if (!open) return null;
