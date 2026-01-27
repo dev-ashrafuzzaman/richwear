@@ -153,7 +153,7 @@ export default function PurchaseCreatePage() {
            EMPTY STATE
         ====================== */}
         {items.length === 0 && (
-          <div className="bg-white rounded-xl shadow-sm border p-12 text-center">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
             <h3 className="text-lg font-semibold mb-2">No Products Added</h3>
             <p className="text-gray-600">
               Search and add products to start creating your purchase

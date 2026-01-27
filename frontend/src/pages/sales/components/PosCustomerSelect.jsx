@@ -84,9 +84,9 @@ export default function PosCustomerSelect({ value, onChange, error }) {
               idField="_id"
               placeholder="Search customer"
               barcode={false}
-              minSearchLength={8}
+              minSearchLength={11}
               phoneInstant={true}
-              phoneLength={10}
+              phoneLength={11}
               value={selectedOption}
               onChange={(opt) => onChange(opt?.raw || null)}
               error={error}

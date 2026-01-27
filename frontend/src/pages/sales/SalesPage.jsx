@@ -6,41 +6,43 @@ import { useState } from "react";
 import PosInvoiceModal from "./components/invoice/PosInvoiceModal";
 import { Printer } from "lucide-react";
 import useApi from "../../hooks/useApi";
+import SalesReturnCreateModal from "./SalesReturnCreateModal";
 
 const SalesPage = () => {
   const { modals, openModal, closeModal } = useModalManager();
   const [invoiceData, setInvoiceData] = useState(null);
+  const [selectedSaleId, setSelectedSaleId] = useState(null);
+
   const table = useTableManager("/sales");
   const { request } = useApi();
+
   const handlePrintInvoice = async (row) => {
-    try {
-      const saleId =row._id;
-
-      const res = await request(`/sales/${saleId}/reprint`, "GET", null, {
-        silent: true, 
-      });
-
-      if (!res?.success) {
-        throw new Error("Failed to load invoice");
-      }
-
-      setInvoiceData(res.data);
-
-      openModal("printPosInvoice");
-    } catch (err) {
-      console.error(err);
-      alert("Unable to reprint invoice");
-    }
+    const res = await request(`/sales/${row._id}/reprint`, "GET");
+    setInvoiceData(res.data);
+    openModal("printPosInvoice");
   };
 
   return (
     <Page title="Sales" subTitle="Manage your organization sales">
-      {/* ✅ Print Modal */}
+      {/* Print */}
       {modals.printPosInvoice?.isOpen && (
         <PosInvoiceModal
-          isOpen={true}
+          isOpen
           setIsOpen={() => closeModal("printPosInvoice")}
           data={invoiceData}
+        />
+      )}
+
+      {/* Sales Return */}
+      {modals.createSaleReturn?.isOpen && selectedSaleId && (
+        <SalesReturnCreateModal
+          open
+          setOpen={() => {
+            closeModal("createSaleReturn");
+            setSelectedSaleId(null);
+          }}
+          saleId={selectedSaleId}
+          onSuccess={() => table.refetch()}
         />
       )}
 
@@ -55,29 +57,31 @@ const SalesPage = () => {
             key: "status",
             label: "Status",
             render: (r) => (
-              <span
-                className={`px-2 py-1 rounded text-xs ${
-                  r.status === "COMPLETED"
-                    ? "bg-green-100 text-green-700"
-                    : "bg-red-100 text-red-700"
-                }`}>
-                {r.status === "COMPLETED" ? "COMPLETED" : "FAILED"}
+              <span className="px-2 py-1 rounded text-xs bg-green-100 text-green-700">
+                {r.status}
               </span>
             ),
           },
-
-          /* ✅ ACTION COLUMN */
           {
             key: "action",
             label: "Action",
             render: (row) => (
-              <button
-                onClick={() => handlePrintInvoice(row)}
-                className="flex items-center gap-1 px-3 py-1.5 text-sm rounded-md
-                           bg-blue-600 text-white hover:bg-blue-700">
-                <Printer size={14} />
-                Print
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handlePrintInvoice(row)}
+                  className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded">
+                  Print
+                </button>
+
+                <button
+                  onClick={() => {
+                    setSelectedSaleId(row._id);
+                    openModal("createSaleReturn");
+                  }}
+                  className="px-3 py-1.5 text-sm bg-orange-600 text-white rounded">
+                  Return
+                </button>
+              </div>
             ),
           },
         ]}

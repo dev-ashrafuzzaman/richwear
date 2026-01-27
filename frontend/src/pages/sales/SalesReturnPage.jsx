@@ -4,22 +4,25 @@ import useTableManager from "../../hooks/useTableManager";
 import useModalManager from "../../hooks/useModalManager";
 import { useState } from "react";
 import PosInvoiceModal from "./components/invoice/PosInvoiceModal";
+import SalesReturnCreateModal from "./SalesReturnCreateModal";
 import { Printer } from "lucide-react";
 import useApi from "../../hooks/useApi";
 
 const SalesReturnPage = () => {
   const { modals, openModal, closeModal } = useModalManager();
   const [invoiceData, setInvoiceData] = useState(null);
-  const table = useTableManager("/sales");
+  const table = useTableManager("/sales/returns");
+  console.log(table);
   const { request } = useApi();
+
   const handlePrintInvoice = async (row) => {
     try {
-      const saleId =row._id;
+      const saleId = row._id;
 
-      const res = await request(`/sales/${saleId}/reprint`, "GET", null, {
-        silent: true, 
+      const res = await request(`/sales/return/${saleId}`, "GET", null, {
+        silent: true,
       });
-
+      console.log("reIn", res);
       if (!res?.success) {
         throw new Error("Failed to load invoice");
       }
@@ -43,13 +46,29 @@ const SalesReturnPage = () => {
           data={invoiceData}
         />
       )}
+      {modals.createSaleReturn?.isOpen && (
+        <SalesReturnCreateModal
+          isOpen={true}
+          setIsOpen={() => closeModal("createSaleReturn")}
+          data={invoiceData}
+        />
+      )}
 
       <DataTable
         table={table}
         title="Sales Return"
+        headerActions={[
+          {
+            variant: "gradient",
+            label: "Add Return",
+            onClick: () => openModal("createSaleReturn"),
+          },
+        ]}
         columns={[
-          { key: "invoiceNo", label: "Return Invoice" },
+          { key: "returnInvoiceNo", label: "Return Invoice" },
+          { key: "invoiceNo", label: "Sales Invoice" },
           { key: "grandTotal", label: "Grand Total" },
+          { key: "refundMethod", label: "Refund Method" },
           { key: "createdAt", label: "Created At" },
           {
             key: "status",
@@ -61,7 +80,7 @@ const SalesReturnPage = () => {
                     ? "bg-green-100 text-green-700"
                     : "bg-red-100 text-red-700"
                 }`}>
-                {r.status === "COMPLETED" ? "COMPLETED" : "FAILED"}
+                {r.status}
               </span>
             ),
           },
