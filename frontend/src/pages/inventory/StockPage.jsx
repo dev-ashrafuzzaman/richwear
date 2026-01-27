@@ -38,20 +38,11 @@ const StockPage = () => {
               </strong>
             ),
           },
-          {
-            key: "avgCost",
-            label: "Avg Cost",
-            render: (r) => `${r.avgCost}`,
-          },
+       
           {
             key: "salePrice",
             label: "Sale Price",
             render: (r) => `${r.salePrice}`,
-          },
-          {
-            key: "stockValue",
-            label: "Stock Value",
-            render: (r) => <strong>{r.stockValue}</strong>,
           },
         ]}
         // actions={[
