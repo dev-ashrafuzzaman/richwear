@@ -1,46 +1,47 @@
 import { ObjectId } from "mongodb";
 import { generateCode } from "../../utils/codeGenerator.js";
 import { SALE_STATUS } from "./sales.constants.js";
-import { salesAccounting } from "../accounting/accounting.adapter.js";
+import {
+  commissionAccrualAccounting,
+  salesAccounting,
+  salesCogsAccounting,
+} from "../accounting/accounting.adapter.js";
 import { writeAuditLog } from "../../utils/logger.js";
 import { calculateSaleCommission } from "./commission.service.js";
 import { roundMoney } from "../../utils/money.js";
 import { COLLECTIONS } from "../../database/collections.js";
+import { resolveBranch } from "../../utils/resolveBranch.js";
+import { consumeStockFIFO } from "../inventory/consumeStockFIFO.js";
+import { decrementStockCache } from "../inventory/decrementStockCache.js";
+import { ensureObjectId } from "../../utils/ensureObjectId.js";
+
+
 
 export const createSaleService = async ({ db, payload, user }) => {
   const session = db.client.startSession();
 
   try {
     session.startTransaction();
-    //   ---------------- Validation ---------------- */
+
+    /* ---------- BASIC VALIDATION ---------- */
     if (!payload.items?.length) {
       throw new Error("Sale must contain at least one item");
     }
-
     if (!payload.payments?.length) {
       throw new Error("At least one payment is required");
     }
 
-const branchId = new ObjectId("696ce70a1116cd44f0d9ccc7");
-    /* ---------------- Branch ---------------- */
-    const branch = await db
-      .collection(COLLECTIONS.BRANCHES)
-      .findOne(
-        { _id: branchId, status: "active" },
-        { session },
-      );
+    /* ---------- BRANCH ---------- */
+    const branch = await resolveBranch({ db, user, session });
+    const branchId = ensureObjectId(branch._id, "branchId");
 
-    if (!branch) {
-      throw new Error("Branch not found or inactive");
-    }
-
-    /* ---------------- VAT ---------------- */
+    /* ---------- VAT ---------- */
     const vatConfig = await db
       .collection(COLLECTIONS.TAX_CONFIGS)
       .findOne({ appliesTo: "SALE", status: "active" }, { session });
     const vatRate = vatConfig ? Number(vatConfig.rate) : 0;
 
-    /* ---------------- Invoice ---------------- */
+    /* ---------- INVOICE ---------- */
     const invoiceNo = await generateCode({
       db,
       module: "SALE",
@@ -51,14 +52,7 @@ const branchId = new ObjectId("696ce70a1116cd44f0d9ccc7");
       session,
     });
 
-    let subTotal = 0;
-    let itemDiscount = 0;
-    let taxAmount = 0;
-
-    const saleItems = [];
-
-    /* ---------------- Items ---------------- */
-    // ---------- Preload Variants (ONE QUERY) ----------
+    /* ---------- PRELOAD VARIANTS ---------- */
     const variantIds = payload.items.map((i) => new ObjectId(i.variantId));
 
     const variants = await db
@@ -67,50 +61,41 @@ const branchId = new ObjectId("696ce70a1116cd44f0d9ccc7");
       .toArray();
 
     if (variants.length !== variantIds.length) {
-      throw new Error("One or more variants are invalid or inactive");
+      throw new Error("Invalid or inactive variant found");
     }
 
     const variantMap = new Map(variants.map((v) => [v._id.toString(), v]));
 
-    // ---------- Item Calculation ----------
+    /* ---------- CALCULATIONS ---------- */
+    let subTotal = 0;
+    let itemDiscount = 0;
+    let taxAmount = 0;
+    const saleItems = [];
+
     for (const item of payload.items) {
+      const variant = variantMap.get(item.variantId);
       const qty = Number(item.qty);
       const price = Number(item.salePrice);
 
-      /* 🛡️ Quantity & Price Guard */
-      if (qty <= 0) {
-        throw new Error("Invalid quantity");
-      }
-      if (price < 0) {
-        throw new Error("Invalid sale price");
+      if (!variant || qty <= 0 || price < 0) {
+        throw new Error("Invalid sale item");
       }
 
-      const variant = variantMap.get(item.variantId);
-      if (!variant) {
-        throw new Error("Invalid variant");
-      }
+      const base = qty * price;
 
-      const baseAmount = qty * price;
-
-      /* 🎯 Discount Calculation */
-      let discountAmount = 0;
-
+      let discount = 0;
       if (item.discountType === "PERCENT") {
-        discountAmount = (baseAmount * Number(item.discountValue || 0)) / 100;
+        discount = (base * Number(item.discountValue || 0)) / 100;
       } else if (item.discountType === "FIXED") {
-        discountAmount = Number(item.discountValue || 0);
+        discount = Number(item.discountValue || 0);
       }
 
-      /* 🛡️ Discount Safety (cannot exceed base) */
-      discountAmount = Math.min(discountAmount, baseAmount);
+      discount = Math.min(discount, base);
+      const taxable = base - discount;
+      const vat = roundMoney(taxable * (vatRate / 100));
 
-      const taxableAmount = baseAmount - discountAmount;
-
-      /*  VAT with Controlled Rounding */
-      const vat = roundMoney(taxableAmount * (vatRate / 100));
-
-      subTotal += baseAmount;
-      itemDiscount += discountAmount;
+      subTotal += base;
+      itemDiscount += discount;
       taxAmount += vat;
 
       saleItems.push({
@@ -120,34 +105,30 @@ const branchId = new ObjectId("696ce70a1116cd44f0d9ccc7");
         sku: variant.sku,
         qty,
         salePrice: price,
-        discountType: item.discountType || null,
-        discountValue: item.discountValue || 0,
-        discountAmount: roundMoney(discountAmount),
+        discountAmount: roundMoney(discount),
         taxAmount: vat,
-        lineTotal: roundMoney(taxableAmount + vat),
+        lineTotal: roundMoney(taxable + vat),
         createdAt: new Date(),
       });
     }
-
-    /* ---------------- Totals ---------------- */
-
-    const billDiscount = roundMoney(payload.billDiscount) || 0;
 
     subTotal = roundMoney(subTotal);
     itemDiscount = roundMoney(itemDiscount);
     taxAmount = roundMoney(taxAmount);
 
+    const billDiscount = roundMoney(payload.billDiscount || 0);
+
     const grandTotal = roundMoney(
       subTotal - itemDiscount - billDiscount + taxAmount,
     );
 
-    /* ---------------- Payments ---------------- */
+    /* ---------- PAYMENTS ---------- */
     const paidAmount = roundMoney(
-      payload.payments.reduce((sum, p) => sum + Number(p.amount), 0),
+      payload.payments.reduce((s, p) => s + Number(p.amount || 0), 0),
     );
 
     if (paidAmount > grandTotal) {
-      throw new Error("Paid amount cannot exceed grand total");
+      throw new Error("Paid amount exceeds total");
     }
 
     const dueAmount = roundMoney(grandTotal - paidAmount);
@@ -155,43 +136,42 @@ const branchId = new ObjectId("696ce70a1116cd44f0d9ccc7");
     if (payload.type === "RETAIL" && dueAmount > 0) {
       throw new Error("RETAIL sale must be fully paid");
     }
-    /* ---------------- Sale ---------------- */
-    const saleDoc = {
-      invoiceNo,
-      salesmanId: payload.salesmanId,
-      type: payload.type,
-      branchId: branch._id,
-      customerId: payload.customerId ? new ObjectId(payload.customerId) : null,
 
-      subTotal,
-      itemDiscount,
-      billDiscount,
-      taxAmount,
-      grandTotal,
-      paidAmount,
-      dueAmount,
-
-      status: SALE_STATUS.COMPLETED,
-      createdBy: new ObjectId(user._id),
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
+    /* ---------- SALE ---------- */
     const { insertedId: saleId } = await db
       .collection(COLLECTIONS.SALES)
-      .insertOne(saleDoc, { session });
+      .insertOne(
+        {
+          invoiceNo,
+          type: payload.type,
+          branchId,
+          customerId: payload.customerId
+            ? new ObjectId(payload.customerId)
+            : null,
+          subTotal,
+          itemDiscount,
+          billDiscount,
+          taxAmount,
+          grandTotal,
+          paidAmount,
+          dueAmount,
+          status: SALE_STATUS.COMPLETED,
+          createdBy: new ObjectId(user._id),
+          createdAt: new Date(),
+        },
+        { session },
+      );
 
-    /* ---------------- Sale Items ---------------- */
     await db.collection(COLLECTIONS.SALE_ITEMS).insertMany(
       saleItems.map((i) => ({ ...i, saleId })),
       { session },
     );
 
-    /* ---------------- Payments ---------------- */
     await db.collection(COLLECTIONS.SALE_PAYMENTS).insertMany(
       payload.payments.map((p) => ({
         saleId,
         method: p.method,
+        paymentId: p.accountId || null,
         amount: Number(p.amount),
         reference: p.reference || null,
         receivedAt: new Date(),
@@ -199,86 +179,42 @@ const branchId = new ObjectId("696ce70a1116cd44f0d9ccc7");
       { session },
     );
 
+    /* ---------- FIFO STOCK CONSUME ---------- */
+    let totalCogs = 0;
 
-/* --------------------------------
-   STOCK VALIDATION + UPDATE
----------------------------------- */
+    for (const item of payload.items) {
+      const variantId = ensureObjectId(item.variantId, "variantId");
+      const qty = Number(item.qty);
+      const cogs = await consumeStockFIFO({
+        db,
+        session,
+        branchId,
+        variantId,
+        saleQty: qty,
+        saleId,
+      });
 
-const stockOps = [];
-const stockLedgerDocs = [];
+      totalCogs += cogs;
 
-/* 1️⃣ Collect variantIds */
-const saleVariantIds = payload.items.map(
-  (i) => new ObjectId(i.variantId)
-);
+      await decrementStockCache({
+        db,
+        session,
+        branchId,
+        variantId,
+        qty,
+      });
+    }
 
+    /* ---------- ACCOUNTING ---------- */
+    await salesCogsAccounting({
+      db,
+      session,
+      saleId,
+      cogsAmount: totalCogs,
+      branchId,
+      narration: `COGS for ${invoiceNo}`,
+    });
 
-/* 2️⃣ Read stock */
-const stocks = await db
-  .collection(COLLECTIONS.STOCKS)
-  .find(
-    {
-      branchId: branchId,
-      variantId: { $in: saleVariantIds },
-    },
-    { session }
-  )
-  .toArray();
-
-/* 3️⃣ Build stock map */
-const stockMap = new Map(
-  stocks.map((s) => [s.variantId.toString(), s.qty])
-);
-
-/* 4️⃣ Validate */
-for (const item of payload.items) {
-  const availableQty =
-    stockMap.get(item.variantId.toString()) ?? 0;
-
-  if (availableQty < item.qty) {
-    throw new Error(
-      `Insufficient stock for variant ${item.variantId}`
-    );
-  }
-}
-
-/* 5️⃣ Update */
-for (const item of payload.items) {
-  stockOps.push({
-    updateOne: {
-      filter: {
-        branchId: branch._id,
-        variantId: new ObjectId(item.variantId),
-      },
-      update: {
-        $inc: { qty: -item.qty },
-        $set: { updatedAt: new Date() },
-      },
-    },
-  });
-
-  stockLedgerDocs.push({
-    branchId: branch._id,
-    variantId: new ObjectId(item.variantId),
-    sku: item.sku,
-    source: "SALE",
-    sourceId: saleId,
-    qtyOut: item.qty,
-    createdAt: new Date(),
-  });
-}
-
-await db
-  .collection(COLLECTIONS.STOCKS)
-  .bulkWrite(stockOps, { session });
-
-await db
-  .collection(COLLECTIONS.STOCK_LEDGERS)
-  .insertMany(stockLedgerDocs, { session });
-
-
-
-    /* ---------------- 🔥 ACCOUNTING ---------------- */
     await salesAccounting({
       db,
       session,
@@ -286,26 +222,38 @@ await db
       total: grandTotal,
       payments: payload.payments,
       customerId: payload.customerId,
-      branchId: branch._id,
+      branchId,
       narration: `Sale Invoice ${invoiceNo}`,
     });
 
-    /* ----------------TODO: Commission V0.1 ---------------- */
+    /* ---------- COMMISSION (EARN + ACCRUAL) ---------- */
     const netTotal = roundMoney(subTotal - itemDiscount - billDiscount);
-    let commissionAmount = 0;
+
+    let commissionResult = null;
 
     if (payload.salesmanId) {
-      commissionAmount = await calculateSaleCommission({
+      commissionResult = await calculateSaleCommission({
         db,
         session,
         saleId,
-        invoiceNo,
         salesmanId: payload.salesmanId,
-        branchId: branch._id,
+        branchId,
         netAmount: netTotal,
       });
+
+      // 🔥 ACCRUAL ACCOUNTING (Dr Expense / Cr Payable)
+      if (commissionResult?.amount > 0) {
+        await commissionAccrualAccounting({
+          db,
+          session,
+          commissionId: commissionResult.commissionId,
+          amount: commissionResult.amount,
+          branchId,
+        });
+      }
     }
 
+    /* ---------- AUDIT ---------- */
     await writeAuditLog({
       db,
       session,
@@ -315,23 +263,13 @@ await db
       documentId: saleId,
       refType: "SALE",
       refId: saleId,
-      branchId: branch._id,
+      branchId,
       payload: {
         invoiceNo,
         grandTotal,
-        paidAmount,
-        dueAmount,
-        vatSummary: {
-          rate: vatRate,
-          amount: taxAmount,
-        },
-        discountTotal: itemDiscount + billDiscount,
-        itemCount: saleItems.length,
-        commissionAmount,
-        salesmanId: payload.salesmanId,
+        totalCogs,
+        commissionResult,
       },
-      ipAddress: user?.ip || null,
-      userAgent: user?.userAgent || null,
       status: "SUCCESS",
     });
 
@@ -339,8 +277,7 @@ await db
 
     return {
       success: true,
-      message: "Sale completed successfully",
-
+      message: "Sale completed successfully (FIFO)",
       data: {
         sale: {
           saleId,
@@ -350,15 +287,13 @@ await db
           date: new Date(),
           createdBy: user.name || "ERP SYSTEM",
         },
-
         branch: {
-          branchId: branch._id,
+          branchId,
           code: branch.code,
           name: branch.name,
           phone: branch.phone || null,
           address: branch.address || null,
         },
-
         customer: payload.customerId
           ? {
               customerId: payload.customerId,
@@ -372,7 +307,6 @@ await db
               phone: null,
               address: null,
             },
-
         items: saleItems.map((i) => ({
           sku: i.sku,
           qty: i.qty,
@@ -381,7 +315,6 @@ await db
           vat: i.taxAmount,
           lineTotal: i.lineTotal,
         })),
-
         summary: {
           subTotal,
           itemDiscount,
@@ -391,13 +324,11 @@ await db
           paidAmount,
           dueAmount,
         },
-
         payments: payload.payments.map((p) => ({
           method: p.method,
           amount: p.amount,
           reference: p.reference || null,
         })),
-
         print: {
           currency: "BDT",
           vatRate,
@@ -413,6 +344,44 @@ await db
   }
 };
 
+export const getSingleSale = async (req, res, next) => {
+  try {
+    const db = req.app.locals.db;
+    const saleId = new ObjectId(req.params.saleId);
+
+    const data = await db
+      .collection(COLLECTIONS.SALES)
+      .aggregate([
+        { $match: { _id: saleId } },
+
+        {
+          $lookup: {
+            from: COLLECTIONS.SALE_ITEMS,
+            localField: "_id",
+            foreignField: "saleId",
+            as: "items",
+          },
+        },
+
+        {
+          $lookup: {
+            from: COLLECTIONS.CUSTOMERS,
+            localField: "customerId",
+            foreignField: "_id",
+            as: "customer",
+          },
+        },
+        { $unwind: { path: "$customer", preserveNullAndEmptyArrays: true } },
+      ])
+      .toArray();
+
+    if (!data.length) throw new Error("Sale not found");
+
+    res.json({ success: true, data: data[0] });
+  } catch (err) {
+    next(err);
+  }
+};
 
 export const getPaymentMethods = async (req, res, next) => {
   const db = req.app.locals.db;

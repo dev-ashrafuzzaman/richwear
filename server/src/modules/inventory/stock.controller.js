@@ -175,6 +175,7 @@ export const getAllStocks = async (req, res, next) => {
 };
 
 const isNumeric = (val) => /^[0-9]+$/.test(val);
+
 export const getPosItems = async (req, res, next) => {
   try {
     const db = req.app.locals.db;

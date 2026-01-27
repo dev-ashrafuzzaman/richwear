@@ -57,74 +57,34 @@ async function upsertStock({
   costPrice,
   searchableText,
 }) {
-  const result = await db.collection(COLLECTIONS.STOCKS).findOneAndUpdate(
+  /* ======================
+     1️⃣ UPDATE STOCK SNAPSHOT (OPTIONAL CACHE)
+  ====================== */
+  const stock = await db.collection(COLLECTIONS.STOCKS).findOneAndUpdate(
     { branchId, variantId },
-    [
-      {
-        $set: {
-          branchId,
-          variantId,
-          productId,
-          productName,
-          attributes,
-          sku,
-          searchableText,
-          salePrice,
-          updatedAt: new Date(),
-        },
+    {
+      $set: {
+        branchId,
+        variantId,
+        productId,
+        productName,
+        attributes,
+        sku,
+        searchableText,
+        salePrice,
+        updatedAt: new Date(),
       },
-      {
-        $set: {
-          qty: {
-            $add: [{ $ifNull: ["$qty", 0] }, qty],
-          },
-          avgCost: {
-            $round: [
-              {
-                $divide: [
-                  {
-                    $add: [
-                      {
-                        $multiply: [
-                          { $ifNull: ["$qty", 0] },
-                          { $ifNull: ["$avgCost", 0] },
-                        ],
-                      },
-                      { $multiply: [qty, costPrice] },
-                    ],
-                  },
-                  {
-                    $add: [{ $ifNull: ["$qty", 0] }, qty],
-                  },
-                ],
-              },
-              2,
-            ],
-          },
-        },
-      },
-    ],
+      $inc: { qty },
+    },
     {
       upsert: true,
       returnDocument: "after",
       session,
-    },
+    }
   );
 
   /* ======================
-     SAFE BALANCE QTY
-  ====================== */
-  const balanceQty =
-    result.value?.qty ??
-    (
-      await db
-        .collection(COLLECTIONS.STOCKS)
-        .findOne({ branchId, variantId }, { session })
-    )?.qty ??
-    qty;
-
-  /* ======================
-     STOCK MOVEMENT LOG
+     2️⃣ FIFO PURCHASE MOVEMENT (CRITICAL)
   ====================== */
   await db.collection(COLLECTIONS.STOCK_MOVEMENTS).insertOne(
     {
@@ -135,13 +95,14 @@ async function upsertStock({
       qty,
       costPrice,
       salePrice,
-      balanceQty,
+      balanceQty: qty, 
       refType: "PURCHASE",
       createdAt: new Date(),
     },
-    { session },
+    { session }
   );
 }
+
 
 /* ---------------------------------------
   CREATE PURCHASE (NEW FLOW)

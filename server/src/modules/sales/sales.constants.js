@@ -4,7 +4,7 @@ export const SALE_TYPE = {
 };
 
 export const SALE_STATUS = {
-  HOLD: "HOLD",
+  DRAFT: "DRAFT",
   COMPLETED: "COMPLETED",
   CANCELLED: "CANCELLED",
   RETURNED: "RETURNED",

@@ -1,4 +1,4 @@
-import { reprintSaleService } from "./sales.reprint.service.js";
+import { reprintSaleService, reprintSalesReturnService } from "./sales.reprint.service.js";
 
 export const reprintSale = async (req, res, next) => {
   try {
@@ -21,6 +21,24 @@ export const reprintSaleByInvoice = async (req, res, next) => {
     });
 
     return res.status(200).json(result);
+  } catch (err) {
+    next(err);
+  }
+};
+
+
+export const reprintSalesReturn = async (req, res, next) => {
+  try {
+    const db = req.app.locals.db;
+
+    const result = await reprintSalesReturnService({
+      db, 
+      salesReturnId: req.params.salesReturnId,
+      returnInvoiceNo: req.query.returnInvoiceNo,
+      user: req.user,
+    });
+
+    res.json(result);
   } catch (err) {
     next(err);
   }

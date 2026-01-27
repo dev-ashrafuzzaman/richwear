@@ -1,0 +1,64 @@
+import { COLLECTIONS } from "../../database/collections.js";
+import { roundMoney } from "../../utils/money.js";
+
+export const consumeStockFIFO = async ({
+  db,
+  session,
+  branchId,
+  variantId,
+  saleQty,
+  saleId,
+}) => {
+  let remainingQty = saleQty;
+  let totalCogs = 0;
+
+  const purchaseLayers = await db
+    .collection(COLLECTIONS.STOCK_MOVEMENTS)
+    .find(
+      {
+        branchId,
+        variantId,
+        type: "PURCHASE",
+        balanceQty: { $gt: 0 },
+      },
+      { session },
+    )
+    .sort({ createdAt: 1 }) // FIFO
+    .toArray();
+
+  for (const layer of purchaseLayers) {
+    if (remainingQty <= 0) break;
+
+    const consumeQty = Math.min(layer.balanceQty, remainingQty);
+
+    totalCogs += consumeQty * layer.costPrice;
+
+    await db.collection(COLLECTIONS.STOCK_MOVEMENTS).updateOne(
+      { _id: layer._id },
+      { $inc: { balanceQty: -consumeQty } },
+      { session },
+    );
+
+    remainingQty -= consumeQty;
+  }
+
+  if (remainingQty > 0) {
+    throw new Error("Insufficient stock (FIFO)");
+  }
+
+  // ✅ SALE movement (NO balanceQty here)
+  await db.collection(COLLECTIONS.STOCK_MOVEMENTS).insertOne(
+    {
+      branchId,
+      variantId,
+      type: "SALE",
+      qty: -saleQty,
+      refType: "SALE",
+      refId: saleId,
+      createdAt: new Date(),
+    },
+    { session },
+  );
+
+  return roundMoney(totalCogs);
+};

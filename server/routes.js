@@ -12,7 +12,6 @@ import supplierRoutes from "./src/modules/suppliers/supplier.routes.js";
 import purchaseRoutes from "./src/modules/purchases/purchase.routes.js";
 import attendanceRoutes from "./src/modules/hr/attendance/attendance.routes.js";
 import saleRoutes from "./src/modules/sales/sales.routes.js";
-import saleReturnRoutes from "./src/modules/sales/return/salesReturn.routes.js";
 
 // REPORTS ROUTES
 import ledgerRoutes from "./src/modules/accounting/reports/ledger/ledger.routes.js";
@@ -44,7 +43,6 @@ router.use("/suppliers", supplierRoutes);
 router.use("/purchases", purchaseRoutes);
 router.use("/attendance", attendanceRoutes);
 router.use("/sales", saleRoutes);
-router.use("/sales-return", saleReturnRoutes); 
 router.use("/stocks", stockRoutes); 
 
 // REPORTS ROUTES

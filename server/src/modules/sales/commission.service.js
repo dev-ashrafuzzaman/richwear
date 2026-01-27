@@ -8,39 +8,33 @@ export const calculateSaleCommission = async ({
   branchId,
   netAmount
 }) => {
-  if (!salesmanId) return null;
+  if (!salesmanId) return 0;
 
-  /* ---- Validate Salesman ---- */
   const employee = await db.collection("employees").findOne(
     { _id: new ObjectId(salesmanId), status: "active" },
     { session }
   );
+  if (!employee) return 0;
 
-  if (!employee) return null;
-
-  /* ---- Active Commission Rule ---- */
   const rule = await db.collection("commission_rules").findOne(
     { appliesTo: "SALE", status: "active" },
     { session }
   );
+  if (!rule) return 0;
 
-  if (!rule) return null;
-
-  /* ---- Eligibility ---- */
   if (
     rule.eligibleRoles &&
-    !rule.eligibleRoles.includes(employee.role)
+    !rule.eligibleRoles.includes(employee.employment.role)
   ) {
-    return null;
+    return 0;
   }
 
   /* ---- Base Amount ---- */
   const baseAmount =
-    rule.base === "GROSS" ? netAmount : netAmount;
+    rule.base === "NET" ? netAmount : netAmount; // future ready
 
   /* ---- Calculate ---- */
   let commissionAmount = 0;
-
   if (rule.type === "PERCENT") {
     commissionAmount = (baseAmount * rule.value) / 100;
   } else {
@@ -48,9 +42,9 @@ export const calculateSaleCommission = async ({
   }
 
   commissionAmount = Number(commissionAmount.toFixed(2));
+  if (commissionAmount <= 0) return 0;
 
-  /* ---- Save Ledger ---- */
-  await db.collection("commission_ledgers").insertOne(
+  const { insertedId } = await db.collection("commission_ledgers").insertOne(
     {
       employeeId: employee._id,
       saleId,
@@ -59,14 +53,56 @@ export const calculateSaleCommission = async ({
       baseAmount,
       rate: rule.value,
       commissionAmount,
-
       status: "EARNED",
       source: "SALE",
-
       createdAt: new Date()
     },
     { session }
   );
 
-  return commissionAmount;
+  return {
+    commissionId: insertedId,
+    amount: commissionAmount
+  };
+};
+
+
+export const reverseSaleCommission = async ({
+  db,
+  session,
+  saleId,
+  salesReturnId,
+  returnRatio, // e.g. returnedAmount / sale.grandTotal
+  branchId,
+}) => {
+  const ledger = await db.collection("commission_ledgers").findOne(
+    { saleId, status: "EARNED" },
+    { session }
+  );
+
+  if (!ledger) return 0;
+
+  const reverseAmount = Number(
+    (ledger.commissionAmount * returnRatio).toFixed(2)
+  );
+
+  if (reverseAmount <= 0) return 0;
+
+  await db.collection("commission_ledgers").insertOne(
+    {
+      employeeId: ledger.employeeId,
+      saleId,
+      salesReturnId,
+      branchId,
+      baseAmount: ledger.baseAmount,
+      rate: ledger.rate,
+      commissionAmount: -reverseAmount,
+      status: "REVERSED",
+      source: "SALE_RETURN",
+      createdAt: new Date(),
+    },
+    { session }
+  );
+
+  return reverseAmount;
 };

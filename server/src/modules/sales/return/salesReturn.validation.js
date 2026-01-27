@@ -6,13 +6,14 @@ export const createSalesReturnSchema = Joi.object({
       Joi.object({
         saleItemId: Joi.string().required(),
         qty: Joi.number().min(1).required(),
-        reason: Joi.string().optional(),
-      }),
+        reason: Joi.string().required(),
+      })
     )
     .min(1)
     .required(),
 
+  // 🔒 fixed for POS
   refundMethod: Joi.string()
-    .valid("CASH", "BKASH", "CARD", "BANK", "ADJUST_DUE")
-    .required(),
+    .valid("CASH")
+    .optional(),
 });

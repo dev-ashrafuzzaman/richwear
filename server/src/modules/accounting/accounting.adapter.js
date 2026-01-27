@@ -95,14 +95,55 @@ export const salesAccounting = async ({
 };
 
 /* ======================================================
+   SALES COGS ACCOUNTING (FIFO)
+====================================================== */
+export const salesCogsAccounting = async ({
+  db,
+  session,
+  saleId,
+  cogsAmount,
+  branchId,
+  narration = "COGS for Sales Invoice",
+}) => {
+  const amount = roundMoney(cogsAmount);
+  if (amount <= 0) return;
+
+  const SYS = await resolveSystemAccounts(db);
+
+  const entries = [
+    {
+      accountId: SYS.COGS, // 🔥 Cost of Goods Sold
+      debit: amount,
+    },
+    {
+      accountId: SYS.INVENTORY, // 🔥 Inventory Asset
+      credit: amount,
+    },
+  ];
+
+  return postJournalEntry({
+    db,
+    session,
+    date: new Date(),
+    refType: "SALE_COGS",
+    refId: saleId,
+    narration,
+    entries,
+    branchId,
+  });
+};
+
+/* ======================================================
    SALES RETURN ACCOUNTING
+====================================================== */
+/* ======================================================
+   SALES RETURN ACCOUNTING (V2 - SAFE & FLEXIBLE)
 ====================================================== */
 export const salesReturnAccounting = async ({
   db,
   session,
   salesReturnId,
   returnAmount,
-  refunds = [], 
   dueAdjust = 0,
   customerId,
   branchId,
@@ -110,6 +151,10 @@ export const salesReturnAccounting = async ({
 }) => {
   const total = roundMoney(returnAmount);
   const due = roundMoney(dueAdjust);
+
+  if (total <= 0) {
+    throw new Error("Return amount must be greater than zero");
+  }
 
   const SYS = await resolveSystemAccounts(db);
 
@@ -119,30 +164,29 @@ export const salesReturnAccounting = async ({
   );
 
   const entries = [];
-  let refundTotal = 0;
 
+  /* =====================
+     1️⃣ REVERSE SALES INCOME
+     (Income ↓)
+  ====================== */
   entries.push({
     accountId: SYS.SALES_INCOME,
     debit: total,
   });
 
+  /* =====================
+     2️⃣ CASH REFUND
+     (Cash ↓)
+  ====================== */
+  entries.push({
+    accountId: SYS.CASH,
+    credit: total,
+  });
 
-  for (const r of refunds) {
-    const amt = roundMoney(r.amount || 0);
-    if (amt <= 0) continue;
-
-    if (!r.accountId) {
-      throw new Error("Refund accountId is required");
-    }
-
-    refundTotal += amt;
-
-    entries.push({
-      accountId: r.accountId,
-      credit: amt,
-    });
-  }
-
+  /* =====================
+     3️⃣ CUSTOMER DUE ADJUST
+     (Only if used)
+  ====================== */
   if (due > 0) {
     entries.push({
       accountId: customerControlAccountId,
@@ -152,16 +196,50 @@ export const salesReturnAccounting = async ({
     });
   }
 
+  /* =====================
+     4️⃣ POST JOURNAL
+  ====================== */
+  return postJournalEntry({
+    db,
+    session,
+    date: new Date(),
+    refType: "SALE_RETURN",
+    refId: salesReturnId,
+    narration,
+    entries,
+    branchId,
+  });
+};
 
-  if (roundMoney(refundTotal + due) !== total) {
-    throw new Error("Sales return settlement mismatch");
-  }
+export const salesReturnCogsAccounting = async ({
+  db,
+  session,
+  salesReturnId,
+  cogsAmount,
+  branchId,
+  narration = "COGS Reversal for Sales Return",
+}) => {
+  const amount = roundMoney(cogsAmount);
+  if (amount <= 0) return;
+
+  const SYS = await resolveSystemAccounts(db);
+
+  const entries = [
+    {
+      accountId: SYS.INVENTORY,
+      debit: amount,
+    },
+    {
+      accountId: SYS.COGS,
+      credit: amount,
+    },
+  ];
 
   return postJournalEntry({
     db,
     session,
-    date: new Date(), // UTC
-    refType: "SALE_RETURN",
+    date: new Date(),
+    refType: "SALE_RETURN_COGS",
     refId: salesReturnId,
     narration,
     entries,
@@ -424,25 +502,56 @@ export const salaryPaymentAccounting = async ({
 };
 
 /* ======================================================
-   COMMISSION PAYMENT
+   COMMISSION PAYMENT V0.1 
 ====================================================== */
-export const commissionAccounting = async ({
+export const commissionPaymentAccounting = async ({
   db,
   session,
   commissionId,
-  amount,
-  paymentMethod,
+  payments = [],
   branchId,
+  narration = "Commission Payment",
 }) => {
+  if (!payments.length) {
+    throw new Error("Payments array is required");
+  }
+
   const SYS = await resolveSystemAccounts(db);
 
-  const entries = [
-    { accountId: SYS.COMMISSION_EXPENSE, debit: amount },
-    {
-      accountId: paymentMethod === "CASH" ? SYS.CASH : SYS.BANK,
+  const entries = [];
+  let totalPaid = 0;
+
+  /* =====================
+     ACTUAL PAYMENTS (FROM FRONTEND)
+  ====================== */
+  for (const p of payments) {
+    const amount = Number(p.amount || 0);
+    if (amount <= 0) continue;
+
+    if (!p.accountId) {
+      throw new Error("Payment accountId is required");
+    }
+
+    totalPaid += amount;
+
+    // 🔥 Money going OUT
+    entries.push({
+      accountId: p.accountId, // Cash / Bank / MFS (frontend decided)
       credit: amount,
-    },
-  ];
+    });
+  }
+
+  if (totalPaid <= 0) {
+    throw new Error("Invalid commission payment amount");
+  }
+
+  /* =====================
+     COMMISSION PAYABLE (FIXED SYSTEM ACCOUNT)
+  ====================== */
+  entries.push({
+    accountId: SYS.SALARY_PAYABLE, // 🔒 system-controlled
+    debit: totalPaid, // 🔥 liability reduce
+  });
 
   return postJournalEntry({
     db,
@@ -450,9 +559,33 @@ export const commissionAccounting = async ({
     date: new Date(),
     refType: "COMMISSION_PAYMENT",
     refId: commissionId,
-    narration: "Commission Payment",
+    narration,
     entries,
     branchId,
+  });
+};
+
+export const commissionAccrualAccounting = async ({
+  db,
+  session,
+  commissionId,
+  amount,
+  branchId,
+}) => {
+  const SYS = await resolveSystemAccounts(db);
+
+  return postJournalEntry({
+    db,
+    session,
+    date: new Date(),
+    refType: "COMMISSION_EARNED",
+    refId: commissionId,
+    narration: "Commission Earned",
+    branchId,
+    entries: [
+      { accountId: SYS.COMMISSION_EXPENSE, debit: amount },
+      { accountId: SYS.SALARY_PAYABLE, credit: amount },
+    ],
   });
 };
 

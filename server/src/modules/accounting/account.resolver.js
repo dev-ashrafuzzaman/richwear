@@ -54,6 +54,7 @@ export const resolveSystemAccounts = async (db) => {
 
     /* ========= EXPENSE ========= */
     PURCHASE_EXPENSE: bySubType("PURCHASE"),
+    COGS: bySubType("COGS"),
     SALARY_EXPENSE: bySubType("SALARY"),
     COMMISSION_EXPENSE: bySubType("COMMISSION"),
     DISCOUNT_EXPENSE: bySubType("DISCOUNT"),
