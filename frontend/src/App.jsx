@@ -115,6 +115,9 @@ const SalesReturnPage = React.lazy(
 const LowStockPage = React.lazy(
   () => import("./pages/inventory/LowStockPage"),
 );
+const StockTransferPage = React.lazy(
+  () => import("./pages/inventory/StockTransfer"),
+);
 
 export default function App() {
   return (
@@ -138,6 +141,7 @@ export default function App() {
           <Route path="/dashboard" element={<Dashboard />} />
 
           <Route path="/pos" element={<POSCreatePage />} />
+          <Route path="/inventory/stock-transfer" element={<StockTransferPage />} />
           <Route path="/inventory/low-stock" element={<LowStockPage />} />
           <Route path="/sales/return" element={<SalesReturnPage />} />
           <Route path="/sales" element={<SalesPage />} />
