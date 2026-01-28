@@ -1,7 +1,7 @@
 // src/pages/sales/components/invoice/PosInvoicePreview.jsx
 export default function PosInvoicePreview({ data }) {
   const { sale, branch, customer, items, summary } = data;
-
+console.log(branch)
   return (
     <div className="max-w-md mx-auto bg-white p-6 rounded-xl shadow">
       <h1 className="text-2xl font-extrabold text-center">RICHWEAR</h1>

@@ -19,6 +19,7 @@ export default function BranchCreateModal({ isOpen, setIsOpen, refetch }) {
       name: "",
       address: "",
       phone: "",
+      altPhone: "",
     },
   });
 
@@ -91,6 +92,14 @@ export default function BranchCreateModal({ isOpen, setIsOpen, refetch }) {
           error={errors.phone?.message}
           {...register("phone", {
             required: "Phone is required",
+          })}
+        />
+        <Input
+          label="AltPhone"
+          placeholder="01711234567"
+          error={errors.altPhone?.message}
+          {...register("altPhone", {
+            required: "altPhone is required",
           })}
         />
       </div>

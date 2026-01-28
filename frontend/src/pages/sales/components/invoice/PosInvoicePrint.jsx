@@ -2,15 +2,15 @@
 import { QRCodeSVG } from "qrcode.react";
 
 export default function PosInvoicePrint({ data }) {
-  const { sale, customer, items, summary, payments } = data;
+  const { sale, customer, branch, items, summary, payments } = data;
 
   return (
     <div className="pos-receipt">
       <div className="header-center">
         <h1 className="brand">RICHWEAR</h1>
-        <p className="meta">JHIKARGACHHA OUTLET</p>
-        <p className="meta">MO: 01711347754, 01711347755</p>
-        <p className="meta">Jhikargachha, Jashore</p>
+        <p className="meta">{branch.name}</p>
+        <p className="meta">MO: {branch.phone}, {branch?.altPhone}</p>
+        <p className="meta">{branch.address}</p>
       </div>
 
       <div className="divider" />
