@@ -1,6 +1,7 @@
+import { COLLECTIONS } from "../../database/collections.js";
 
 export const seedBranches = async (db) => {
-  await db.collection("branches").insertOne({
+  await db.collection(COLLECTIONS.BRANCHES).insertOne({
     code: "WH-MAIN",
     name: "Central Warehouse",
     address: "Jhikargachha, Jashore, Bangladesh",

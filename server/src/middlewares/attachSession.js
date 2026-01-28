@@ -1,5 +1,7 @@
+import { getDB } from "../config/db.js";
+
 export const attachSession = (req, res, next) => {
-  const db = req.app.locals.db;
+  const db = getDB();
 
   if (!db?.client) {
     return res.status(500).json({

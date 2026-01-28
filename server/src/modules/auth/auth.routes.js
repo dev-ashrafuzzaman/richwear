@@ -14,9 +14,9 @@ const router = Router();
 
 router.post("/login", loginRateLimit, validate(loginSchema), controller.login);
 
-router.post("/refresh", controller.refreshToken);
+router.post("/refresh", controller.refreshTokenController);
 
-router.post("/logout", authenticate, controller.logout);
+router.post("/logout", controller.logout);
 
 router.post(
   "/change-password",

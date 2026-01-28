@@ -17,6 +17,8 @@ import {
 import { beforeCreateSupplier } from "./supplier.hook.js";
 import { authenticate } from "../../middlewares/auth.middleware.js";
 import { COLLECTIONS } from "../../database/collections.js";
+import { createEmployeeController } from "./supplier.controller.js";
+import { validate } from "../../validations/validate.middleware.js";
 
 const router = Router();
 const COLLECTION = COLLECTIONS.SUPPLIERS;
@@ -25,11 +27,9 @@ router.use(authenticate);
 
 router.post(
   "/",
+  validate(createSupplierSchema),
   beforeCreateSupplier,
-  createOne({
-    collection: COLLECTION,
-    schema: createSupplierSchema,
-  }),
+  createEmployeeController,
 );
 
 router.get(

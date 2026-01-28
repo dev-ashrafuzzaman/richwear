@@ -223,13 +223,9 @@ export const partyInvoiceStatementReport = async ({
     {
       $addFields: {
         balance: { $subtract: ["$totalDebit", "$totalCredit"] },
-        invoiceAmount: {
-          $cond: [
-            { $gt: ["$totalDebit", 0] },
-            "$totalDebit",
-            "$totalCredit",
-          ],
-        },
+     invoiceAmount: {
+  $max: ["$totalDebit", "$totalCredit"]
+}
       },
     },
 

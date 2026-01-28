@@ -1,9 +1,10 @@
 // modules/accounting/reports/trialBalance.controller.js
+import { getDB } from "../../../../config/db.js";
 import { trialBalanceReport } from "./trialBalance.report.js";
 
 export const getTrialBalance = async (req, res, next) => {
   try {
-    const db = req.app.locals.db;
+    const db = getDB();
 
     const report = await trialBalanceReport({
       db,

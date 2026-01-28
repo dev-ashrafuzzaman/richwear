@@ -2,10 +2,11 @@ import { ObjectId } from "mongodb";
 import { COLLECTIONS } from "../../database/collections.js";
 import { formatDocuments } from "../../utils/formatedDocument.js";
 import { ensureObjectId } from "../../utils/ensureObjectId.js";
+import { getDB } from "../../config/db.js";
 
 export const getAllStocks = async (req, res, next) => {
   try {
-    const db = req.app.locals.db;
+    const db = getDB();
 
     const page = Math.max(Number(req.query.page) || 1, 1);
     const limit = Math.min(Number(req.query.limit) || 10, 100);
@@ -179,7 +180,7 @@ const isNumeric = (val) => /^[0-9]+$/.test(val);
 
 export const getPosItems = async (req, res, next) => {
   try {
-    const db = req.app.locals.db;
+    const db = getDB();
 
     const {
       search = "",
@@ -277,7 +278,7 @@ export const getPosItems = async (req, res, next) => {
 
 export const getTransferItems = async (req, res, next) => {
   try {
-    const db = req.app.locals.db;
+    const db = getDB();
 
     const {
       fromBranchId,
@@ -364,7 +365,7 @@ export const getTransferItems = async (req, res, next) => {
 
 export const getLowStock = async (req, res, next) => {
   try {
-    const db = req.app.locals.db;
+    const db = getDB();
 
     const page = Math.max(+req.query.page || 1, 1);
     const limit = Math.min(+req.query.limit || 10, 100);
@@ -478,7 +479,7 @@ export const getLowStock = async (req, res, next) => {
 };
 
 export const createStockTransfer = async (req, res) => {
-  const db = req.app.locals.db;
+  const db = getDB();
   const session = db.client.startSession();
 
   try {

@@ -2,10 +2,11 @@
 import { ledgerReport } from "./ledger.report.js";
 import { ledgerSummary } from "./ledger.summary.js";
 import { ledgerAgingReport } from "./ledger.aging.js";
+import { getDB } from "../../../../config/db.js";
 
 export const getLedger = async (req, res, next) => {
   try {
-    const db = req.app.locals.db;
+    const db = getDB();
 
     const data = await ledgerReport({
       db,
@@ -23,7 +24,7 @@ export const getLedger = async (req, res, next) => {
 
 export const getLedgerSummary = async (req, res, next) => {
   try {
-    const db = req.app.locals.db;
+    const db = getDB();
 
     const data = await ledgerSummary({
       db,
@@ -39,7 +40,7 @@ export const getLedgerSummary = async (req, res, next) => {
 
 export const getLedgerAging = async (req, res, next) => {
   try {
-    const db = req.app.locals.db;
+    const db = getDB();
 
     const data = await ledgerAgingReport({
       db,

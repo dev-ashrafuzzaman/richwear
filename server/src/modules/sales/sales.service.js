@@ -16,10 +16,10 @@ import { decrementStockCache } from "../inventory/decrementStockCache.js";
 import { ensureObjectId } from "../../utils/ensureObjectId.js";
 import { upsertCustomerBranch } from "../customers/customerBranch.service.js";
 import { addLoyaltyPoints } from "../customers/customerLoyalty.service.js";
+import { getDB } from "../../config/db.js";
 
 export const createSaleService = async ({ db, payload, user }) => {
   const session = db.client.startSession();
-
   try {
     session.startTransaction();
 
@@ -235,7 +235,11 @@ export const createSaleService = async ({ db, payload, user }) => {
       db,
       session,
       saleId,
-      total: grandTotal,
+
+      grossAmount: subTotal,
+      discountAmount: itemDiscount + billDiscount,
+      vatAmount: taxAmount,
+
       payments: payload.payments,
       customerId: payload.customerId,
       branchId,
@@ -362,7 +366,7 @@ export const createSaleService = async ({ db, payload, user }) => {
 
 export const getSingleSale = async (req, res, next) => {
   try {
-    const db = req.app.locals.db;
+    const db = getDB();
     const saleId = new ObjectId(req.params.saleId);
 
     const data = await db
@@ -400,7 +404,7 @@ export const getSingleSale = async (req, res, next) => {
 };
 
 export const getPaymentMethods = async (req, res, next) => {
-  const db = req.app.locals.db;
+  const db = getDB();
   const { parentCode, search = "", page = 1, limit = 20 } = req.query;
 
   const skip = (page - 1) * Number(limit);

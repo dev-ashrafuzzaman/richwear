@@ -1,9 +1,10 @@
 // modules/accounting/accounts/accounts.controller.js
 import { ObjectId } from "mongodb";
+import { getDB } from "../../../config/db.js";
 
 export const createAccount = async (req, res, next) => {
   try {
-    const db = req.app.locals.db;
+    const db = getDB();
 
     const exists = await db.collection("accounts").findOne({
       code: req.body.code
@@ -38,7 +39,7 @@ export const createAccount = async (req, res, next) => {
 
 export const getAllAccounts = async (req, res, next) => {
   try {
-    const db = req.app.locals.db;
+    const db = getDB();
 
     const accounts = await db.collection("accounts")
       .find({})
@@ -56,7 +57,7 @@ export const getAllAccounts = async (req, res, next) => {
 
 export const updateAccount = async (req, res, next) => {
   try {
-    const db = req.app.locals.db;
+    const db = getDB();
     const { id } = req.params;
 
     const account = await db.collection("accounts").findOne({

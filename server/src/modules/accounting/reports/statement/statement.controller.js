@@ -1,8 +1,9 @@
+import { getDB } from "../../../../config/db.js";
 import { partyInvoiceStatementReport, partyStatementReport } from "./statement.report.js";
 
 export const getPartyStatement = async (req, res, next) => {
   try {
-    const db = req.app.locals.db;
+    const db = getDB();
 
     const data = await partyStatementReport({
       db,
@@ -21,7 +22,7 @@ export const getPartyStatement = async (req, res, next) => {
 
 export const getPartyInvoiceStatement = async (req, res, next) => {
   try {
-    const db = req.app.locals.db;
+    const db = getDB();
 
     const report = await partyInvoiceStatementReport({
       db,

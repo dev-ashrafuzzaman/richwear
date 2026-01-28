@@ -1,10 +1,11 @@
+import { getDB } from "../../config/db.js";
 import { COLLECTIONS } from "../../database/collections.js";
 import { generateCode } from "../../utils/codeGenerator.js";
 import { ObjectId } from "mongodb";
 
 export const beforeCreateEmployee = async (req, res, next) => {
   try {
-    const db = req.app.locals.db;
+    const db = getDB();
 
     const { branchId } = req.body.employment || {};
 

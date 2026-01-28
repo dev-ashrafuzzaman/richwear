@@ -17,26 +17,27 @@ export const salesAccounting = async ({
   db,
   session,
   saleId,
-  total,
+  grossAmount,        // subTotal
+  discountAmount = 0, // itemDiscount + billDiscount
+  vatAmount = 0,      // taxAmount
   payments = [],
   customerId,
   branchId,
   narration = "Sales Invoice",
 }) => {
-  const amount = roundMoney(total);
+  const gross = roundMoney(grossAmount);
+  const discount = roundMoney(discountAmount);
+  const vat = roundMoney(vatAmount);
+
+  const netTotal = roundMoney(gross - discount + vat);
 
   const SYS = await resolveSystemAccounts(db);
-
-  const customerControlAccountId = await resolveAccountByCode(
-    db,
-    "1004", // Accounts Receivable
-  );
 
   const entries = [];
   let paidTotal = 0;
 
   /* =====================
-     PAYMENTS (LEAF ACCOUNTS)
+     PAYMENTS (ASSETS)
   ====================== */
   for (const p of payments) {
     const payAmount = roundMoney(p.amount || 0);
@@ -49,25 +50,25 @@ export const salesAccounting = async ({
     paidTotal += payAmount;
 
     entries.push({
-      accountId: p.accountId, // 🔥 bKash / Nagad / DBBL
+      accountId: p.accountId, // Cash / Bank / MFS
       debit: payAmount,
     });
   }
 
   /* =====================
-     SAFETY
+     SAFETY CHECK
   ====================== */
-  if (paidTotal > amount) {
+  if (paidTotal > netTotal) {
     throw new Error("Paid amount exceeds invoice total");
   }
 
   /* =====================
-     CUSTOMER DUE (AR)
+     CUSTOMER RECEIVABLE
   ====================== */
-  const dueAmount = roundMoney(amount - paidTotal);
+  const dueAmount = roundMoney(netTotal - paidTotal);
   if (dueAmount > 0) {
     entries.push({
-      accountId: customerControlAccountId,
+      accountId: SYS.CUSTOMER_AR,
       debit: dueAmount,
       partyType: "CUSTOMER",
       partyId: customerId,
@@ -75,12 +76,32 @@ export const salesAccounting = async ({
   }
 
   /* =====================
-     SALES INCOME
+     DISCOUNT (EXPENSE)
+  ====================== */
+  if (discount > 0) {
+    entries.push({
+      accountId: SYS.DISCOUNT_EXPENSE, // ✅ from resolver
+      debit: discount,
+    });
+  }
+
+  /* =====================
+     SALES INCOME (GROSS)
   ====================== */
   entries.push({
     accountId: SYS.SALES_INCOME,
-    credit: amount,
+    credit: gross,
   });
+
+  /* =====================
+     VAT / TAX PAYABLE
+  ====================== */
+  if (vat > 0) {
+    entries.push({
+      accountId: SYS.TAX_PAYABLE, // ✅ VAT payable
+      credit: vat,
+    });
+  }
 
   return postJournalEntry({
     db,
@@ -93,6 +114,7 @@ export const salesAccounting = async ({
     branchId,
   });
 };
+
 
 /* ======================================================
    SALES COGS ACCOUNTING (FIFO)
@@ -143,62 +165,56 @@ export const salesReturnAccounting = async ({
   db,
   session,
   salesReturnId,
-  returnAmount,
+  returnGross,
+  returnDiscount,
+  returnVat,
+  refundAmount,
   dueAdjust = 0,
   customerId,
   branchId,
   narration = "Sales Return",
 }) => {
-  const total = roundMoney(returnAmount);
-  const due = roundMoney(dueAdjust);
-
-  if (total <= 0) {
-    throw new Error("Return amount must be greater than zero");
-  }
-
   const SYS = await resolveSystemAccounts(db);
-
-  const customerControlAccountId = await resolveAccountByCode(
-    db,
-    "1004" // Accounts Receivable
-  );
 
   const entries = [];
 
-  /* =====================
-     1️⃣ REVERSE SALES INCOME
-     (Income ↓)
-  ====================== */
+  /* 1️⃣ Reverse Sales (Contra Income) */
   entries.push({
     accountId: SYS.SALES_INCOME,
-    debit: total,
+    debit: returnGross,
   });
 
-  /* =====================
-     2️⃣ CASH REFUND
-     (Cash ↓)
-  ====================== */
-  entries.push({
-    accountId: SYS.CASH,
-    credit: total,
-  });
-
-  /* =====================
-     3️⃣ CUSTOMER DUE ADJUST
-     (Only if used)
-  ====================== */
-  if (due > 0) {
+  /* 2️⃣ Reverse Discount (Expense ↓) */
+  if (returnDiscount > 0) {
     entries.push({
-      accountId: customerControlAccountId,
-      credit: due,
-      partyType: "CUSTOMER",
-      partyId: customerId,
+      accountId: SYS.DISCOUNT_EXPENSE,
+      credit: returnDiscount,
     });
   }
 
-  /* =====================
-     4️⃣ POST JOURNAL
-  ====================== */
+  /* 3️⃣ Reverse VAT */
+  if (returnVat > 0) {
+    entries.push({
+      accountId: SYS.TAX_PAYABLE,
+      debit: returnVat,
+    });
+  }
+
+  /* 4️⃣ Refund Cash / Adjust AR */
+  if (dueAdjust > 0) {
+    entries.push({
+      accountId: SYS.CUSTOMER_AR,
+      credit: dueAdjust,
+      partyType: "CUSTOMER",
+      partyId: customerId,
+    });
+  } else {
+    entries.push({
+      accountId: SYS.CASH,
+      credit: refundAmount,
+    });
+  }
+
   return postJournalEntry({
     db,
     session,
@@ -210,6 +226,7 @@ export const salesReturnAccounting = async ({
     branchId,
   });
 };
+
 
 export const salesReturnCogsAccounting = async ({
   db,
@@ -639,7 +656,7 @@ export const openingBalanceAccounting = async ({
   openingDate,
   amount,
   branchId,
-  narration = "Opening Balance",
+  narration = "Opening Balance Owner Equity",
 }) => {
   const openingAmount = roundMoney(amount);
 

@@ -1,7 +1,7 @@
 import { COLLECTIONS } from "../../database/collections.js";
 import { ensureIndex } from "../../database/indexManager.js";
 
-export async function activityLogsIndexes(db) {
+export async function auditLogsIndexes(db) {
   const col = db.collection(COLLECTIONS.AUDIT_LOGS);
 
   /* ------------------------------------------------

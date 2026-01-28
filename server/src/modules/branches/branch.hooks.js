@@ -1,8 +1,9 @@
 import { ObjectId } from "mongodb";
+import { getDB } from "../../config/db.js";
 
 export const beforeCreateBranch = async (req, res, next) => {
   try {
-    const db = req.app.locals.db;
+    const db = getDB();
 
     if (req.body.isMain) {
       const exists = await db.collection("branches").findOne({
@@ -30,7 +31,7 @@ export const beforeCreateBranch = async (req, res, next) => {
 
 export const beforeUpdateBranch = async (req, res, next) => {
   try {
-    const db = req.app.locals.db;
+    const db = getDB();
     const { id } = req.params;
 
     if (!ObjectId.isValid(id)) {

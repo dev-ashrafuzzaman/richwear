@@ -1,9 +1,10 @@
+import { getDB } from "../../config/db.js";
 import * as service from "./customer.service.js";
 
 export const create = async (req, res, next) => {
   try {
     const customer = await service.createCustomer({
-      db: req.app.locals.db,
+      db: getDB(),
       payload: {
         ...req.body,
         code: req.generated.code
@@ -22,7 +23,7 @@ export const create = async (req, res, next) => {
 export const getById = async (req, res, next) => {
   try {
     const customer = await service.getCustomerById({
-      db: req.app.locals.db,
+      db: getDB(),
       id: req.params.id
     });
 
@@ -35,7 +36,7 @@ export const getById = async (req, res, next) => {
 export const update = async (req, res, next) => {
   try {
     await service.updateCustomer({
-      db: req.app.locals.db,
+      db: getDB(),
       id: req.params.id,
       payload: req.body
     });

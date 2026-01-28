@@ -28,7 +28,7 @@ export const me = async (req, res) => {
 
 export const createUser = async (req, res, next) => {
   try {
-    const db = req.app.locals.db;
+    const db = getDB();
     const payload = await createUserSchema.validateAsync(req.body);
     const employee = await db.collection("employees").findOne({
       _id: new ObjectId(payload.employeeId),
@@ -113,7 +113,7 @@ export const createUser = async (req, res, next) => {
 
 export const getUsersController = async (req, res, next) => {
   try {
-    const db = req.app.locals.db;
+    const db = getDB();
 
     /* ---------------- Pagination ---------------- */
     const page = Math.max(parseInt(req.query.page) || 1, 1);

@@ -1,10 +1,11 @@
 import { ObjectId } from "mongodb";
 import { formatDocuments } from "../../utils/formatedDocument.js";
+import { getDB } from "../../config/db.js";
 
 export const getCategories = () => {
   return async (req, res, next) => {
     try {
-      const db = req.app.locals.db;
+      const db = getDB();
 
       const page = Math.max(+req.query.page || 1, 1);
       const limit = Math.min(+req.query.limit || 10, 100);
@@ -76,4 +77,3 @@ export const getCategories = () => {
     }
   };
 };
-

@@ -18,7 +18,7 @@ export const createEmployeeSchema = Joi.object({
 
   employment: Joi.object({
     branchId: Joi.string().optional(),
-    role: Joi.string().valid("ADMIN", "MANAGER", "CASHIER").required(),
+    role: Joi.string().valid("ADMIN", "MANAGER", "CASHIER","SALESMAN").required(),
     designation: Joi.string().required(),
     joiningDate: Joi.date().default(Date.now),
   }).required(),

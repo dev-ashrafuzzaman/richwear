@@ -1,9 +1,10 @@
 // modules/accounting/closing/yearClosing.controller.js
+import { getDB } from "../../../../config/db.js";
 import { yearClosingService } from "./yearClosing.service.js";
 
 export const closeFinancialYear = async (req, res, next) => {
   try {
-    const db = req.app.locals.db;
+    const db = getDB();
 
     const result = await yearClosingService({
       db,

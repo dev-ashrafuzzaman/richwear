@@ -1,10 +1,11 @@
 // modules/accounting/reports/balanceSheet.controller.js
+import { getDB } from "../../../../config/db.js";
 import { balanceSheetReport } from "./balanceSheet.report.js";
 
 // balanceSheet.controller.js
 export const getBalanceSheet = async (req, res, next) => {
   try {
-    const db = req.app.locals.db;
+    const db = getDB();
 
     let toDate = new Date();
 

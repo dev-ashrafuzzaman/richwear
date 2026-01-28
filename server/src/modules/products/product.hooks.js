@@ -1,10 +1,11 @@
 import { ObjectId } from "mongodb";
 import { COLLECTIONS } from "../../database/collections.js";
 import { generateProductCode } from "../../utils/sku/generateProductCode.js";
+import { getDB } from "../../config/db.js";
 
 export const beforeCreateProduct = async (req, res, next) => {
   try {
-    const db = req.app.locals.db;
+    const db = getDB();
     const session = req.session;
 
     const {

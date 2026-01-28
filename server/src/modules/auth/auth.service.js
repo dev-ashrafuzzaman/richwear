@@ -7,7 +7,7 @@ import { writeAuditLog } from "../../utils/logger.js";
 import { AUDIT_ACTIONS, LOGIN_SECURITY } from "../../config/constants/index.js";
 
 /* ================= TOKEN CONFIG ================= */
-const ACCESS_EXPIRES = "365d";
+const ACCESS_EXPIRES = "15h";
 const REFRESH_EXPIRES = "7d";
 
 /* ================= HELPERS ================= */
@@ -113,48 +113,48 @@ export const login = async ({ identifier, password }, req) => {
 };
 
 /* ================= REFRESH ================= */
-export const refreshToken = async (token, req) => {
+// auth.service.js
+export const refreshToken = async (token) => {
   if (!token) throw new AppError("Unauthorized", 401);
 
   let decoded;
   try {
     decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
-  } catch {
-    throw new AppError("Invalid refresh token", 401);
+  } catch (err) {
+    throw new AppError("Invalid or expired refresh token", 401);
   }
 
   const db = getDB();
+
   const user = await db.collection("users").findOne({
     _id: new ObjectId(decoded._id),
+    status: "active",
   });
 
-  if (!user || !user.refreshTokenHash) {
-    throw new AppError("Unauthorized", 401);
+  if (!user?.refreshTokenHash) {
+    throw new AppError("Refresh session not found", 401);
   }
 
-  const valid = await bcrypt.compare(token, user.refreshTokenHash);
-  if (!valid) {
-    throw new AppError("Refresh token reuse detected", 401);
+  const isValid = await bcrypt.compare(token, user.refreshTokenHash);
+  if (!isValid) {
+    throw new AppError("Refresh token reuse detected. Login again.", 401);
   }
 
+  // 🔁 Rotate tokens
   const newAccessToken = generateAccessToken(user);
   const newRefreshToken = generateRefreshToken(user._id);
 
+  const newHash = await bcrypt.hash(newRefreshToken, 10);
+
   await db.collection("users").updateOne(
     { _id: user._id },
-    { $set: { refreshTokenHash: await bcrypt.hash(newRefreshToken, 10) } }
+    { $set: { refreshTokenHash: newHash } }
   );
 
-  await writeAuditLog({
-    db,
-    userId: user._id,
-    action: AUDIT_ACTIONS.TOKEN_REFRESH,
-    collection: "users",
-    documentId: user._id,
-    status: "SUCCESS",
-  });
-
-  return { accessToken: newAccessToken, newRefreshToken };
+  return {
+    accessToken: newAccessToken,
+    refreshToken: newRefreshToken,
+  };
 };
 
 /* ================= LOGOUT ================= */
@@ -176,4 +176,17 @@ export const logout = async (userId, req) => {
   });
 
   return true;
+};
+
+export const logoutByRefreshToken = async (refreshToken) => {
+  const db = getDB();
+
+  const hash = hashToken(refreshToken);
+
+  await db.collection("users").updateOne(
+    { refreshTokenHash: hash },
+    { $unset: { refreshTokenHash: "" } }
+  );
+
+  // optional audit
 };

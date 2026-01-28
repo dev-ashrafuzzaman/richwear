@@ -1,9 +1,10 @@
 import { ObjectId } from "mongodb";
 import { toObjectId } from "../../utils/safeObjectId.js";
+import { getDB } from "../../config/db.js";
 
 export const beforeCreateCategory = async (req, res, next) => {
   try {
-    const db = req.app.locals.db;
+    const db = getDB();
 
     const { name } = req.body;
     const level = Number(req.body.level);

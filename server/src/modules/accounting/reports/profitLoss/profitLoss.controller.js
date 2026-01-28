@@ -1,11 +1,12 @@
 // modules/accounting/reports/profitLoss.controller.js
+import { getDB } from "../../../../config/db.js";
 import { cashFlowReport } from "../cashFlow.report.js";
 import { profitLossReport } from "./profitLoss.report.js";
 import { profitLossAdvancedReport } from "./profitLossAdvanced.report.js";
 
 export const getProfitLoss = async (req, res, next) => {
   try {
-    const db = req.app.locals.db;
+    const db = getDB();
 
     const from = req.query.from
       ? new Date(req.query.from)
@@ -31,7 +32,7 @@ export const getProfitLoss = async (req, res, next) => {
 
 export const getAdvancedProfitLoss = async (req, res, next) => {
   try {
-    const db = req.app.locals.db;
+    const db = getDB();
 
     const parseDate = (d, end = false) => {
       const date = new Date(d);
@@ -60,7 +61,7 @@ export const getAdvancedProfitLoss = async (req, res, next) => {
 
 export const getCashFlow = async (req, res, next) => {
   try {
-    const db = req.app.locals.db;
+    const db = getDB();
 
     const fromDate = new Date(req.query.from);
     fromDate.setHours(0, 0, 0, 0);

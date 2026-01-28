@@ -1,7 +1,8 @@
+import { getDB } from "../../config/db.js";
 import { openingBalanceAccounting } from "./accounting.adapter.js";
 
 export const createOpeningBalance = async (req, res, next) => {
-  const db = req.app.locals.db;
+  const db = getDB();
   const session = db.client.startSession();
 
 
@@ -52,9 +53,8 @@ export const createOpeningBalance = async (req, res, next) => {
 
 export const getOpeningBalanceStatus = async (req, res, next) => {
   try {
-    const db = req.app.locals.db;
+    const db = getDB();
     const { branchId } = req.query;
-console.log("brba",branchId)
     const lock = await db.collection("settings").findOne({
       key: "OPENING_BALANCE_LOCK",
       branchId,

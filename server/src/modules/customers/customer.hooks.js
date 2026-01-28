@@ -1,8 +1,9 @@
+import { getDB } from "../../config/db.js";
 import { generateCode } from "../../utils/codeGenerator.js";
 
 export const beforeCreateCustomer = async (req, res, next) => {
   try {
-    const db = req.app.locals.db;
+    const db = getDB();
 
     const exists = await db.collection("customers").findOne({
       phone: req.body.phone

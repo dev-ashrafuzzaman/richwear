@@ -1,12 +1,13 @@
+import { getDB } from "../../config/db.js";
 import { createSaleService } from "./sales.service.js";
 import { createSaleSchema } from "./sales.validation.js";
 
 export const createSale = async (req, res, next) => {
   try {
-
+console.log("req Ueer",req.user)
     const payload = await createSaleSchema.validateAsync(req.body);
     const result = await createSaleService({
-      db: req.app.locals.db,
+      db: getDB(),
       payload,
       user: req.user,
       accounts: req.accounts,

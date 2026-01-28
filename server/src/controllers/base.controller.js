@@ -1,11 +1,12 @@
 import { ObjectId } from "mongodb";
 import { writeAuditLog } from "../utils/logger.js";
 import { formatDocuments } from "../utils/formatedDocument.js";
+import { getDB } from "../config/db.js";
 
 export const createOne = ({ collection, schema }) => {
   return async (req, res, next) => {
     try {
-      const db = req.app.locals.db;
+      const db = getDB();
       const { error, value } = schema.validate(req.body);
       if (error) throw error;
 
@@ -40,7 +41,7 @@ export const createOne = ({ collection, schema }) => {
 export const createOneTx =
   ({ collection, schema }) =>
   async (req, res, next) => {
-    const db = req.app.locals.db;
+    const db = getDB();
     const session = req.session;
 
     try {
@@ -82,7 +83,7 @@ export const createOneTx =
 
       res.status(201).json({
         success: true,
-        message: "Product created successfully",
+        message: "created successfully",
       });
     } catch (err) {
       await session.abortTransaction();
@@ -103,7 +104,7 @@ export const getAll = ({
 }) => {
   return async (req, res, next) => {
     try {
-      const db = req.app.locals.db;
+      const db = getDB();
 
       /* ---------- Pagination ---------- */
       const page = Math.max(parseInt(req.query.page) || 1, 1);
@@ -173,7 +174,7 @@ export const getAllSmart = ({
 }) => {
   return async (req, res, next) => {
     try {
-      const db = req.app.locals.db;
+      const db = getDB();
 
       const page = Math.max(Number(req.query.page) || 1, 1);
       const limit = Math.min(Number(req.query.limit) || 20, 50);
@@ -291,7 +292,7 @@ export const getAllSmart = ({
 export const getOneById = ({ collection, projection = {} }) => {
   return async (req, res, next) => {
     try {
-      const db = req.app.locals.db;
+      const db = getDB();
       const { id } = req.params;
 
       if (!ObjectId.isValid(id)) {
@@ -316,7 +317,7 @@ export const getOneById = ({ collection, projection = {} }) => {
 export const updateOne = ({ collection, schema }) => {
   return async (req, res, next) => {
     try {
-      const db = req.app.locals.db;
+      const db = getDB();;
       const { id } = req.params;
 
       if (!ObjectId.isValid(id)) {
@@ -359,7 +360,7 @@ export const updateOne = ({ collection, schema }) => {
 export const toggleStatus = ({ collection }) => {
   return async (req, res, next) => {
     try {
-      const db = req.app.locals.db;
+      const db =getDB();
       const { id } = req.params;
 
       if (!ObjectId.isValid(id)) {
@@ -427,7 +428,7 @@ export const toggleStatus = ({ collection }) => {
 export const deleteOne = ({ collection }) => {
   return async (req, res, next) => {
     try {
-      const db = req.app.locals.db;
+      const db = getDB();
       const { id } = req.params;
 
       if (!ObjectId.isValid(id)) {

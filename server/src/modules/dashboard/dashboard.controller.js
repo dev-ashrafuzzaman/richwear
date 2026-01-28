@@ -1,3 +1,4 @@
+import { getDB } from "../../config/db.js";
 import { getDashboardService } from "./dashboard.service.js";
 
 export const getDashboard = async (req, res, next) => {
@@ -5,7 +6,7 @@ export const getDashboard = async (req, res, next) => {
     const { branchId, from, to } = req.query;
 
     const data = await getDashboardService({
-      db: req.app.locals.db,
+      db: getDB(),
       branchId,
       from,
       to,

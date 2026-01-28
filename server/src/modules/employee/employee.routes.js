@@ -19,6 +19,8 @@ import { beforeCreateEmployee } from "./employee.hook.js";
 
 import { authenticate } from "../../middlewares/auth.middleware.js";
 import { COLLECTIONS } from "../../database/collections.js";
+import { validate } from "../../validations/validate.middleware.js";
+import { create } from "./employee.controller.js";
 
 const router = Router();
 const COLLECTION = COLLECTIONS.EMPLOYEES;
@@ -27,11 +29,9 @@ router.use(authenticate);
 
 router.post(
   "/",
+  validate(createEmployeeSchema),
   beforeCreateEmployee,
-  createOne({
-    collection: COLLECTION,
-    schema: createEmployeeSchema,
-  }),
+  create,
 );
 
 router.get(

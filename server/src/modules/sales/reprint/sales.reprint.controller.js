@@ -1,9 +1,10 @@
+import { getDB } from "../../../config/db.js";
 import { reprintSaleService, reprintSalesReturnService } from "./sales.reprint.service.js";
 
 export const reprintSale = async (req, res, next) => {
   try {
     const result = await reprintSaleService({
-      db: req.app.locals.db,
+      db: getDB(),
       saleId: req.params.saleId,
     });
 
@@ -16,7 +17,7 @@ export const reprintSale = async (req, res, next) => {
 export const reprintSaleByInvoice = async (req, res, next) => {
   try {
     const result = await reprintSaleService({
-      db: req.app.locals.db,
+      db: getDB(),
       invoiceNo: req.params.invoiceNo,
     });
 
@@ -29,7 +30,7 @@ export const reprintSaleByInvoice = async (req, res, next) => {
 
 export const reprintSalesReturn = async (req, res, next) => {
   try {
-    const db = req.app.locals.db;
+    const db = getDB();
 
     const result = await reprintSalesReturnService({
       db, 

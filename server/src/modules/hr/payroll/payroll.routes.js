@@ -11,6 +11,7 @@ import { beforeGenerateSalary } from "./payroll.hook.js";
 import { calculateSalary } from "./payroll.utils.js";
 import { validate } from "../../middlewares/validate.middleware.js";
 import { authenticate } from "../../../middlewares/auth.middleware.js";
+import { getDB } from "../../../config/db.js";
 
 const router = Router();
 router.use(authenticate);
@@ -21,7 +22,7 @@ router.post(
   beforeGenerateSalary,
   async (req, res, next) => {
     try {
-      const db = req.app.locals.db;
+      const db = getDB();
       const { branch, start, end, totalDays } =
         req.payrollContext;
 
@@ -123,7 +124,7 @@ router.put(
   validate(paySalarySchema),
   async (req, res, next) => {
     try {
-      const db = req.app.locals.db;
+      const db = getDB();
 
       await db
         .collection(COLLECTIONS.PAYROLL_SALARIES)

@@ -1,10 +1,11 @@
 import { ObjectId } from "mongodb";
 import { COLLECTIONS } from "../../../database/collections.js";
 import { calculateAttendance } from "./attendance.utils.js";
+import { getDB } from "../../../config/db.js";
 
 export const smartAttendance = async (req, res, next) => {
   try {
-    const db = req.app.locals.db;
+    const db = getDB();
     const { employeeId, branchId } = req.body;
 
     /* 🔍 Employee */

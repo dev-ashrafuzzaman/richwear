@@ -4,6 +4,7 @@ import { seedBranches } from "../src/modules/branches/seed.branch.js";
 import { seedProductTypes } from "../src/modules/products/productType.seed.js";
 import { seedRoles } from "../src/modules/roles/seed.roles.js";
 import { seedcommissionRules } from "../src/modules/sales/commission.seed.js";
+import { seedSettings } from "../src/modules/settings/settings.seed.js";
 import { seedSystemUsers } from "../src/modules/users/user.seed.js";
 import { seedAttributes } from "../src/modules/variants/seed.attributes.js";
 
@@ -22,6 +23,7 @@ import { seedAttributes } from "../src/modules/variants/seed.attributes.js";
   await seedcommissionRules(db);
   await seedProductTypes(db);
   await seedRoles(db);
+  await seedSettings(db);
 
   console.log("✅ Seeding completed");
   process.exit(0);

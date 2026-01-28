@@ -1,8 +1,9 @@
 import { ObjectId } from "mongodb";
+import { getDB } from "../../config/db.js";
 
 export const getProducts = async (req, res, next) => {
   try {
-    const db = req.app.locals.db;
+    const db = getDB();
 
     /* ---------------- Pagination ---------------- */
     const page = Math.max(parseInt(req.query.page) || 1, 1);
@@ -213,7 +214,7 @@ export const getProducts = async (req, res, next) => {
 
 export const getProductsForPurchase = async (req, res, next) => {
   try {
-    const db = req.app.locals.db;
+    const db = getDB();
 
     /* ======================
        PAGINATION

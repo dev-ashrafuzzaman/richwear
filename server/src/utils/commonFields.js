@@ -32,11 +32,7 @@ export const withCreateFields = (payload = {}, context = {}) => {
     branchId,
 
     createdAt: now,
-    updatedAt: now,
     createdBy: userId,
-    updatedBy: userId,
-
-    meta: buildMeta({}, context),
   };
 };
 

@@ -1,3 +1,4 @@
+import { getDB } from "../../config/db.js";
 import { createPurchase, createPurchaseReturn } from "./purchase.service.js";
 import {
   createPurchaseReturnSchema,
@@ -28,7 +29,7 @@ export const createPurchaseController = async (req, res, next) => {
     /* ======================
        SERVICE CALL
     ====================== */
-    const db = req.app.locals.db;
+    const db = getDB();
 
     const result = await createPurchase({
       db,
@@ -60,7 +61,7 @@ export const createPurchaseReturnController = async (req, res, next) => {
       });
     }
 
-    const db = req.app.locals.db;
+    const db = getDB();
 
     const result = await createPurchaseReturn({
       db,

@@ -1,8 +1,9 @@
+import { getDB } from "../../config/db.js";
 import { generateCode } from "../../utils/codeGenerator.js";
 
 export const beforeCreateSupplier = async (req, res, next) => {
   try {
-    const db = req.app.locals.db;
+    const db = getDB();
 
     const exists = await db.collection("suppliers").findOne({
       "contact.phone": req.body.contact.phone,

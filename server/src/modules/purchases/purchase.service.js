@@ -17,6 +17,7 @@ import {
 import { aggregateList } from "../../database/aggregateList.js";
 import { ObjectId } from "mongodb";
 import { generateVariantSKU } from "../../utils/sku/generateVariantSKU.js";
+import { getDB } from "../../config/db.js";
 
 /* ---------------------------------------
   Helpers
@@ -463,7 +464,7 @@ export const createPurchase = async ({ db, body, req }) => {
 
 export const getAllPurchases = async (req, res, next) => {
   try {
-    const db = req.app.locals.db;
+    const db = getDB();
 
     const page = Math.max(Number(req.query.page) || 1, 1);
     const limit = Math.min(Number(req.query.limit) || 10, 100);
@@ -522,7 +523,7 @@ export const getAllPurchases = async (req, res, next) => {
 
 export const getSinglePurchaseInvoice = async (req, res, next) => {
   try {
-    const db = req.app.locals.db;
+    const db = getDB();
     const purchaseId = toObjectId(req.params.id, "purchaseId");
     console.log("purchases id", purchaseId);
     const data = await db
@@ -861,7 +862,7 @@ export const createPurchaseReturn = async ({ db, body, req }) => {
 
 export const getAllPurchaseReturns = async (req, res, next) => {
   try {
-    const db = req.app.locals.db;
+    const db = getDB();
 
     const page = Math.max(Number(req.query.page) || 1, 1);
     const limit = Math.min(Number(req.query.limit) || 10, 100);
@@ -926,7 +927,7 @@ export const getAllPurchaseReturns = async (req, res, next) => {
 
 export const getSinglePurchaseReturnInvoice = async (req, res, next) => {
   try {
-    const db = req.app.locals.db;
+    const db = getDB();
 
     const returnId = toObjectId(req.params.id, "returnId");
 

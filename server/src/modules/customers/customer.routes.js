@@ -12,12 +12,14 @@ import { authenticate } from "../../middlewares/auth.middleware.js";
 
 const router = express.Router();
 router.use(authenticate);
+
 router.post(
   "/",
   validate(createCustomerSchema),
   beforeCreateCustomer,
   controller.create,
 );
+
 router.get(
   "/",
   getAll({

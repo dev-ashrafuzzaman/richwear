@@ -13,6 +13,7 @@ import { createSaleService } from "../sales.service.js";
 import { ensureObjectId } from "../../../utils/ensureObjectId.js";
 import { resolveBranch } from "../../../utils/resolveBranch.js";
 import { generateCode } from "../../../utils/codeGenerator.js";
+import { getDB } from "../../../config/db.js";
 
 export const createSalesReturnService = async ({
   db,
@@ -27,20 +28,40 @@ export const createSalesReturnService = async ({
   try {
     if (ownSession) session.startTransaction();
 
-    /* ---------- NORMALIZE IDS ---------- */
+    /* =====================
+       1️⃣ BASIC SETUP
+    ====================== */
     const saleObjectId = ensureObjectId(saleId, "saleId");
     const userId = ensureObjectId(user._id, "userId");
 
-    /* ---------- LOAD SALE ---------- */
     const sale = await db
       .collection(COLLECTIONS.SALES)
       .findOne({ _id: saleObjectId }, { session });
+
     if (!sale) throw new Error("Sale not found");
 
     const branch = await resolveBranch({ db, user, session });
     const branchId = ensureObjectId(sale.branchId, "branchId");
-    const customerId = ensureObjectId(sale.customerId, "customerId");
+    const customerId = sale.customerId
+      ? ensureObjectId(sale.customerId)
+      : null;
 
+    const saleItems = await db
+      .collection(COLLECTIONS.SALE_ITEMS)
+      .find({ saleId: sale._id }, { session })
+      .toArray();
+
+    if (!saleItems.length) {
+      throw new Error("Sale items not found");
+    }
+
+    const saleItemMap = new Map(
+      saleItems.map((i) => [i._id.toString(), i]),
+    );
+
+    /* =====================
+       2️⃣ RETURN INVOICE
+    ====================== */
     const returnInvoiceNo = await generateCode({
       db,
       module: "SALES_RETURN",
@@ -51,34 +72,19 @@ export const createSalesReturnService = async ({
       session,
     });
 
-    const saleItems = await db
-      .collection(COLLECTIONS.SALE_ITEMS)
-      .find({ saleId: sale._id }, { session })
-      .toArray();
-
-    const saleItemMap = new Map(
-      saleItems.map((i) => [
-        i._id.toString(),
-        {
-          ...i,
-          _id: ensureObjectId(i._id),
-          productId: ensureObjectId(i.productId),
-          variantId: ensureObjectId(i.variantId),
-        },
-      ]),
-    );
-
-    let totalRefund = 0;
-    let totalReturnQty = 0;
+    /* =====================
+       3️⃣ TOTALS INIT
+    ====================== */
+    let returnGrossTotal = 0;
+    let returnDiscountTotal = 0;
+    let returnVatTotal = 0;
+    let refundAmountTotal = 0;
     let totalReturnCogs = 0;
+    let totalReturnQty = 0;
 
-    /* ---------- SALE STATUS ---------- */
-    const status =
-      totalRefund + (sale.returnedAmount || 0) >= sale.grandTotal
-        ? RETURN_STATUS.FULL
-        : RETURN_STATUS.PARTIAL;
-
-    /* ---------- CREATE RETURN ---------- */
+    /* =====================
+       4️⃣ CREATE RETURN MASTER
+    ====================== */
     const { insertedId: salesReturnId } = await db
       .collection(COLLECTIONS.SALES_RETURNS)
       .insertOne(
@@ -89,27 +95,76 @@ export const createSalesReturnService = async ({
           branchId,
           refundMethod: payload.refundMethod,
           createdBy: userId,
-          refundAmount: totalRefund,
-          status,
           createdAt: new Date(),
+          status: RETURN_STATUS.PARTIAL, // temp
         },
         { session },
       );
 
-    /* ---------- PROCESS ITEMS ---------- */
+    /* =====================
+       5️⃣ PROCESS EACH ITEM
+    ====================== */
     for (const r of payload.items) {
-      const saleItem = saleItemMap.get(r.saleItemId?.toString());
-      if (!saleItem) throw new Error("Invalid saleItemId");
+      const saleItem = saleItemMap.get(r.saleItemId);
+      if (!saleItem) {
+        throw new Error("Invalid saleItemId");
+      }
 
       const returnQty = Number(r.qty);
-      if (returnQty <= 0) throw new Error("Invalid return qty");
+      if (returnQty <= 0 || returnQty > saleItem.qty) {
+        throw new Error("Invalid return quantity");
+      }
 
-      const unitPrice = roundMoney(saleItem.lineTotal / saleItem.qty);
-      const refundAmount = roundMoney(unitPrice * returnQty);
-
-      totalRefund += refundAmount;
       totalReturnQty += returnQty;
 
+      /* ---------- GROSS ---------- */
+      const unitGross = roundMoney(
+        saleItem.salePrice
+      );
+      const returnGross = roundMoney(unitGross * returnQty);
+
+      /* ---------- ITEM DISCOUNT ---------- */
+      const unitItemDiscount = roundMoney(
+        saleItem.discountAmount / saleItem.qty
+      );
+      const returnItemDiscount = roundMoney(
+        unitItemDiscount * returnQty
+      );
+
+      /* ---------- BILL DISCOUNT (PROPORTIONAL) ---------- */
+      const billDiscountRatio =
+        sale.subTotal > 0
+          ? sale.billDiscount / sale.subTotal
+          : 0;
+
+      const returnBillDiscount = roundMoney(
+        returnGross * billDiscountRatio
+      );
+
+      /* ---------- VAT (PROPORTIONAL) ---------- */
+      const vatRatio =
+        sale.subTotal > 0
+          ? sale.taxAmount / sale.subTotal
+          : 0;
+
+      const returnVat = roundMoney(
+        returnGross * vatRatio
+      );
+
+      /* ---------- FINAL REFUND ---------- */
+      const refundAmount = roundMoney(
+        returnGross -
+          returnItemDiscount -
+          returnBillDiscount +
+          returnVat
+      );
+
+      returnGrossTotal += returnGross;
+      returnDiscountTotal += returnItemDiscount + returnBillDiscount;
+      returnVatTotal += returnVat;
+      refundAmountTotal += refundAmount;
+
+      /* ---------- SAVE RETURN ITEM ---------- */
       await db.collection(COLLECTIONS.SALES_RETURN_ITEMS).insertOne(
         {
           salesReturnId,
@@ -118,6 +173,10 @@ export const createSalesReturnService = async ({
           variantId: saleItem.variantId,
           sku: saleItem.sku,
           qty: returnQty,
+          returnGross,
+          returnDiscount:
+            returnItemDiscount + returnBillDiscount,
+          returnVat,
           refundAmount,
           reason: r.reason || null,
           createdAt: new Date(),
@@ -125,7 +184,7 @@ export const createSalesReturnService = async ({
         { session },
       );
 
-      /* ---------- FIFO RESTORE ---------- */
+      /* ---------- FIFO STOCK RESTORE ---------- */
       const cogs = await restoreStockFIFO({
         db,
         session,
@@ -138,33 +197,65 @@ export const createSalesReturnService = async ({
       totalReturnCogs += cogs;
 
       /* ---------- STOCK CACHE ---------- */
-      await db
-        .collection(COLLECTIONS.STOCKS)
-        .updateOne(
-          { branchId, variantId: saleItem.variantId },
-          { $inc: { qty: returnQty }, $set: { updatedAt: new Date() } },
-          { session },
-        );
+      await db.collection(COLLECTIONS.STOCKS).updateOne(
+        { branchId, variantId: saleItem.variantId },
+        {
+          $inc: { qty: returnQty },
+          $set: { updatedAt: new Date() },
+        },
+        { session },
+      );
     }
 
-    totalRefund = roundMoney(totalRefund);
+    /* =====================
+       6️⃣ FINAL STATUS
+    ====================== */
+    const totalReturnedSoFar =
+      (sale.returnedAmount || 0) + refundAmountTotal;
 
-    await db.collection(COLLECTIONS.SALES).updateOne(
-      { _id: sale._id },
+    const status =
+      totalReturnedSoFar >= sale.grandTotal
+        ? RETURN_STATUS.FULL
+        : RETURN_STATUS.PARTIAL;
+
+    await db.collection(COLLECTIONS.SALES_RETURNS).updateOne(
+      { _id: salesReturnId },
       {
-        $set: { status, updatedAt: new Date() },
-        $inc: { returnedAmount: totalRefund },
+        $set: {
+          refundAmount: refundAmountTotal,
+          returnGross: returnGrossTotal,
+          returnDiscount: returnDiscountTotal,
+          returnVat: returnVatTotal,
+          status,
+        },
       },
       { session },
     );
 
-    /* ---------- ACCOUNTING ---------- */
+    await db.collection(COLLECTIONS.SALES).updateOne(
+      { _id: sale._id },
+      {
+        $inc: { returnedAmount: refundAmountTotal },
+        $set: { status, updatedAt: new Date() },
+      },
+      { session },
+    );
+
+    /* =====================
+       7️⃣ ACCOUNTING
+    ====================== */
     await salesReturnAccounting({
       db,
       session,
       salesReturnId,
-      returnAmount: totalRefund,
-      dueAdjust: payload.refundMethod === "ADJUST_DUE" ? totalRefund : 0,
+      returnGross: returnGrossTotal,
+      returnDiscount: returnDiscountTotal,
+      returnVat: returnVatTotal,
+      refundAmount: refundAmountTotal,
+      dueAdjust:
+        payload.refundMethod === "ADJUST_DUE"
+          ? refundAmountTotal
+          : 0,
       customerId,
       branchId,
     });
@@ -177,8 +268,11 @@ export const createSalesReturnService = async ({
       branchId,
     });
 
-    /* ---------- COMMISSION ---------- */
-    const returnRatio = totalRefund / sale.grandTotal;
+    /* =====================
+       8️⃣ COMMISSION REVERSAL
+    ====================== */
+    const returnRatio =
+      refundAmountTotal / sale.grandTotal;
 
     await reverseSaleCommission({
       db,
@@ -189,33 +283,17 @@ export const createSalesReturnService = async ({
       branchId,
     });
 
-    /* ---------- AUDIT ---------- */
-    await writeAuditLog({
-      db,
-      session,
-      userId,
-      action: "SALE_RETURN_CREATE",
-      collection: COLLECTIONS.SALES_RETURNS,
-      documentId: salesReturnId,
-      refType: "SALE_RETURN",
-      refId: salesReturnId,
-      branchId,
-      payload: {
-        saleId: sale._id,
-        refundAmount: totalRefund,
-        returnQty: totalReturnQty,
-        status,
-      },
-      status: "SUCCESS",
-    });
-
     if (ownSession) await session.commitTransaction();
 
     return {
+      success: true,
       salesReturnId,
-      refundAmount: totalRefund,
-      status,
+      refundAmount: refundAmountTotal,
+      returnGross: returnGrossTotal,
+      returnDiscount: returnDiscountTotal,
+      returnVat: returnVatTotal,
       totalReturnCogs,
+      status,
     };
   } catch (err) {
     if (ownSession) await session.abortTransaction();
@@ -224,6 +302,7 @@ export const createSalesReturnService = async ({
     if (ownSession) session.endSession();
   }
 };
+
 
 export const createSalesExchangeService = async ({
   db,
@@ -312,7 +391,7 @@ export const createSalesExchangeService = async ({
 
 export const getSalesReturns = async (req, res, next) => {
   try {
-    const db = req.app.locals.db;
+    const db = getDB();
 
     const { page = 1, limit = 20, branchId, from, to, status } = req.query;
 
@@ -406,7 +485,7 @@ export const getSalesReturns = async (req, res, next) => {
 
 export const getSingleSalesReturn = async (req, res, next) => {
   try {
-    const db = req.app.locals.db;
+    const db = getDB();
     const salesReturnId = ensureObjectId(
       req.params.salesReturnId,
       "salesReturnId",

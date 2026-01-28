@@ -26,16 +26,21 @@ export const login = async (req, res, next) => {
   }
 };
 
-export const refreshToken = async (req, res, next) => {
+export const refreshTokenController = async (req, res, next) => {
   try {
     const refreshToken = req.cookies?.refreshToken;
-    const { accessToken, newRefreshToken } =
-      await authService.refreshToken(refreshToken, req);
+
+    if (!refreshToken) {
+      throw new AppError("Refresh token missing", 401);
+    }
+
+    const { accessToken, refreshToken: newRefreshToken } =
+      await authService.refreshToken(refreshToken);
 
     res.cookie("refreshToken", newRefreshToken, COOKIE_OPTIONS);
 
     successResponse(res, {
-      message: "Token refreshed",
+      message: "Token refreshed successfully",
       data: { accessToken },
     });
   } catch (err) {
@@ -45,19 +50,34 @@ export const refreshToken = async (req, res, next) => {
 
 export const logout = async (req, res, next) => {
   try {
-    await authService.logout(req.user._id, req);
+    // 🔑 refresh token may or may not exist
+    const refreshToken = req.cookies?.refreshToken;
 
+    if (refreshToken) {
+      await authService.logoutByRefreshToken(refreshToken);
+    }
+
+    // 🔥 CLEAR COOKIE (IMPORTANT: path + sameSite + secure must match)
     res.clearCookie("refreshToken", {
-      path: "/api/v1/auth/refresh",
+      httpOnly: true,
+      sameSite: "strict",
+      secure: process.env.NODE_ENV === "production",
+      path: "/", // ⭐ MUST BE ROOT
     });
 
-    successResponse(res, {
+    return res.status(200).json({
+      success: true,
       message: "Logged out successfully",
     });
   } catch (err) {
-    next(err);
+    // ❗ Logout should NEVER fail
+    return res.status(200).json({
+      success: true,
+      message: "Logged out",
+    });
   }
 };
+
 
 export const changePassword = async (req, res, next) => {
   try {

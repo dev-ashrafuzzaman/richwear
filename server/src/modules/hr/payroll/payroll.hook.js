@@ -1,9 +1,10 @@
 import { ObjectId } from "mongodb";
 import { COLLECTIONS } from "../../database/collections.js";
+import { getDB } from "../../../config/db.js";
 
 export const beforeGenerateSalary = async (req, res, next) => {
   try {
-    const db = req.app.locals.db;
+    const db = getDB();
     const { branchId, month } = req.body;
 
     const branch = await db

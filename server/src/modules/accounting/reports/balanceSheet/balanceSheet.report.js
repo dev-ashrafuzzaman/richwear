@@ -35,15 +35,25 @@ export const balanceSheetReport = async ({ db, toDate, branchId = null }) => {
       totalAssets += row.closingDebit;
     }
 
-    // LIABILITIES → Credit balance
-    if (row.type === "LIABILITY" && row.closingCredit > 0) {
-      liabilities.push({
-        code: row.code,
-        name: row.name,
-        amount: row.closingCredit,
-      });
-      totalLiabilities += row.closingCredit;
-    }
+// LIABILITY with credit balance → Liability
+if (row.type === "LIABILITY" && row.closingCredit > 0) {
+  liabilities.push({
+    code: row.code,
+    name: row.name,
+    amount: row.closingCredit,
+  });
+  totalLiabilities += row.closingCredit;
+}
+
+// LIABILITY with debit balance → Asset (Advance)
+if (row.type === "LIABILITY" && row.closingDebit > 0) {
+  assets.push({
+    code: row.code,
+    name: `${row.name} (Advance)`,
+    amount: row.closingDebit,
+  });
+  totalAssets += row.closingDebit;
+}
 
     // EQUITY → Credit balance
     if (row.type === "EQUITY" && row.closingCredit > 0) {

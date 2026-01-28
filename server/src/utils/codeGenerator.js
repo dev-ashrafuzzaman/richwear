@@ -70,19 +70,23 @@ export const generateCode = async ({
   /* =====================
      ATOMIC INCREMENT
   ====================== */
-  const result = await db.collection("counters").findOneAndUpdate(
-    { _id: counterKey },
-    {
-      $inc: { seq: 1 },
-      $setOnInsert: {
-        module,
-        branch,
-        scope,
-        createdAt: now
-      }
+const result = await db.collection("counters").findOneAndUpdate(
+  { _id: counterKey },
+  {
+    $inc: { seq: 1 },
+    $setOnInsert: {
+      module,
+      branch,
+      scope,
+      createdAt: now,
     },
-    options
-  );
+  },
+  {
+    upsert: true,
+    returnDocument: "after",
+    session,
+  }
+);
 
   return buildCode({
     prefix,

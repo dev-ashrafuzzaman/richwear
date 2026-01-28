@@ -10,14 +10,14 @@ import { stocksIndexes } from "../modules/inventory/stocks.indexes.js";
 import { productsIndexes } from "../modules/products/products.indexes.js";
 import { purchasesIndexes } from "../modules/purchases/purchases.indexes.js";
 import { salesIndexes } from "../modules/sales/sales.indexes.js";
-import { settingsIndexes } from "../modules/seetings/settings.indexes.js";
+import { settingsIndexes } from "../modules/settings/settings.indexes.js";
 import { suppliersIndexes } from "../modules/suppliers/suppliers.indexes.js";
 import { usersIndexes } from "../modules/users/users.indexes.js";
 import { variantsIndexes } from "../modules/variants/variants.indexes.js";
 
 export async function runIndexes(db) {
   console.log("🔧 Ensuring database indexes...");
-
+ 
   await branchesIndexes(db);
   await categoriesIndexes(db);
   await productsIndexes(db);

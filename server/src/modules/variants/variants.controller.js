@@ -1,10 +1,11 @@
 import { ObjectId } from "mongodb";
 import { COLLECTIONS } from "../../database/collections.js";
 import { formatDocuments } from "../../utils/formatedDocument.js";
+import { getDB } from "../../config/db.js";
 
 export const getVariants = async (req, res, next) => {
   try {
-    const db = req.app.locals.db;
+    const db = getDB();
 
     /* ---------- Pagination ---------- */
     const page = Math.max(parseInt(req.query.page) || 1, 1);

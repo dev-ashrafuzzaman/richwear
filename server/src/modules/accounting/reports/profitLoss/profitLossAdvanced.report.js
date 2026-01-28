@@ -2,10 +2,72 @@
 
 import { trialBalanceReport } from "../trialBalance/trialBalance.report.js";
 
-const sumByType = (rows, type, side) =>
-  rows
-    .filter((r) => r.type === type)
-    .reduce((t, r) => t + (r[side] || 0), 0);
+/**
+ * Utility: sum rows safely
+ */
+const sum = (rows, filterFn, side) =>
+  rows.filter(filterFn).reduce((t, r) => t + (r[side] || 0), 0);
+
+/**
+ * CORE P&L CALCULATION FROM TRIAL BALANCE
+ */
+const calculatePL = (tb) => {
+  const rows = tb.rows;
+
+  /**
+   * SALES (INCOME)
+   * - Sales return already reduces closingCredit
+   */
+  const sales = sum(
+    rows,
+    (r) => r.type === "INCOME" && r.code === "3001",
+    "closingCredit"
+  );
+
+  /**
+   * OTHER INCOME (optional)
+   */
+  const otherIncome = sum(
+    rows,
+    (r) => r.type === "INCOME" && r.code !== "3001",
+    "closingCredit"
+  );
+
+  /**
+   * COST OF GOODS SOLD
+   */
+  const cogs = sum(
+    rows,
+    (r) => r.type === "EXPENSE" && r.code === "4007",
+    "closingDebit"
+  );
+
+  /**
+   * OPERATING EXPENSE (EXCLUDING COGS)
+   */
+  const operatingExpense = sum(
+    rows,
+    (r) =>
+      r.type === "EXPENSE" &&
+      r.code !== "4007",
+    "closingDebit"
+  );
+
+  /**
+   * PROFIT CALCULATION
+   */
+  const grossProfit = sales - cogs;
+  const netProfit = grossProfit - operatingExpense + otherIncome;
+
+  return {
+    sales,
+    cogs,
+    grossProfit,
+    expense: operatingExpense,
+    otherIncome,
+    netProfit,
+  };
+};
 
 export const profitLossAdvancedReport = async ({
   db,
@@ -25,27 +87,7 @@ export const profitLossAdvancedReport = async ({
     branchId,
   });
 
-  const sales = sumByType(currentTB.rows, "INCOME", "closingCredit");
-  const cogs = currentTB.rows
-    .filter((r) => r.subType === "COGS")
-    .reduce((t, r) => t + r.closingDebit, 0);
-
-  const expense = sumByType(currentTB.rows, "EXPENSE", "closingDebit");
-  const otherIncome = currentTB.rows
-    .filter((r) => r.subType === "OTHER")
-    .reduce((t, r) => t + r.closingCredit, 0);
-
-  const grossProfit = sales - cogs;
-  const netProfit = grossProfit - (expense - cogs) + otherIncome;
-
-  const current = {
-    sales,
-    cogs,
-    grossProfit,
-    expense,
-    otherIncome,
-    netProfit,
-  };
+  const current = calculatePL(currentTB);
 
   /**
    * COMPARATIVE PERIOD
@@ -60,31 +102,17 @@ export const profitLossAdvancedReport = async ({
       branchId,
     });
 
-    const cmpSales = sumByType(cmpTB.rows, "INCOME", "closingCredit");
-    const cmpCogs = cmpTB.rows
-      .filter((r) => r.subType === "COGS")
-      .reduce((t, r) => t + r.closingDebit, 0);
-
-    const cmpExpense = sumByType(cmpTB.rows, "EXPENSE", "closingDebit");
-    const cmpOtherIncome = cmpTB.rows
-      .filter((r) => r.subType === "OTHER")
-      .reduce((t, r) => t + r.closingCredit, 0);
-
-    const cmpGross = cmpSales - cmpCogs;
-    const cmpNet = cmpGross - (cmpExpense - cmpCogs) + cmpOtherIncome;
-
-    comparative = {
-      sales: cmpSales,
-      cogs: cmpCogs,
-      grossProfit: cmpGross,
-      expense: cmpExpense,
-      otherIncome: cmpOtherIncome,
-      netProfit: cmpNet,
-    };
+    comparative = calculatePL(cmpTB);
   }
 
+  /**
+   * FINAL RESPONSE
+   */
   return {
-    period: { fromDate, toDate },
+    period: {
+      fromDate,
+      toDate,
+    },
     current,
     comparative,
   };
