@@ -8,19 +8,16 @@ import {
   logoutApi,
 } from "../services/authService";
 
-import {
-  setAccessToken,
-  getAccessToken,
-  clearTokens,
-} from "../utils/token";
+import { setAccessToken, getAccessToken, clearTokens, markLogout, isLogoutInProgress } from "../utils/token";
 
 import useAxiosSecure from "../hooks/useAxiosSecure";
 import { AuthContext } from "./AuthContext";
+import { useNavigate } from "react-router-dom";
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [initializing, setInitializing] = useState(true);
-
+  const navigate = useNavigate();
   /* ======================================================
      AXIOS INSTANCE
   ====================================================== */
@@ -48,35 +45,42 @@ export const AuthProvider = ({ children }) => {
   /* ======================================================
      INIT AUTH
   ====================================================== */
-  useEffect(() => {
-    let cancelled = false;
+useEffect(() => {
+  let cancelled = false;
 
-    const initAuth = async () => {
-      setInitializing(true);
-      try {
-        let accessToken = getAccessToken();
+  const initAuth = async () => {
+    setInitializing(true);
 
-        if (!accessToken) {
-          const resp = await refreshApi();
-          accessToken = resp?.data?.accessToken;
-          if (accessToken) setAccessToken(accessToken);
-        }
-
-        if (accessToken && !cancelled) {
-          await fetchMe();
-        }
-      } catch {
+    try {
+      // 🔒 LOGOUT হলে আর কিছুই করবে না
+      if (isLogoutInProgress()) {
         clearTokens();
         setUser(null);
-      } finally {
-        if (!cancelled) setInitializing(false);
+        return;
       }
-    };
 
-    initAuth();
-    return () => (cancelled = true);
-  }, [fetchMe]);
+      let accessToken = getAccessToken();
 
+      if (!accessToken) {
+        const resp = await refreshApi();
+        accessToken = resp?.data?.accessToken;
+        if (accessToken) setAccessToken(accessToken);
+      }
+
+      if (accessToken && !cancelled) {
+        await fetchMe();
+      }
+    } catch {
+      clearTokens();
+      setUser(null);
+    } finally {
+      if (!cancelled) setInitializing(false);
+    }
+  };
+
+  initAuth();
+  return () => (cancelled = true);
+}, [fetchMe]);
   /* ======================================================
      LOGIN
   ====================================================== */
@@ -99,17 +103,18 @@ export const AuthProvider = ({ children }) => {
   /* ======================================================
      LOGOUT (NO NAVIGATION HERE)
   ====================================================== */
-  const handleLogout = useCallback(async (silent = false) => {
-    try {
-      await logoutApi();
-    } catch {
-      // ignore
-    } finally {
-      clearTokens();
-      setUser(null);
-    }
-  }, []);
-
+const handleLogout = useCallback(async () => {
+  try {
+    await logoutApi(); // may 401 → OK
+  } catch {
+    // ignore
+  } finally {
+    markLogout();          // 🔒 BLOCK refresh forever
+    clearTokens();         // 🔥 REMOVE access token
+    setUser(null);         // 🔥 CLEAR state
+    navigate("/login", { replace: true });
+  }
+}, [navigate]);
   /* ======================================================
      CONTEXT VALUE
   ====================================================== */
@@ -126,8 +131,6 @@ export const AuthProvider = ({ children }) => {
   );
 
   return (
-    <AuthContext.Provider value={contextValue}>
-      {children}
-    </AuthContext.Provider>
+    <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>
   );
 };

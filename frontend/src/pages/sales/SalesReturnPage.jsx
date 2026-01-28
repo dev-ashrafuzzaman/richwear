@@ -12,7 +12,6 @@ const SalesReturnPage = () => {
   const { modals, openModal, closeModal } = useModalManager();
   const [invoiceData, setInvoiceData] = useState(null);
   const table = useTableManager("/sales/returns");
-  console.log(table);
   const { request } = useApi();
 
   const handlePrintInvoice = async (row) => {
@@ -22,7 +21,6 @@ const SalesReturnPage = () => {
       const res = await request(`/sales/return/${saleId}`, "GET", null, {
         silent: true,
       });
-      console.log("reIn", res);
       if (!res?.success) {
         throw new Error("Failed to load invoice");
       }
@@ -57,13 +55,13 @@ const SalesReturnPage = () => {
       <DataTable
         table={table}
         title="Sales Return"
-        headerActions={[
-          {
-            variant: "gradient",
-            label: "Add Return",
-            onClick: () => openModal("createSaleReturn"),
-          },
-        ]}
+        // headerActions={[
+        //   {
+        //     variant: "gradient",
+        //     label: "Add Return",
+        //     onClick: () => openModal("createSaleReturn"),
+        //   },
+        // ]}
         columns={[
           { key: "returnInvoiceNo", label: "Return Invoice" },
           { key: "invoiceNo", label: "Sales Invoice" },

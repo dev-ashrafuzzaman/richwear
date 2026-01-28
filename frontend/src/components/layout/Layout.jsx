@@ -40,7 +40,7 @@ const Layout = () => {
             logout={logout}
           />
         </header>
-          <Sidebar isDrawerOpen={isDrawerOpen} closeDrawer={closeDrawer} />
+          <Sidebar isDrawerOpen={isDrawerOpen} closeDrawer={closeDrawer}  user={user}/>
 
         {/* Main content */}
         <main className="flex-1 p-4 overflow-y-auto">

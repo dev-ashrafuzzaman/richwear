@@ -1,13 +1,6 @@
-/**
- * Token Utility (ACCESS TOKEN ONLY)
- *
- * 🔐 Refresh token is HTTP-only cookie (handled by backend)
- * ❌ Frontend MUST NOT read/write refresh token
- *
- * This utility ONLY manages access token.
- */
-
 export const ACCESS_KEY = "access_token";
+
+let logoutInProgress = false;
 
 /* ===========================
    GET ACCESS TOKEN
@@ -15,14 +8,13 @@ export const ACCESS_KEY = "access_token";
 export const getAccessToken = () => {
   try {
     return localStorage.getItem(ACCESS_KEY);
-  } catch (err) {
-    console.error("Error reading access token:", err);
+  } catch {
     return null;
   }
 };
 
 /* ===========================
-   SET / CLEAR ACCESS TOKEN
+   SET ACCESS TOKEN
 =========================== */
 export const setAccessToken = (token) => {
   try {
@@ -31,10 +23,17 @@ export const setAccessToken = (token) => {
     } else {
       localStorage.removeItem(ACCESS_KEY);
     }
-  } catch (err) {
-    console.error("Error writing access token:", err);
-  }
+  } catch {}
 };
+
+/* ===========================
+   LOGOUT GUARD
+=========================== */
+export const markLogout = () => {
+  logoutInProgress = true;
+};
+
+export const isLogoutInProgress = () => logoutInProgress;
 
 /* ===========================
    CLEAR ALL AUTH STATE
@@ -42,14 +41,5 @@ export const setAccessToken = (token) => {
 export const clearTokens = () => {
   try {
     localStorage.removeItem(ACCESS_KEY);
-  } catch (err) {
-    console.error("Error clearing access token:", err);
-  }
+  } catch {}
 };
-
-/* ===========================
-   DEV / DEBUG ONLY
-=========================== */
-export const getTokenDebug = () => ({
-  accessToken: getAccessToken(),
-});

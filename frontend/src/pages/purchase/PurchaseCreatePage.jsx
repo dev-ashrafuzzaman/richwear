@@ -43,12 +43,28 @@ export default function PurchaseCreatePage() {
   /* ======================
      TOTAL AMOUNT
   ====================== */
-  const totalAmount = items.reduce(
-    (sum, item) =>
+  // =====================
+  // CALCULATIONS (LIVE)
+  // =====================
+  const totalAmount = items.reduce((sum, item) => {
+    if (item.pricingMode === "GLOBAL") {
+      const totalQty = item.variants.reduce(
+        (q, v) => q + Number(v.qty || 0),
+        0,
+      );
+
+      return sum + totalQty * Number(item.globalPrice.costPrice || 0);
+    }
+
+    // VARIANT MODE
+    return (
       sum +
-      item.variants.reduce((itemSum, v) => itemSum + v.qty * v.costPrice, 0),
-    0,
-  );
+      item.variants.reduce(
+        (s, v) => s + Number(v.qty || 0) * Number(v.costPrice || 0),
+        0,
+      )
+    );
+  }, 0);
 
   const dueAmount = Math.max(totalAmount - paidAmount, 0);
 
@@ -70,7 +86,22 @@ export default function PurchaseCreatePage() {
       supplierId: supplier._id,
       ...data,
       items: items.map((i) => {
-        const variants = i.variants.filter((v) => v.qty > 0);
+        const variants = i.variants
+          .filter((v) => v.qty > 0)
+          .map((v) => ({
+            size: v.size,
+            color: v.color,
+            qty: v.qty,
+            costPrice:
+              i.pricingMode === "GLOBAL"
+                ? i.globalPrice.costPrice
+                : v.costPrice,
+
+            salePrice:
+              i.pricingMode === "GLOBAL"
+                ? i.globalPrice.salePrice
+                : v.salePrice,
+          }));
 
         return {
           productId: i.productId,
@@ -82,7 +113,6 @@ export default function PurchaseCreatePage() {
         };
       }),
     };
-
     await request("/purchases", "POST", payload, {
       successMessage: "Purchase created successfully!",
       onSuccess: (res) => {

@@ -56,6 +56,7 @@ const TrialBalance = () => {
       }
 
       const res = await axiosSecure.get("/reports/trial-balance/", { params });
+
       if (res?.data?.data) {
         setTbData(res.data.data);
       } else {
@@ -76,12 +77,10 @@ const TrialBalance = () => {
 
   const exportToExcel = () => {
     // Excel export logic here
-    console.log("Exporting to Excel...");
   };
 
   const exportToPDF = () => {
     // PDF export logic here
-    console.log("Exporting to PDF...");
   };
 
   const getAccountTypeColor = (type) => {

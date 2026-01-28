@@ -24,7 +24,7 @@ import profileImg from "../../assets/profile.jpg";
 
 export default function TopNav({
   user,
-  logOut,
+  logout,
   toggleDrawer,
   isDrawerOpen,
   isPosScreen,
@@ -34,6 +34,7 @@ export default function TopNav({
   const [showQuickActions, setShowQuickActions] = useState(false);
   const profileRef = useRef(null);
   const quickActionsRef = useRef(null);
+  const roleName = user?.roleName;
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -51,51 +52,52 @@ export default function TopNav({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const quickActions = [
-    {
-      icon: <Plus className="w-4 h-4" />,
-      label: "New Sale",
-      path: "/sales/create",
-      color: "bg-blue-500",
-    },
-    {
-      icon: <PackagePlus className="w-4 h-4" />,
-      label: "New Purchase",
-      path: "/purchase/create",
-      color: "bg-emerald-500",
-    },
-    {
-      icon: <FilePlus className="w-4 h-4" />,
-      label: "Add Product",
-      path: "/products/create",
-      color: "bg-purple-500",
-    },
-    {
-      icon: <ArrowLeftRight className="w-4 h-4" />,
-      label: "Stock Transfer",
-      path: "/stock-transfer",
-      color: "bg-amber-500",
-    },
-    {
-      icon: <DollarSign className="w-4 h-4" />,
-      label: "Add Expense",
-      path: "/expenses/create",
-      color: "bg-rose-500",
-    },
-  ];
+const quickActions = [
+  {
+    icon: <Plus className="w-4 h-4" />,
+    label: "Sale Return",
+    path: "/sales",
+    color: "bg-blue-500",
+    roles: ["Admin", "Super Admin", "Manager", "Cashier"], 
+  },
+  {
+    icon: <PackagePlus className="w-4 h-4" />,
+    label: "New Purchase",
+    path: "/purchases/create",
+    color: "bg-emerald-500",
+    roles: ["Admin", "Super Admin"],
+  },
+  {
+    icon: <FilePlus className="w-4 h-4" />,
+    label: "Add Product",
+    path: "/products",
+    color: "bg-purple-500",
+    roles: ["Admin", "Super Admin"],
+  },
+  {
+    icon: <ArrowLeftRight className="w-4 h-4" />,
+    label: "Stock Transfer",
+    path: "/inventory/stock-transfer",
+    color: "bg-amber-500",
+    roles: ["Admin", "Super Admin"],
+  },
+];
+
+const filteredQuickActions = quickActions.filter(action =>
+  action.roles.includes(roleName)
+);
 
   return (
     <header className="w-full sticky top-0 z-50 bg-white border-b border-gray-100 shadow-sm px-6 py-4 flex items-center justify-between">
       {/* LEFT */}
       <div className="flex items-center gap-6">
         {isPosScreen && (
-        <button
-          onClick={toggleDrawer}
-          className="mr-3 p-2 rounded-md hover:bg-gray-100"
-        >
-          ☰
-        </button>
-      )}
+          <button
+            onClick={toggleDrawer}
+            className="mr-3 p-2 rounded-md hover:bg-gray-100">
+            ☰
+          </button>
+        )}
         <button
           onClick={toggleDrawer}
           className="p-2 rounded-xl hover:bg-gray-100 lg:hidden">
@@ -164,7 +166,7 @@ export default function TopNav({
                 <p className="text-xs text-gray-500">Common workflows</p>
               </div>
               <div className="p-2">
-                {quickActions.map((a, i) => (
+                {filteredQuickActions.map((a, i) => (
                   <Link
                     key={i}
                     to={a.path}
@@ -226,7 +228,7 @@ export default function TopNav({
                   <Settings className="w-4 h-4" /> Settings
                 </Link>
                 <button
-                  onClick={logOut}
+                  onClick={logout}
                   className="w-full mt-2 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-red-600 bg-red-50 hover:bg-red-100">
                   <LogOut className="w-4 h-4" /> Logout
                 </button>

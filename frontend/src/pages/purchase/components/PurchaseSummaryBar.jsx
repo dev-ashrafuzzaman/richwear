@@ -10,7 +10,7 @@ export default function PurchaseSummaryBar({ totalAmount, dueAmount }) {
             <div className="space-y-1">
               <div className="text-sm text-gray-500">Total Amount</div>
               <div className="text-2xl font-bold text-gray-900">
-                TK{totalAmount.toFixed(2)}
+                TK{totalAmount}
               </div>
             </div>
             <div className="space-y-1">
@@ -18,7 +18,7 @@ export default function PurchaseSummaryBar({ totalAmount, dueAmount }) {
               <div className={`text-2xl font-bold ${
                 dueAmount > 0 ? 'text-amber-600' : 'text-green-600'
               }`}>
-                TK{dueAmount.toFixed(2)}
+                TK{dueAmount}
               </div>
             </div>
           </div>

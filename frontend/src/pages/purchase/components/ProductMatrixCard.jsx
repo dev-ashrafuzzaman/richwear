@@ -62,21 +62,34 @@ export default function ProductMatrixCard({ item, index, setItems }) {
      PRICING MODE SWITCH
   ====================== */
   const togglePricingMode = (checked) => {
-    if (checked) {
-      // VARIANT → GLOBAL
-      const base =
-        item.variants.find(v => v.costPrice || v.salePrice) ||
-        { costPrice: 0, salePrice: 0 };
+if (checked) {
+  const base =
+    item.variants.find(v => v.costPrice || v.salePrice) ||
+    { costPrice: 0, salePrice: 0 };
 
-      updateItem({
-        pricingMode: "GLOBAL",
-        globalPrice: {
-          costPrice: base.costPrice,
-          salePrice: base.salePrice,
-        },
-        variants: [],
-      });
-    } else {
+  updateItem({
+    pricingMode: "GLOBAL",
+    globalPrice: {
+      costPrice: base.costPrice,
+      salePrice: base.salePrice,
+    },
+
+    // 🔑 keep qty matrix alive
+    variants: sizes.flatMap(size =>
+      colors.map(color => {
+        const prev = item.variants.find(
+          v => v.size === size && v.color === color
+        );
+        return {
+          size,
+          color,
+          qty: prev?.qty || 0,
+        };
+      })
+    ),
+  });
+}
+else {
       // GLOBAL → VARIANT
       updateItem({
         pricingMode: "VARIANT",

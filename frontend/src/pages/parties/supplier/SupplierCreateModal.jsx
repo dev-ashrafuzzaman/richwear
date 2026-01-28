@@ -25,7 +25,7 @@ export default function SupplierCreateModal({
       contact: {
         name: "",
         phone: "",
-        email: "",
+        email: "supply@gmail.com",
       },
     },
   });

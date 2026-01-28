@@ -19,6 +19,7 @@ import {
   Activity,
   DollarSignIcon,
 } from "lucide-react";
+import { ROLES } from "../constants/roles";
 
 export const SIDEBAR_MENU = [
   /* =======================
@@ -26,6 +27,7 @@ export const SIDEBAR_MENU = [
   ======================== */
   {
     header: "Main",
+    roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN],
     items: [
       {
         title: "Dashboard",
@@ -35,25 +37,34 @@ export const SIDEBAR_MENU = [
     ],
   },
 
-
-
   /* =======================
      SALES & POS
   ======================== */
   {
     header: "Sales & POS",
+    roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.CASHIER],
     items: [
       {
         title: "POS Create",
         icon: ShoppingCart,
         to: "/pos",
+        roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.CASHIER],
       },
       {
         title: "Sales",
+        roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.CASHIER],
         icon: FileText,
         submenu: [
-          { title: "Sales Manage", to: "/sales" },
-          { title: "Sales Return", to: "/sales/return" },
+          {
+            title: "Sales Manage",
+            roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.CASHIER],
+            to: "/sales",
+          },
+          {
+            title: "Sales Return",
+            roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.CASHIER],
+            to: "/sales/return",
+          },
           // { title: "Customer Statement", to: "/sales/statements" },
         ],
       },
@@ -65,6 +76,7 @@ export const SIDEBAR_MENU = [
   ======================== */
   {
     header: "Products",
+    roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN],
     items: [
       {
         title: "Categories",
@@ -87,6 +99,7 @@ export const SIDEBAR_MENU = [
   ======================== */
   {
     header: "Purchases",
+    roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN],
     items: [
       {
         title: "Purchase",
@@ -106,6 +119,7 @@ export const SIDEBAR_MENU = [
   ======================== */
   {
     header: "Inventory",
+    roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN],
     items: [
       {
         title: "Stock",
@@ -123,13 +137,20 @@ export const SIDEBAR_MENU = [
      USERS & PARTIES
   ======================== */
   {
-    header: "Users & Parties",
+    header: "Customer",
+    roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.CASHIER],
     items: [
       {
         title: "Customers",
         icon: Users,
         to: "/customers",
       },
+    ],
+  },
+  {
+    header: "Parties",
+    roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN],
+    items: [
       {
         title: "Suppliers",
         icon: Truck,
@@ -148,6 +169,7 @@ export const SIDEBAR_MENU = [
   ======================== */
   {
     header: "Accounting",
+    roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN],
     items: [
       // {
       //   title: "Accounts",
@@ -161,6 +183,7 @@ export const SIDEBAR_MENU = [
       // },
       {
         title: "Reports",
+        roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN],
         icon: BarChart3,
         submenu: [
           { title: "Trial Balance", to: "/reports/trial-balance" },
@@ -179,6 +202,7 @@ export const SIDEBAR_MENU = [
   ======================== */
   {
     header: "HR & Payroll",
+    roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN],
     items: [
       {
         title: "Attendance",
@@ -203,6 +227,7 @@ export const SIDEBAR_MENU = [
   ======================== */
   {
     header: "Administration",
+    roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN],
     items: [
       // {
       //   title: "Settings",
@@ -214,11 +239,7 @@ export const SIDEBAR_MENU = [
         icon: Users,
         to: "/settings/users",
       },
-      {
-        title: "Opening Balance",
-        icon: DollarSignIcon,
-        to: "/settings/opening-balance",
-      },
+
       // {
       //   title: "Activity Logs",
       //   icon: Activity,
@@ -227,16 +248,22 @@ export const SIDEBAR_MENU = [
     ],
   },
 
-    /* =======================
+  /* =======================
      BRANCH MANAGEMENT
   ======================== */
   {
-    header: "Branches",
+    header: "Business Operations",
+    roles: [ROLES.SUPER_ADMIN],
     items: [
       {
         title: "Branch Manage",
         icon: GitBranch,
         to: "/branches",
+      },
+      {
+        title: "Opening Balance",
+        icon: DollarSignIcon,
+        to: "/settings/opening-balance",
       },
     ],
   },

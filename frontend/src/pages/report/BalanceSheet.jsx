@@ -32,12 +32,10 @@ const BalanceSheet = () => {
 
   const downloadPDF = () => {
     // PDF generation logic here
-    console.log("Downloading PDF...");
   };
 
   const exportToCSV = () => {
     // CSV export logic here
-    console.log("Exporting to CSV...");
   };
 
   const formatCurrency = (amount) => {

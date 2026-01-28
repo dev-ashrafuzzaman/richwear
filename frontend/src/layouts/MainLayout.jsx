@@ -8,7 +8,7 @@ import { useLocation } from "react-router-dom";
 export default function MainLayout({ children }) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const location = useLocation();
-  const { user, logOut } = useAuth();
+  const { user, logout } = useAuth();
 
   const isPosScreen = useMemo(
     () => location.pathname.startsWith("/pos"),
@@ -34,7 +34,7 @@ export default function MainLayout({ children }) {
       {/* ---------------- Sidebar ---------------- */}
       {!isPosScreen && (
         <div className="bg-white border-r border-gray-200 w-64 shrink-0">
-          <Sidebar isDrawerOpen closeDrawer={closeDrawer} />
+          <Sidebar isDrawerOpen closeDrawer={closeDrawer} user={user} />
         </div>
       )}
 
@@ -46,7 +46,7 @@ export default function MainLayout({ children }) {
             onClick={closeDrawer}
           />
           <div className="fixed left-0 top-0 h-full w-64 bg-white z-50 shadow-xl">
-            <Sidebar isDrawerOpen closeDrawer={closeDrawer} />
+            <Sidebar isDrawerOpen closeDrawer={closeDrawer} user={user} />
           </div>
         </>
       )}
@@ -56,7 +56,7 @@ export default function MainLayout({ children }) {
         {/* TopNav should NOT scroll */}
         <TopNav
           user={user}
-          logOut={logOut}
+          logout={logout}
           toggleDrawer={toggleDrawer}
           isDrawerOpen={isDrawerOpen}
           isPosScreen={isPosScreen}

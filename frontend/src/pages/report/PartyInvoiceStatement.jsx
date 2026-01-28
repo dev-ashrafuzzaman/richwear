@@ -46,7 +46,6 @@ export default function SupplierInvoiceStatement() {
           },
         }
       );
-      console.log(res)
       setData(res.data);
     } finally {
       setLoading(false);

@@ -12,39 +12,87 @@ export default function SalesReturnCreateModal({
   onSuccess,
 }) {
   const { request } = useApi();
+
   const [sale, setSale] = useState(null);
   const [items, setItems] = useState([]);
   const [confirmed, setConfirmed] = useState(false);
 
-  /* ---------- Load Sale ---------- */
+  /* =====================
+     LOAD SALE
+  ====================== */
   useEffect(() => {
     if (!open || !saleId) return;
 
     request(`/sales/${saleId}/return`, "GET", null, {
       onSuccess: (res) => {
-        setSale(res.data);
+        const saleData = res.data;
+        setSale(saleData);
 
         setItems(
-          res.data.items.map((i) => ({
+          saleData.items.map((i) => ({
             saleItemId: i._id,
             sku: i.sku,
             name: i.productName || i.sku,
             soldQty: i.qty,
             returnQty: 0,
             reason: "",
-            unitPrice: i.lineTotal / i.qty,
+            salePrice: i.salePrice,          // gross unit price
+            itemDiscount: i.discountAmount,  // total item discount
           })),
         );
       },
     });
   }, [open, saleId]);
 
-  /* ---------- Total Refund ---------- */
-  const totalRefund = useMemo(() => {
-    return items.reduce((sum, i) => sum + i.returnQty * i.unitPrice, 0);
-  }, [items]);
+  /* =====================
+     REFUND CALCULATOR
+  ====================== */
+  const calculateRefund = (item) => {
+    if (!sale) return 0;
 
-  /* ---------- Submit ---------- */
+    const returnQty = Number(item.returnQty || 0);
+    if (returnQty <= 0) return 0;
+
+    // Gross
+    const returnGross = item.salePrice * returnQty;
+
+    // Item discount (proportional)
+    const unitItemDiscount =
+      item.soldQty > 0 ? item.itemDiscount / item.soldQty : 0;
+    const returnItemDiscount = unitItemDiscount * returnQty;
+
+    // Bill discount (proportional to gross)
+    const billDiscountRatio =
+      sale.subTotal > 0 ? sale.billDiscount / sale.subTotal : 0;
+    const returnBillDiscount = returnGross * billDiscountRatio;
+
+    // VAT (proportional)
+    const vatRatio =
+      sale.subTotal > 0 ? sale.taxAmount / sale.subTotal : 0;
+    const returnVat = returnGross * vatRatio;
+
+    // Final refund
+    return (
+      returnGross -
+      returnItemDiscount -
+      returnBillDiscount +
+      returnVat
+    );
+  };
+
+  /* =====================
+     TOTAL REFUND
+  ====================== */
+  const totalRefund = useMemo(() => {
+    return items.reduce(
+      (sum, item) => sum + calculateRefund(item),
+      0,
+    );
+  }, [items, sale]);
+
+  /* =====================
+     SUBMIT RETURN
+  ====================== */
   const submitReturn = async () => {
     const payload = {
       refundMethod: "CASH",
@@ -68,6 +116,9 @@ export default function SalesReturnCreateModal({
     });
   };
 
+  /* =====================
+     LOADING
+  ====================== */
   if (!sale) {
     return (
       <Modal isOpen={open} setIsOpen={setOpen} title="Sales Return">
@@ -78,6 +129,9 @@ export default function SalesReturnCreateModal({
     );
   }
 
+  /* =====================
+     UI
+  ====================== */
   return (
     <Modal
       isOpen={open}
@@ -88,7 +142,9 @@ export default function SalesReturnCreateModal({
         <div className="flex justify-between items-center">
           <div className="text-lg font-semibold">
             Total Refund:{" "}
-            <span className="text-red-600">BDT {totalRefund.toFixed(2)}</span>
+            <span className="text-red-600">
+              BDT {totalRefund.toFixed(2)}
+            </span>
           </div>
 
           <div className="flex gap-2">
@@ -98,13 +154,15 @@ export default function SalesReturnCreateModal({
             <Button
               onClick={submitReturn}
               disabled={totalRefund <= 0 || !confirmed}
-              variant="gradient">
+              variant="gradient"
+            >
               Confirm Return
             </Button>
           </div>
         </div>
-      }>
-      {/* ---------- Sale + Customer Info ---------- */}
+      }
+    >
+      {/* ---------- SALE INFO ---------- */}
       <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg mb-4 text-sm">
         <div>
           <div className="flex justify-between">
@@ -113,7 +171,9 @@ export default function SalesReturnCreateModal({
           </div>
           <div className="flex justify-between">
             <span>Date:</span>
-            <strong>{new Date(sale.createdAt).toLocaleDateString()}</strong>
+            <strong>
+              {new Date(sale.createdAt).toLocaleDateString()}
+            </strong>
           </div>
         </div>
 
@@ -129,32 +189,36 @@ export default function SalesReturnCreateModal({
         </div>
       </div>
 
-      {/* ---------- Items ---------- */}
+      {/* ---------- ITEMS ---------- */}
       <div className="space-y-3">
-        {items.map((i, idx) => {
-          const refund = i.returnQty * i.unitPrice;
+        {items.map((item, idx) => {
+          const refund = calculateRefund(item);
 
           return (
             <div
-              key={i.saleItemId}
-              className="grid grid-cols-12 gap-3 items-center border p-3 rounded-lg">
+              key={item.saleItemId}
+              className="grid grid-cols-12 gap-3 items-center border p-3 rounded-lg"
+            >
               <div className="col-span-4">
-                <div className="font-medium">{i.name}</div>
-                <div className="text-xs text-gray-500">{i.sku}</div>
+                <div className="font-medium">{item.name}</div>
+                <div className="text-xs text-gray-500">{item.sku}</div>
               </div>
 
               <div className="col-span-2 text-sm">
-                Sold: <strong>{i.soldQty}</strong>
+                Sold: <strong>{item.soldQty}</strong>
               </div>
 
               <div className="col-span-2">
                 <Input
                   type="number"
                   min={0}
-                  max={i.soldQty}
-                  value={i.returnQty}
+                  max={item.soldQty}
+                  value={item.returnQty}
                   onChange={(e) => {
-                    const v = Math.min(Number(e.target.value || 0), i.soldQty);
+                    const v = Math.min(
+                      Number(e.target.value || 0),
+                      item.soldQty,
+                    );
                     setItems((prev) =>
                       prev.map((x, j) =>
                         j === idx ? { ...x, returnQty: v } : x,
@@ -174,11 +238,13 @@ export default function SalesReturnCreateModal({
               <div className="col-span-2">
                 <Input
                   placeholder="Reason"
-                  value={i.reason}
+                  value={item.reason}
                   onChange={(e) =>
                     setItems((prev) =>
                       prev.map((x, j) =>
-                        j === idx ? { ...x, reason: e.target.value } : x,
+                        j === idx
+                          ? { ...x, reason: e.target.value }
+                          : x,
                       ),
                     )
                   }
@@ -187,23 +253,24 @@ export default function SalesReturnCreateModal({
             </div>
           );
         })}
-        {/* ---------- Confirmation ---------- */}
-<div className="mt-6 border-t pt-4 flex items-center gap-2">
-  <input
-    type="checkbox"
-    id="confirmReturn"
-    checked={confirmed}
-    onChange={(e) => setConfirmed(e.target.checked)}
-    className="w-4 h-4"
-  />
-  <label
-    htmlFor="confirmReturn"
-    className="text-sm text-gray-700 select-none"
-  >
-    I confirm that the above return quantities and refund amount are correct
-  </label>
-</div>
 
+        {/* ---------- CONFIRM ---------- */}
+        <div className="mt-6 border-t pt-4 flex items-center gap-2">
+          <input
+            type="checkbox"
+            id="confirmReturn"
+            checked={confirmed}
+            onChange={(e) => setConfirmed(e.target.checked)}
+            className="w-4 h-4"
+          />
+          <label
+            htmlFor="confirmReturn"
+            className="text-sm text-gray-700 select-none"
+          >
+            I confirm that the above return quantities and refund amount
+            are correct
+          </label>
+        </div>
       </div>
     </Modal>
   );

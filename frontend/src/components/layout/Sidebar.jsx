@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   MessageCircle,
   Youtube,
@@ -10,10 +10,10 @@ import {
 import { SIDEBAR_MENU } from "../../config/sidebar.config";
 import SidebarItem from "./SidebarItem";
 
-export default function Sidebar({ isDrawerOpen, closeDrawer }) {
+export default function Sidebar({ isDrawerOpen, closeDrawer, user }) {
   const [openMenu, setOpenMenu] = useState(null);
   const sidebarRef = useRef(null);
-
+  const roleName = user?.roleName;
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (sidebarRef.current && !sidebarRef.current.contains(e.target)) {
@@ -33,7 +33,29 @@ export default function Sidebar({ isDrawerOpen, closeDrawer }) {
   }, [isDrawerOpen, closeDrawer]);
 
 
+  const filterMenuByRole = (menu, roleName) =>
+  menu
+    .filter(section => !section.roles || section.roles.includes(roleName))
+    .map(section => ({
+      ...section,
+      items: section.items
+        .filter(item => !item.roles || item.roles.includes(roleName))
+        .map(item => ({
+          ...item,
+          submenu: item.submenu
+            ? item.submenu.filter(
+                sub => !sub.roles || sub.roles.includes(roleName)
+              )
+            : undefined,
+        }))
+        .filter(item => !item.submenu || item.submenu.length > 0),
+    }))
+    .filter(section => section.items.length > 0);
 
+const filteredMenu = useMemo(
+  () => filterMenuByRole(SIDEBAR_MENU, roleName),
+  [roleName]
+);
   return (
     <>
       {isDrawerOpen && (
@@ -50,11 +72,11 @@ export default function Sidebar({ isDrawerOpen, closeDrawer }) {
         transform transition-all duration-300 ease-in-out
         ${
           isDrawerOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
-        }`}
-      >
+        }`}>
         {/* Header */}
         <div className="flex items-center gap-3 p-4">
-          <div className={`
+          <div
+            className={`
             p-2 rounded-xl
            bg-linear-to-br from-blue-50 to-indigo-50
           `}>
@@ -75,9 +97,8 @@ export default function Sidebar({ isDrawerOpen, closeDrawer }) {
           </div>
         </div>
 
-        
         <div className="flex-1 overflow-y-auto px-1 custom-scroll">
-          {SIDEBAR_MENU.map((section) => (
+          {filteredMenu.map((section) => (
             <div key={section.header}>
               <p className="px-3 mt-3 mb-2 text-xs text-gray-400 uppercase">
                 {section.header}
@@ -109,14 +130,13 @@ export default function Sidebar({ isDrawerOpen, closeDrawer }) {
               rel="noopener noreferrer"
               href={`https://wa.me/${"+8801711990848".replace(
                 /\D/g,
-                ""
+                "",
               )}?text=${encodeURIComponent(`Hello Codivoo Support 👋  
 I'm contacting from the Chart of Account software (sidebar → Contact Support).  
 I need some help regarding the Report section. Could you please assist me with this?`)}`}
               title="Send WhatsApp Message"
               className="flex items-center gap-1 bg-blue-600 hover:bg-blue-700
-                text-white text-xs px-3 py-1.5 rounded-md"
-            >
+                text-white text-xs px-3 py-1.5 rounded-md">
               <MessageCircle className="w-4 h-4" />
               Report
             </a>
@@ -137,27 +157,24 @@ I need some help regarding the Report section. Could you please assist me with t
               rel="noopener noreferrer"
               href={`https://wa.me/${"+8801711990848".replace(
                 /\D/g,
-                ""
+                "",
               )}?text=${encodeURIComponent(`Hello Codivoo Support 👋  
 I'm contacting from the *Chart of Account* software (sidebar → Contact Support).  
 I need some assistance regarding my account setup. Could you please help me?`)}`}
               className="bg-[#00B2FF]/10 text-[#00B2FF] p-2 rounded-full"
-              title="Send WhatsApp Message"
-            >
+              title="Send WhatsApp Message">
               <MessageCircle className="w-4 h-4" />
             </a>
             <a
               href="tel:+8801711990848"
               className="bg-green-100 text-green-600 p-2 rounded-full"
-              title="Call Now"
-            >
+              title="Call Now">
               <PhoneCall className="w-4 h-4" />
             </a>
             <a
               target="_blank"
               href="https://www.linkedin.com/company/codivoo/"
-              className="bg-blue-100 text-blue-600 p-2 rounded-full"
-            >
+              className="bg-blue-100 text-blue-600 p-2 rounded-full">
               <Linkedin className="w-4 h-4" />
             </a>
           </div>

@@ -143,7 +143,7 @@ export default function OpeningBalancePage() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className="max-w-2xl mx-auto"
+        className="max-w-4xl mx-auto"
       >
         {/* Header */}
         <div className="mb-8">
@@ -406,18 +406,10 @@ export default function OpeningBalancePage() {
                     </Button>
                     <Button
                       type="submit"
-                      loading={loading}
-                      disabled={locked || !isValid || loading}
+                      disabled={locked || !isValid}
                       className="min-w-40 bg-linear-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
                     >
-                      {loading ? (
-                        <>
-                          <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                          Processing...
-                        </>
-                      ) : (
-                        "Post Opening Balance"
-                      )}
+                     Opening Balance
                     </Button>
                   </div>
                 </div>
