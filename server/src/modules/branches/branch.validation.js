@@ -5,6 +5,7 @@ export const createBranchSchema = Joi.object({
   code: Joi.string().trim().uppercase().required(),
   address: Joi.string().trim().required(),
   phone: Joi.string().trim().required(),
+  altPhone: Joi.string().trim().required(),
   isMain: Joi.boolean().default(false),
   status: Joi.string().valid("active", "inactive").default("active")
 });
