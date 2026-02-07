@@ -7,6 +7,7 @@ export default function PosCart({
   removeItem,
   isLowStock,
 }) {
+  console.log(cart)
   return (
     <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
       {/* Cart Header */}
@@ -38,22 +39,14 @@ export default function PosCart({
 
         <div className="divide-y divide-gray-100">
           {cart.map((item) => {
-            let lineTotal = item.qty * item.salePrice;
-
-            if (item.discountType === "FIXED") {
-              lineTotal -= item.discountValue;
-            }
-
-            if (item.discountType === "PERCENT") {
-              lineTotal -= (lineTotal * item.discountValue) / 100;
-            }
-
-            lineTotal = Math.max(lineTotal, 0);
+            const unitPrice = item.finalPrice ?? item.salePrice;
+            const lineTotal = Math.max(item.qty * unitPrice, 0);
 
             return (
               <div
                 key={item.variantId}
-                className="px-6 py-4 hover:bg-blue-50/50 transition-all duration-200 group">
+                className="px-6 py-4 hover:bg-blue-50/50 transition-all duration-200 group"
+              >
                 <div className="grid grid-cols-12 gap-4 items-center">
                   {/* Product Info */}
                   <div className="col-span-4">
@@ -108,27 +101,9 @@ export default function PosCart({
 
                   {/* Discount */}
                   <div className="col-span-2">
-                    <div className="flex gap-2 items-center">
-                      <p>{item.discountType}</p>
-
-                      <Input
-                        type="text"
-                        min={0}
-                        placeholder="0"
-                        value={item.discountValue || ""}
-                        onChange={(e) =>
-                          updateDiscount(
-                            item.variantId,
-                            "discountValue",
-                            Number(e.target.value),
-                          )
-                        }
-                        className={`w-16 text-center border border-gray-200 {
-                          item.discountType
-                            ? "border-blue-200 bg-blue-50"
-                            : "border-gray-200 bg-gray-100"
-                        } rounded-lg py-1.5 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all duration-200`}
-                      />
+                    <div className="flex items-center justify-center text-yellow-600 font-semibold">
+                      <p>{item.discountValue}</p>
+                      <p>{item.discountType === "PERCENT" ? "%" : "FLT"}</p>
                     </div>
                   </div>
 
@@ -136,7 +111,7 @@ export default function PosCart({
                   <div className="col-span-1 text-right">
                     <div className="font-bold text-blue-700 text-lg">
                       {lineTotal}
-                    </div> 
+                    </div>
                   </div>
 
                   {/* Remove */}
@@ -144,7 +119,8 @@ export default function PosCart({
                     <button
                       onClick={() => removeItem(item.variantId)}
                       className="w-9 h-9 flex items-center justify-center rounded-lg  text-red-600 bg-red-50 border-2 border-transparent hover:border-red-200 transition-all duration-200 group/remove"
-                      title="Remove item">
+                      title="Remove item"
+                    >
                       <span className="group-hover/remove:scale-110 transition-transform">
                         ✕
                       </span>
@@ -160,22 +136,14 @@ export default function PosCart({
       {/* Cart Items - Mobile View */}
       <div className="lg:hidden divide-y divide-gray-100">
         {cart.map((item) => {
-          let lineTotal = item.qty * item.salePrice;
-
-          if (item.discountType === "FIXED") {
-            lineTotal -= item.discountValue;
-          }
-
-          if (item.discountType === "PERCENT") {
-            lineTotal -= (lineTotal * item.discountValue) / 100;
-          }
-
-          lineTotal = Math.max(lineTotal, 0);
+          const unitPrice = item.finalPrice ?? item.salePrice;
+          const lineTotal = Math.max(item.qty * unitPrice, 0);
 
           return (
             <div
               key={item.variantId}
-              className="p-4 hover:bg-blue-50/50 transition-all duration-200">
+              className="p-4 hover:bg-blue-50/50 transition-all duration-200"
+            >
               <div className="flex justify-between items-start mb-3">
                 <div className="flex items-start gap-3">
                   <div className="w-12 h-12 bg-linear-to-br from-blue-100 to-indigo-100 rounded-xl flex items-center justify-center">
@@ -184,7 +152,9 @@ export default function PosCart({
                     </span>
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900">{item.productName}</h3>
+                    <h3 className="font-semibold text-gray-900">
+                      {item.productName}
+                    </h3>
                     <p className="text-xs text-gray-500 font-mono mt-0.5">
                       SKU: {item.sku}
                     </p>
@@ -198,7 +168,8 @@ export default function PosCart({
                 </div>
                 <button
                   onClick={() => removeItem(item.variantId)}
-                  className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50">
+                  className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50"
+                >
                   ✕
                 </button>
               </div>
@@ -239,7 +210,8 @@ export default function PosCart({
                         "discountType",
                         e.target.value || null,
                       )
-                    }>
+                    }
+                  >
                     <option value="">No Discount</option>
                     <option value="FIXED">Fixed</option>
                     <option value="PERCENT">%</option>
@@ -289,7 +261,8 @@ export default function PosCart({
                 className="w-12 h-12 text-blue-400"
                 fill="none"
                 stroke="currentColor"
-                viewBox="0 0 24 24">
+                viewBox="0 0 24 24"
+              >
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"

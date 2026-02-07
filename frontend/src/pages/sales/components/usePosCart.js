@@ -6,10 +6,13 @@ const LOW_STOCK_THRESHOLD = 3;
 export default function usePosCart() {
   const [cart, setCart] = useState([]);
   const [billDiscount, setBillDiscount] = useState(0);
+
+  /* ---------------- Reset Cart ---------------- */
   const resetCart = () => {
     setCart([]);
     setBillDiscount(0);
   };
+
   /* ---------------- Add Item (SCAN / SELECT) ---------------- */
   const addItem = useCallback((item) => {
     setCart((prev) => {
@@ -17,7 +20,7 @@ export default function usePosCart() {
         (i) => i.variantId === item.variantId
       );
 
-      // 🔁 Same SKU scanned again
+      /* 🔁 Same SKU scanned again */
       if (found) {
         if (found.qty + 1 > found.stockQty) {
           toast.error(
@@ -33,20 +36,25 @@ export default function usePosCart() {
         );
       }
 
-      // ➕ New item
+      /* ➕ New item */
       return [
         ...prev,
         {
           productId: item.productId,
           variantId: item.variantId,
           sku: item.sku,
-          productName: item.productName, // ✅ match backend
-          salePrice: item.salePrice,
-          stockQty: item.qty,            // 🔥 freeze stock
+          productName: item.productName,
+
+          salePrice: Number(item.salePrice),
+          finalPrice: Number(item.finalPrice ?? item.salePrice),
+
+          stockQty: Number(item.qty), // 🔥 freeze stock
           qty: 1,
 
-          discountType: item?.discountType || null,             // FIXED | PERCENT
-          discountValue:item?.discountValue || null, 
+          /* 🔥 Discount snapshot from backend */
+          discountId: item.discountId || null,
+          discountType: item.discountType || null,
+          discountValue: Number(item.discountValue || 0),
         },
       ];
     });
@@ -72,28 +80,6 @@ export default function usePosCart() {
     );
   }, []);
 
-  /* ---------------- Update Discount ---------------- */
-  const updateDiscount = useCallback((variantId, field, value) => {
-    setCart((prev) =>
-      prev.map((i) => {
-        if (i.variantId !== variantId) return i;
-
-        if (field === "discountType") {
-          return {
-            ...i,
-            discountType: value || null,
-            discountValue: 0,
-          };
-        }
-
-        return {
-          ...i,
-          discountValue: Math.max(Number(value) || 0, 0),
-        };
-      })
-    );
-  }, []);
-
   /* ---------------- Remove Item ---------------- */
   const removeItem = useCallback((variantId) => {
     setCart((prev) =>
@@ -101,27 +87,21 @@ export default function usePosCart() {
     );
   }, []);
 
-  /* ---------------- Subtotal ---------------- */
+  /* ---------------- Subtotal (🔥 BACKEND PRICE ONLY) ---------------- */
   const subtotal = useMemo(() => {
     return cart.reduce((sum, i) => {
-      let lineTotal = i.qty * i.salePrice;
-
-      if (i.discountType === "FIXED") {
-        lineTotal -= i.discountValue;
-      }
-
-      if (i.discountType === "PERCENT") {
-        lineTotal -= (lineTotal * i.discountValue) / 100;
-      }
-
-      return sum + Math.max(lineTotal, 0);
+      const unitPrice = i.finalPrice ?? i.salePrice;
+      return sum + Math.max(i.qty * unitPrice, 0);
     }, 0);
   }, [cart]);
 
   /* ---------------- Grand Total ---------------- */
-  const grandTotal = Math.max(subtotal - billDiscount, 0);
+  const grandTotal = Math.max(
+    subtotal - Number(billDiscount || 0),
+    0
+  );
 
-  /* ---------------- Low Stock ---------------- */
+  /* ---------------- Low Stock Indicator ---------------- */
   const isLowStock = useCallback(
     (item) =>
       item.stockQty - item.qty <= LOW_STOCK_THRESHOLD,
@@ -132,13 +112,14 @@ export default function usePosCart() {
     cart,
     addItem,
     updateQty,
-    updateDiscount,
     removeItem,
+
     subtotal,
     billDiscount,
     setBillDiscount,
     grandTotal,
+
     isLowStock,
-    resetCart
+    resetCart,
   };
 }

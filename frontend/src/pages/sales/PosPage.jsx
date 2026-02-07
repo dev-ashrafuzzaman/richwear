@@ -43,6 +43,7 @@ export default function PosPage() {
       items: cart.map((i) => ({
         productId: i.productId,
         variantId: i.variantId,
+        discountId: i.discountId,
         qty: i.qty,
         sku: i.sku,
         salePrice: i.salePrice,
@@ -58,6 +59,7 @@ export default function PosPage() {
         reference: p.method === "Cash" ? "Hand Cash" : p.reference,
       })),
     };
+    console.log("sales",payload)
     const res = await request("/sales", "POST", payload);
     setModalData(res.data);
     openModal("printPosInvoice");
