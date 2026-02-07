@@ -98,6 +98,7 @@ const BranchesPage = React.lazy(
 
 const DiscountCreatePage = React.lazy(() => import("./pages/inventory/discount/DiscountCreatePage"));
 const DiscountsPage = React.lazy(() => import("./pages/inventory/discount/DiscountsPage"));
+const MembershipsPage = React.lazy(() => import("./pages/parties/membership/MembershipPage"));
 
 export default function App() {
   return (
@@ -120,6 +121,7 @@ export default function App() {
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<Dashboard />} />
 
+          <Route path="/memberships" element={<MembershipsPage />} />
           <Route path="/inventory/discounts" element={<DiscountsPage />} />
           <Route path="/inventory/discount-create" element={<DiscountCreatePage />} />
           <Route path="/settings/opening-balance" element={<OpeningBalancePage />} />

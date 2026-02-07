@@ -154,6 +154,11 @@ export const SIDEBAR_MENU = [
         icon: Users,
         to: "/customers",
       },
+      {
+        title: "Memberships",
+        icon: Users,
+        to: "/memberships",
+      },
     ],
   },
   {
