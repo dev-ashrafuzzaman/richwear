@@ -18,6 +18,7 @@ import {
   Settings,
   Activity,
   DollarSignIcon,
+  DiscIcon,
 } from "lucide-react";
 import { ROLES } from "../constants/roles";
 
@@ -128,6 +129,14 @@ export const SIDEBAR_MENU = [
           { title: "Stock Details", to: "/inventory/stock" },
           { title: "Stock Transfer", to: "/inventory/stock-transfer" },
           { title: "Low Stock Report", to: "/inventory/low-stock" },
+        ],
+      },
+      {
+        title: "Discount",
+        icon: DiscIcon,
+        submenu: [
+          { title: "Discount Create", to: "/inventory/discount-create" },
+          { title: "Discounts Manage", to: "/inventory/discounts" },
         ],
       },
     ],

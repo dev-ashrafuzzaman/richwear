@@ -45,8 +45,8 @@ export default function usePosCart() {
           stockQty: item.qty,            // 🔥 freeze stock
           qty: 1,
 
-          discountType: null,             // FIXED | PERCENT
-          discountValue: 0,
+          discountType: item?.discountType || null,             // FIXED | PERCENT
+          discountValue:item?.discountValue || null, 
         },
       ];
     });

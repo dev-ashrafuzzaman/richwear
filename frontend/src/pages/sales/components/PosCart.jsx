@@ -109,26 +109,12 @@ export default function PosCart({
                   {/* Discount */}
                   <div className="col-span-2">
                     <div className="flex gap-2 items-center">
-                      <select
-                        className="flex-1  border border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all duration-200 bg-white"
-                        value={item.discountType || ""}
-                        onChange={(e) =>
-                          updateDiscount(
-                            item.variantId,
-                            "discountType",
-                            e.target.value || null,
-                          )
-                        }>
-                        <option value="">No Disc.</option>
-                        <option value="FIXED">Fixed</option>
-                        <option value="PERCENT">%</option>
-                      </select>
+                      <p>{item.discountType}</p>
 
                       <Input
-                        type="number"
+                        type="text"
                         min={0}
                         placeholder="0"
-                        disabled={!item.discountType}
                         value={item.discountValue || ""}
                         onChange={(e) =>
                           updateDiscount(

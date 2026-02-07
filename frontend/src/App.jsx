@@ -23,6 +23,8 @@ const CategoriesPage = React.lazy(
   () => import("./pages/products/category/CategoriesPage"),
 );
 const ProductsPage = React.lazy(() => import("./pages/products/ProductsPage"));
+
+
 const VariantsPage = React.lazy(
   () => import("./pages/products/variant/VariantPage"),
 );
@@ -94,6 +96,9 @@ const BranchesPage = React.lazy(
   () => import("./pages/setting/branches/BranchesPage"),
 );
 
+const DiscountCreatePage = React.lazy(() => import("./pages/inventory/discount/DiscountCreatePage"));
+const DiscountsPage = React.lazy(() => import("./pages/inventory/discount/DiscountsPage"));
+
 export default function App() {
   return (
     <Suspense
@@ -115,6 +120,8 @@ export default function App() {
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<Dashboard />} />
 
+          <Route path="/inventory/discounts" element={<DiscountsPage />} />
+          <Route path="/inventory/discount-create" element={<DiscountCreatePage />} />
           <Route path="/settings/opening-balance" element={<OpeningBalancePage />} />
           <Route path="/reports/statements" element={<PartyInvoiceStatementReport />} />
           <Route path="/reports/cash-flow" element={<CashFlowReport />} />

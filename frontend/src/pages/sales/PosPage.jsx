@@ -32,6 +32,7 @@ export default function PosPage() {
   const [payOpen, setPayOpen] = useState(false);
   const [modalData, setModalData] = useState({});
   const searchRef = useRef(null);
+
   /* ---------------- Confirm Sale ---------------- */
   const confirmSale = async (payments, resetPayment) => {
     const payload = {
