@@ -32,4 +32,5 @@ export const COLLECTIONS = {
   PRODUCT_TYPES: "product_types",
   LOYALTY_LOGS: "loyalty_logs",
   DISCOUNTS: "discounts",
+  MEMBERSHIPS: "memberships",
 };

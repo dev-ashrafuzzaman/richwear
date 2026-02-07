@@ -1,6 +1,7 @@
 import { connectDB } from "../src/config/db.js";
 import { seedChartOfAccounts } from "../src/modules/accounting/seed.accounts.js";
 import { seedBranches } from "../src/modules/branches/seed.branch.js";
+import { seedLoyaltySettings } from "../src/modules/membership/loyaltySettings.seeder.js";
 import { seedProductTypes } from "../src/modules/products/productType.seed.js";
 import { seedRoles } from "../src/modules/roles/seed.roles.js";
 import { seedcommissionRules } from "../src/modules/sales/commission.seed.js";
@@ -24,6 +25,7 @@ import { seedAttributes } from "../src/modules/variants/seed.attributes.js";
   await seedProductTypes(db);
   await seedRoles(db);
   await seedSettings(db);
+  await seedLoyaltySettings();
 
   console.log("✅ Seeding completed");
   process.exit(0);

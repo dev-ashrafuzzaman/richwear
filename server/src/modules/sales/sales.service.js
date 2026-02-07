@@ -17,6 +17,7 @@ import { ensureObjectId } from "../../utils/ensureObjectId.js";
 import { upsertCustomerBranch } from "../customers/customerBranch.service.js";
 import { addLoyaltyPoints } from "../customers/customerLoyalty.service.js";
 import { getDB } from "../../config/db.js";
+import { processLoyaltyAfterSale } from "../membership/loyalty.service.js";
 
 export const createSaleService = async ({ db, payload, user }) => {
   const session = db.client.startSession();
@@ -270,6 +271,16 @@ export const createSaleService = async ({ db, payload, user }) => {
       customerId: payload.customerId,
       branchId,
       narration: `Sale Invoice ${invoiceNo}`,
+    });
+    
+    await processLoyaltyAfterSale({
+      db,
+      session,
+      saleId,
+      customerId: payload.customerId,
+      branchId,
+      saleAmount: grandTotal,
+      saleDate: new Date(),
     });
 
     /* ---------- COMMISSION (EARN + ACCRUAL) ---------- */

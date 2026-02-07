@@ -13,6 +13,7 @@ import purchaseRoutes from "./src/modules/purchases/purchase.routes.js";
 import attendanceRoutes from "./src/modules/hr/attendance/attendance.routes.js";
 import saleRoutes from "./src/modules/sales/sales.routes.js";
 import discountRoutes from "./src/modules/inventory/discount/discount.routes.js";
+import membershipRoutes from "./src/modules/membership/membership.routes.js";
 
 // REPORTS ROUTES
 import ledgerRoutes from "./src/modules/accounting/reports/ledger/ledger.routes.js";
@@ -33,6 +34,7 @@ const router = Router();
 router.use("/auth", authRoutes);
 
 router.use(authenticate);
+router.use("/memberships", membershipRoutes);
 router.use("/discounts", discountRoutes);
 router.use("/activities", adminRoutes);
 router.use("/roles", roleRoutes);
