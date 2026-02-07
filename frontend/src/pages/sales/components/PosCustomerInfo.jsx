@@ -1,4 +1,11 @@
-import { Crown, ShoppingBag, Clock, User, Phone, TrendingUp } from "lucide-react";
+import {
+  Crown,
+  ShoppingBag,
+  Clock,
+  User,
+  Phone,
+  TrendingUp,
+} from "lucide-react";
 
 export default function PosCustomerInfo({ summary }) {
   if (!summary) return null;
@@ -6,8 +13,9 @@ export default function PosCustomerInfo({ summary }) {
   const { customer, membership, loyalty, purchases } = summary;
 
   // Calculate loyalty progress percentage
-  const loyaltyProgress = loyalty ? 
-    Math.min(100, (loyalty.current / loyalty.required) * 100) : 0;
+  const loyaltyProgress = loyalty
+    ? Math.min(100, (loyalty.current / loyalty.required) * 100)
+    : 0;
 
   return (
     <div className="mt-4 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm space-y-4">
@@ -18,7 +26,9 @@ export default function PosCustomerInfo({ summary }) {
             <div className="p-1.5 bg-blue-50 rounded-lg">
               <User className="w-4 h-4 text-blue-600" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900">{customer.name}</h3>
+            <h3 className="text-lg font-semibold text-gray-900">
+              {customer.name}
+            </h3>
           </div>
           <div className="flex items-center gap-2 text-gray-600">
             <Phone className="w-3.5 h-3.5" />
@@ -27,7 +37,9 @@ export default function PosCustomerInfo({ summary }) {
         </div>
 
         {/* Membership Badge */}
-        <div className={`px-3 py-1 rounded-full text-xs font-medium ${membership ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-gray-100 text-gray-600'}`}>
+        <div
+          className={`px-3 py-1 rounded-full text-xs font-medium ${membership ? "bg-amber-50 text-amber-700 border border-amber-200" : "bg-gray-100 text-gray-600"}`}
+        >
           <div className="flex items-center gap-1">
             {membership ? (
               <>
@@ -57,8 +69,8 @@ export default function PosCustomerInfo({ summary }) {
             </span>
           </div>
           <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-300"
+            <div
+              className="h-full bg-linear-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-300"
               style={{ width: `${loyaltyProgress}%` }}
             />
           </div>
@@ -72,9 +84,13 @@ export default function PosCustomerInfo({ summary }) {
             <div className="p-1.5 bg-gray-100 rounded-lg">
               <ShoppingBag className="w-3.5 h-3.5 text-gray-700" />
             </div>
-            <span className="text-sm font-medium text-gray-700">Total Orders</span>
+            <span className="text-sm font-medium text-gray-700 flex items-center gap-2">
+              Total Orders{" "}
+              <p className="text-md font-bold text-gray-900">
+                {purchases.totalOrders}
+              </p>
+            </span>
           </div>
-          <p className="text-xl font-bold text-gray-900">{purchases.totalOrders}</p>
         </div>
 
         {purchases.lastPurchaseAt && (
@@ -83,15 +99,20 @@ export default function PosCustomerInfo({ summary }) {
               <div className="p-1.5 bg-gray-100 rounded-lg">
                 <Clock className="w-3.5 h-3.5 text-gray-700" />
               </div>
-              <span className="text-sm font-medium text-gray-700">Last Purchase</span>
+              <span className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                Last Purchase:
+                <p className="text-sm font-semibold text-gray-900">
+                  {new Date(purchases.lastPurchaseAt).toLocaleDateString(
+                    "en-US",
+                    {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    },
+                  )}
+                </p>
+              </span>
             </div>
-            <p className="text-sm font-semibold text-gray-900">
-              {new Date(purchases.lastPurchaseAt).toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric'
-              })}
-            </p>
           </div>
         )}
       </div>

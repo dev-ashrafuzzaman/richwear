@@ -24,7 +24,7 @@ export default function PosPage() {
     billDiscount,
     setBillDiscount,
     grandTotal,
-    isLowStock, 
+    isLowStock,
     resetCart,
   } = usePosCart();
 
@@ -34,8 +34,8 @@ export default function PosPage() {
   const [payOpen, setPayOpen] = useState(false);
   const [modalData, setModalData] = useState({});
   const searchRef = useRef(null);
-const salesmanRef = useRef(null);
-
+  const salesmanRef = useRef(null);
+  console.log(customerSummary);
   /* ---------------- Confirm Sale ---------------- */
   const confirmSale = async (payments, resetPayment) => {
     const payload = {
@@ -62,7 +62,6 @@ const salesmanRef = useRef(null);
         reference: p.method === "Cash" ? "Hand Cash" : p.reference,
       })),
     };
-    console.log("sales", payload);
     const res = await request("/sales", "POST", payload);
     setModalData(res.data);
     openModal("printPosInvoice");
@@ -76,26 +75,6 @@ const salesmanRef = useRef(null);
       searchRef.current?.clearAndFocus();
     });
   };
-
-  useEffect(() => {
-    const handleKey = (e) => {
-      // Ctrl + Enter → Pay
-      if (e.ctrlKey && e.key === "Enter") {
-        e.preventDefault();
-
-        // ❌ If any modal already open → ignore
-        if (Object.values(modals).some((m) => m?.isOpen)) return;
-
-        // ❌ If cart empty → ignore
-        if (!cart.length) return;
-
-        setPayOpen(true);
-      }
-    };
-
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-  }, [cart.length, modals]);
 
   useEffect(() => {
     if (!customer?._id) {
@@ -112,15 +91,57 @@ const salesmanRef = useRef(null);
       });
   }, [customer, request]);
 
+  useEffect(() => {
+    if (customer) {
+      // slight delay to avoid race with modal close / re-render
+      requestAnimationFrame(() => {
+        salesmanRef.current?.focus?.();
+      });
+    }
+  }, [customer]);
+
+  const loyalty = customerSummary?.loyalty;
+  const settings = customerSummary?.settings;
+
+  /* ---------------- REWARD STATES ---------------- */
+  const isRewardStep =
+    !!loyalty && !!settings && loyalty.current + 1 === settings.requiredCount;
+
+  const meetsMinPurchase = subtotal >= (settings?.minDailyPurchase || 0);
+
+  const rewardEligible = isRewardStep && meetsMinPurchase;
+
+  /* 🔒 Can proceed to payment? */
+  const canProceed = !isRewardStep || meetsMinPurchase;
 
   useEffect(() => {
-  if (customer) {
-    // slight delay to avoid race with modal close / re-render
-    requestAnimationFrame(() => {
-      salesmanRef.current?.focus?.();
-    });
-  }
-}, [customer]);
+    if (rewardEligible) {
+      setBillDiscount(Math.min(settings.maxRewardValue, subtotal));
+    } else {
+      setBillDiscount(0); // 🔒 ensure no leftover discount
+    }
+  }, [rewardEligible, subtotal, settings?.maxRewardValue, setBillDiscount]);
+
+  useEffect(() => {
+    const handleKey = (e) => {
+      // Ctrl + Enter → Pay
+      if (e.ctrlKey && e.key === "Enter") {
+        e.preventDefault();
+
+        // ❌ If any modal already open → ignore
+        if (Object.values(modals).some((m) => m?.isOpen)) return;
+
+        // ❌ If cart empty → ignore
+        if (!cart.length) return;
+        if (!canProceed) return;
+
+        setPayOpen(true);
+      }
+    };
+
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [canProceed, cart.length, modals]);
 
   return (
     <>
@@ -188,6 +209,7 @@ const salesmanRef = useRef(null);
           <PosItemSearch ref={searchRef} onSelect={addItem} />
           <PosCart
             cart={cart}
+            customerSummary={customerSummary}
             updateQty={updateQty}
             updateDiscount={updateDiscount}
             removeItem={removeItem}
@@ -200,11 +222,17 @@ const salesmanRef = useRef(null);
           <div className="w-full bg-white border border-gray-200 rounded-xl p-4 shadow-lg">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-1">
               <PosCustomerSelect value={customer} onChange={setCustomer} />
-              <PosSalesmanSelect  ref={salesmanRef} value={salesman} onChange={setSalesman} />
+              <PosSalesmanSelect
+                ref={salesmanRef}
+                value={salesman}
+                onChange={setSalesman}
+              />
             </div>
           </div>
           {customerSummary && <PosCustomerInfo summary={customerSummary} />}
           <PosSummary
+            canProceed={canProceed}
+            customerSummary={customerSummary}
             subtotal={subtotal}
             billDiscount={billDiscount}
             setBillDiscount={setBillDiscount}
