@@ -25,7 +25,7 @@ import { seedAttributes } from "../src/modules/variants/seed.attributes.js";
   await seedProductTypes(db);
   await seedRoles(db);
   await seedSettings(db);
-  await seedLoyaltySettings();
+  await seedLoyaltySettings(db);
 
   console.log("✅ Seeding completed");
   process.exit(0);

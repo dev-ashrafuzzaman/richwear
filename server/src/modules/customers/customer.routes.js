@@ -19,7 +19,7 @@ router.post(
   beforeCreateCustomer,
   controller.create,
 );
-
+router.get("/:id/summary", controller.getPosCustomerSummary);
 router.get(
   "/",
   getAll({

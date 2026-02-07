@@ -38,8 +38,8 @@ router.get(
   "/",
   getAll({
     collection: COLLECTION,
-    searchableFields: ["name", "phone", "email"],
-    filterableFields: ["status"],
+    searchableFields: ["name", "phone", "email","employment.role"],
+    filterableFields: ["status","employment.role"],
   }),
 );
 

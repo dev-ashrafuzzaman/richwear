@@ -1,16 +1,13 @@
-// src/database/seeders/loyaltySettings.seeder.js
-import { getDB } from "../db.js";
+export async function seedLoyaltySettings(db) {
+  const now = new Date();
 
-export async function seedLoyaltySettings() {
-  const db = getDB();
-
-  const DEFAULT_SETTINGS = {
+  const SETTINGS_UPDATE = {
     minActivationAmount: 2000,      // Membership activate
     minDailyPurchase: 1000,         // Loyalty count eligible
     requiredCount: 6,               // Steps to complete cycle
-    maxRewardValue: 2000,            // Max flat discount
-    rewardType: "FLAT",              // FLAT | PRODUCT
-    resetMode: "AUTO",               // AUTO | MANUAL
+    maxRewardValue: 2000,           // Max flat discount
+    rewardType: "FLAT",             // FLAT | PRODUCT
+    resetMode: "AUTO",              // AUTO | MANUAL
 
     conflictRules: {
       allowWithProductDiscount: true,
@@ -18,18 +15,19 @@ export async function seedLoyaltySettings() {
     },
 
     status: "ACTIVE",
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    updatedAt: now,                 // ✅ always update
   };
 
   await db.collection("loyalty_settings").updateOne(
-    { status: "ACTIVE" },          // singleton rule
+    { status: "ACTIVE" },
     {
-      $set: DEFAULT_SETTINGS,
-      $setOnInsert: { createdAt: new Date() },
+      $set: SETTINGS_UPDATE,
+      $setOnInsert: {
+        createdAt: now,             // ✅ insert time only
+      },
     },
     { upsert: true }
   );
 
-  console.log("✅ Loyalty settings seeded");
+  console.log("✅ Loyalty settings seeded / synced");
 }
