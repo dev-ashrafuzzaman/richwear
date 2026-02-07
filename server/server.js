@@ -3,6 +3,7 @@ import "./src/config/env.js";
 import app from "./src/app.js";
 import { closeDB ,connectDB} from "./src/config/db.js";
 import { runIndexes } from "./src/database/runIndexes.js";
+import { startSchedulers } from "./src/jobs/scheduler.js";
 
 const PORT = process.env.PORT || 5000;
 
@@ -15,7 +16,7 @@ const startServer = async () => {
     // TODO: remove app.locals.db after full refactor
 
     await runIndexes(db);
-
+  startSchedulers(app);
     const server = http.createServer(app);
 
     server.listen(PORT, () => {

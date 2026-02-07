@@ -3,6 +3,9 @@ import { COLLECTIONS } from "../../database/collections.js";
 import { formatDocuments } from "../../utils/formatedDocument.js";
 import { ensureObjectId } from "../../utils/ensureObjectId.js";
 import { getDB } from "../../config/db.js";
+import { getBusinessDateBD } from "../../utils/businessDate.js";
+import { calculateDiscount, getBDMidnight } from "./discount/discount.utils.js";
+import { getActiveProductDiscounts } from "./discount/discount.service.js";
 
 export const getAllStocks = async (req, res, next) => {
   try {
@@ -98,15 +101,15 @@ export const getAllStocks = async (req, res, next) => {
       /* ---------- Search ---------- */
       ...(search
         ? [
-            {
-              $match: {
-                $or: [
-                  { sku: { $regex: search, $options: "i" } },
-                  { "product.name": { $regex: search, $options: "i" } },
-                ],
-              },
+          {
+            $match: {
+              $or: [
+                { sku: { $regex: search, $options: "i" } },
+                { "product.name": { $regex: search, $options: "i" } },
+              ],
             },
-          ]
+          },
+        ]
         : []),
 
       /* ---------- Computed ---------- */
@@ -182,20 +185,30 @@ export const getPosItems = async (req, res, next) => {
   try {
     const db = getDB();
 
+    /* ===============================
+       BUSINESS DATE (BD)
+    =============================== */
+    const today = getBDMidnight();
+
     const {
       search = "",
       limit = 20,
-      lastSku, // cursor pagination
+      lastSku,
       lastId,
     } = req.query;
 
-    /* ---------------- Resolve Branch ---------------- */
+    /* ===============================
+       RESOLVE BRANCH
+    =============================== */
     let branchId = req.user?.branchId;
 
     if (!branchId && req.user?.isSuperAdmin) {
       const main = await db
         .collection(COLLECTIONS.BRANCHES)
-        .findOne({ isMain: true }, { projection: { _id: 1 } });
+        .findOne(
+          { isMain: true },
+          { projection: { _id: 1 } }
+        );
 
       if (!main) {
         return res.status(400).json({
@@ -203,6 +216,7 @@ export const getPosItems = async (req, res, next) => {
           message: "Main branch not found",
         });
       }
+
       branchId = main._id;
     }
 
@@ -213,25 +227,22 @@ export const getPosItems = async (req, res, next) => {
       });
     }
 
-    /* ---------------- Match (SOURCE OF TRUTH) ---------------- */
+    /* ===============================
+       STOCK QUERY (SOURCE OF TRUTH)
+    =============================== */
     const match = {
       branchId: new ObjectId(branchId),
       qty: { $gt: 0 },
     };
 
-    /* ---------------- Search Strategy ---------------- */
     if (search) {
-      // 🔥 Barcode / SKU mode
-      if (isNumeric(search) && search.length >= 6) {
-        match.sku = search;
-      }
-      // 🔥 Typing mode (indexed)
-      else {
+      if (!isNaN(search) && search.length >= 6) {
+        match.sku = search; // barcode
+      } else {
         match.$text = { $search: search };
       }
     }
 
-    /* ---------------- Cursor Pagination ---------------- */
     if (lastSku && lastId) {
       match.$or = [
         { sku: { $gt: lastSku } },
@@ -242,8 +253,10 @@ export const getPosItems = async (req, res, next) => {
       ];
     }
 
-    /* ---------------- Query ---------------- */
-    const data = await db
+    /* ===============================
+       FETCH STOCK
+    =============================== */
+    const items = await db
       .collection(COLLECTIONS.STOCKS)
       .find(match)
       .sort({ sku: 1, _id: 1 })
@@ -253,20 +266,89 @@ export const getPosItems = async (req, res, next) => {
         variantId: 1,
         sku: 1,
         productName: 1,
-        attributes: 1,
         salePrice: 1,
         qty: 1,
         unit: 1,
       })
       .toArray();
 
+    if (!items.length) {
+      return res.json({
+        success: true,
+        data: [],
+        pagination: {
+          limit: Number(limit),
+          hasMore: false,
+          lastSku: null,
+          lastId: null,
+        },
+      });
+    }
+
+    /* ===============================
+       DISCOUNT RESOLVE (PRODUCT)
+    =============================== */
+    const productIds = [
+      ...new Set(
+        items.map(i => i.productId.toString())
+      ),
+    ].map(id => new ObjectId(id));
+
+    const discounts = await getActiveProductDiscounts({
+      db,
+      productIds,
+    });
+
+    const discountMap = new Map();
+    for (const d of discounts) {
+      discountMap.set(d.targetId.toString(), d);
+    }
+
+    /* ===============================
+       APPLY DISCOUNT
+    =============================== */
+    const data = items.map(item => {
+      const d = discountMap.get(
+        item.productId.toString()
+      );
+
+      if (!d) {
+        return {
+          ...item,
+          discountType: null,
+          discountValue: 0,
+          discountAmount: 0,
+          finalPrice: item.salePrice,
+        };
+      }
+
+      const { discountAmount, finalPrice } =
+        calculateDiscount({
+          salePrice: item.salePrice,
+          type: d.type,
+          value: Number(d.value),
+        });
+
+      return {
+        ...item,
+        discountType: d.type,
+        discountValue: d.value,
+        discountAmount,
+        finalPrice,
+      };
+    });
+
     const last = data[data.length - 1];
+
+    /* ===============================
+       RESPONSE
+    =============================== */
     res.json({
       success: true,
       data,
       pagination: {
         limit: Number(limit),
-        hasMore: data.length === Number(limit),
+        hasMore: items.length === Number(limit),
         lastSku: last?.sku || null,
         lastId: last?._id || null,
       },
