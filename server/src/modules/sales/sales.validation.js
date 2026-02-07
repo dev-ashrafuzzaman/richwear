@@ -14,6 +14,7 @@ export const createSaleSchema = Joi.object({
         qty: Joi.number().min(1).required(),
         sku: Joi.string().required(),
         salePrice: Joi.number().min(0).required(),
+        discountId: Joi.string().optional(),
         discountType: Joi.string().valid("FIXED", "PERCENT").optional(),
         discountValue: Joi.number().min(0).optional(),
       }),

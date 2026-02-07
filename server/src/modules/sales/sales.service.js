@@ -81,6 +81,22 @@ export const createSaleService = async ({ db, payload, user }) => {
         throw new Error("Invalid sale item");
       }
 
+      if (item.discountId) {
+        const validDiscount = await db
+          .collection(COLLECTIONS.DISCOUNTS)
+          .findOne(
+            {
+              _id: new ObjectId(item.discountId),
+              status: "active",
+            },
+            { session },
+          );
+
+        if (!validDiscount) {
+          throw new Error("Invalid or expired discount applied");
+        }
+      }
+
       const base = qty * price;
 
       let discount = 0;
@@ -105,7 +121,17 @@ export const createSaleService = async ({ db, payload, user }) => {
         sku: variant.sku,
         qty,
         salePrice: price,
-        discountAmount: roundMoney(discount),
+        discount: item.discountType
+          ? {
+              discountId: item.discountId
+                ? new ObjectId(item.discountId)
+                : null,
+              type: item.discountType,
+              value: Number(item.discountValue),
+              amount: roundMoney(discount),
+              source: item.discountId ? "CAMPAIGN" : "MANUAL",
+            }
+          : null,
         taxAmount: vat,
         lineTotal: roundMoney(taxable + vat),
         createdAt: new Date(),

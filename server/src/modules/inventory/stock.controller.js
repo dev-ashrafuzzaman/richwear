@@ -332,6 +332,7 @@ export const getPosItems = async (req, res, next) => {
       return {
         ...item,
         discountType: d.type,
+        discountId: d._id,
         discountValue: d.value,
         discountAmount,
         finalPrice,

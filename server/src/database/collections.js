@@ -31,4 +31,5 @@ export const COLLECTIONS = {
   SETTINGS: "settings",
   PRODUCT_TYPES: "product_types",
   LOYALTY_LOGS: "loyalty_logs",
+  DISCOUNTS: "discounts",
 };
