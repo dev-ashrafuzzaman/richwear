@@ -10,6 +10,7 @@ export default function CustomerCreateModal({
   isOpen,
   setIsOpen,
   refetch,
+  onSuccess
 }) {
   const { request, loading } = useApi();
 
@@ -29,17 +30,22 @@ export default function CustomerCreateModal({
   });
 
   /* ================= SUBMIT ================= */
-  const onSubmit = async (data) => {
-    await request("/customers", "POST", data, {
-      retries: 2,
-      successMessage: "Customer created successfully",
-      onSuccess: () => {
-        reset();
-        setIsOpen(false);
-        refetch?.();
-      },
-    });
-  };
+const onSubmit = async (data) => {
+  await request("/customers", "POST", data, {
+    retries: 2,
+    successMessage: "Customer created successfully",
+    onSuccess: (res) => {
+      const newCustomer = res?.data; // 🔥 backend data
+
+      reset();
+      setIsOpen(false);
+
+      onSuccess?.(newCustomer); // 🔥 auto-select in POS
+      refetch?.();
+    },
+  });
+};
+
 
   return (
     <Modal

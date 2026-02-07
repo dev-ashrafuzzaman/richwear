@@ -250,7 +250,12 @@ const SmartSelect = forwardRef(
         menuPosition="fixed"
         inputValue={inputValue}
         onInputChange={(val, meta) => {
-          if (meta.action !== "input-change") return;
+          if (meta.action === "input-change") {
+            setInputValue(val);
+          }
+          if (meta.action === "set-value" || meta.action === "menu-close") {
+            setInputValue("");
+          }
 
           setInputValue(val);
 

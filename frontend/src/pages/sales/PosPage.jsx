@@ -9,6 +9,7 @@ import PosPaymentModal from "./components/PosPaymentModal";
 import useApi from "../../hooks/useApi";
 import useModalManager from "../../hooks/useModalManager";
 import PosInvoiceModal from "./components/invoice/PosInvoiceModal";
+import PosCustomerInfo from "./components/PosCustomerInfo";
 
 export default function PosPage() {
   const { request } = useApi();
@@ -23,15 +24,17 @@ export default function PosPage() {
     billDiscount,
     setBillDiscount,
     grandTotal,
-    isLowStock,
+    isLowStock, 
     resetCart,
   } = usePosCart();
 
   const [customer, setCustomer] = useState(null);
+  const [customerSummary, setCustomerSummary] = useState(null);
   const [salesman, setSalesman] = useState(null);
   const [payOpen, setPayOpen] = useState(false);
   const [modalData, setModalData] = useState({});
   const searchRef = useRef(null);
+const salesmanRef = useRef(null);
 
   /* ---------------- Confirm Sale ---------------- */
   const confirmSale = async (payments, resetPayment) => {
@@ -59,12 +62,13 @@ export default function PosPage() {
         reference: p.method === "Cash" ? "Hand Cash" : p.reference,
       })),
     };
-    console.log("sales",payload)
+    console.log("sales", payload);
     const res = await request("/sales", "POST", payload);
     setModalData(res.data);
     openModal("printPosInvoice");
     resetCart();
     setCustomer(null);
+    setCustomerSummary(null);
     setSalesman(null);
     setPayOpen(false);
     resetPayment();
@@ -93,6 +97,31 @@ export default function PosPage() {
     return () => window.removeEventListener("keydown", handleKey);
   }, [cart.length, modals]);
 
+  useEffect(() => {
+    if (!customer?._id) {
+      setCustomerSummary(null);
+      return;
+    }
+
+    request(`/customers/${customer._id}/summary`, "GET")
+      .then((res) => {
+        setCustomerSummary(res);
+      })
+      .catch(() => {
+        setCustomerSummary(null);
+      });
+  }, [customer, request]);
+
+
+  useEffect(() => {
+  if (customer) {
+    // slight delay to avoid race with modal close / re-render
+    requestAnimationFrame(() => {
+      salesmanRef.current?.focus?.();
+    });
+  }
+}, [customer]);
+
   return (
     <>
       {modals.printPosInvoice?.isOpen && (
@@ -118,7 +147,8 @@ export default function PosPage() {
                   className="w-7 h-7 text-white"
                   fill="none"
                   stroke="currentColor"
-                  viewBox="0 0 24 24">
+                  viewBox="0 0 24 24"
+                >
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -170,10 +200,10 @@ export default function PosPage() {
           <div className="w-full bg-white border border-gray-200 rounded-xl p-4 shadow-lg">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-1">
               <PosCustomerSelect value={customer} onChange={setCustomer} />
-
-              <PosSalesmanSelect value={salesman} onChange={setSalesman} />
+              <PosSalesmanSelect  ref={salesmanRef} value={salesman} onChange={setSalesman} />
             </div>
           </div>
+          {customerSummary && <PosCustomerInfo summary={customerSummary} />}
           <PosSummary
             subtotal={subtotal}
             billDiscount={billDiscount}

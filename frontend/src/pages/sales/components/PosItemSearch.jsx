@@ -62,7 +62,6 @@ const PosItemSearch = forwardRef(({ onSelect }, ref) => {
         placeholder="Scan barcode or search item"
         onChange={(opt) => {
           if (opt?.raw) onSelect(opt.raw);
-          console.log(opt.raw)
         }}
         className="border-2 border-gray-300 focus:border-blue-600 focus:ring-1 focus:ring-blue-200 text-lg py-3"
       />

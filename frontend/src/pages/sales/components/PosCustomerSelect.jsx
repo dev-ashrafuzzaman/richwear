@@ -54,6 +54,7 @@ export default function PosCustomerSelect({ value, onChange, error }) {
             onChange(newCustomer);
             closeModal("addCustomer");
           }}
+          
         />
       )}
 
