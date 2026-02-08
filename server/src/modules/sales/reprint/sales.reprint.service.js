@@ -90,7 +90,7 @@ export const reprintSaleService = async ({ db, saleId, invoiceNo, user }) => {
         sku: i.sku,
         qty: i.qty,
         unitPrice: i.salePrice,
-        discount: i.discountAmount,
+        discount: i.discount,
         vat: i.taxAmount,
         lineTotal: i.lineTotal,
       })),
