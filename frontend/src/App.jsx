@@ -77,8 +77,11 @@ const SalesReturnPage = React.lazy(
 const LowStockPage = React.lazy(
   () => import("./pages/inventory/LowStockPage"),
 );
-const StockTransferPage = React.lazy(
-  () => import("./pages/inventory/StockTransfer"),
+const CreateStockTransferPage = React.lazy(
+  () => import("./pages/inventory/stock/CreateStockTransferPage"),
+);
+const StockTranaferPage = React.lazy(
+  () => import("./pages/inventory/stock/StockTranaferPage"),
 );
 const ProfitAndLossAdvanceReport = React.lazy(
   () => import("./pages/report/ProfitLossAdvanced"),
@@ -134,7 +137,8 @@ export default function App() {
           <Route path="/reports/profit-loss" element={<ProfitAndLossAdvanceReport />} />
           <Route path="/reports/balance-sheet" element={<BalanceSheetReport />} />
           <Route path="/pos" element={<POSCreatePage />} />
-          <Route path="/inventory/stock-transfer" element={<StockTransferPage />} />
+          <Route path="/inventory/create-transfer" element={<CreateStockTransferPage />} />
+          <Route path="/inventory/manage-transfer" element={<StockTranaferPage />} />
           <Route path="/inventory/low-stock" element={<LowStockPage />} />
           <Route path="/sales/return" element={<SalesReturnPage />} />
           <Route path="/sales" element={<SalesPage />} />
