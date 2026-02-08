@@ -26,6 +26,7 @@ export default function PosPage() {
     grandTotal,
     isLowStock,
     resetCart,
+    applyMembershipPricing
   } = usePosCart();
 
   const [customer, setCustomer] = useState(null);
@@ -144,6 +145,23 @@ export default function PosPage() {
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
   }, [canProceed, cart.length, modals]);
+
+
+  useEffect(() => {
+  if (!customerSummary) return;
+
+  const isMember =
+    customerSummary.membership?.status === "ACTIVE";
+
+  const membershipPercent =
+    customerSummary.settings?.productDiscountPercent || 0;
+
+  applyMembershipPricing({
+    isMember,
+    membershipPercent,
+  });
+}, [customerSummary, applyMembershipPricing]);
+
 
   return (
     <>
