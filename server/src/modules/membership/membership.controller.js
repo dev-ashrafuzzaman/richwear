@@ -1,5 +1,5 @@
 // membership.controller.js
-import { createMembership, getMemberships } from "./membership.service.js";
+import { createMembership, getMembershipOverview, getMemberships } from "./membership.service.js";
 
 export async function createMembershipCtrl(req, res) {
   const id = await createMembership({
@@ -27,3 +27,22 @@ export async function getMembershipsCtrl(req, res) {
 
   res.json(result);
 }
+
+
+export const membershipOverview = async (req, res) => {
+  const { customerId } = req.params;
+
+  const data = await getMembershipOverview(customerId);
+
+  if (!data) {
+    return res.status(404).json({
+      success: false,
+      message: "Customer not found",
+    });
+  }
+
+  res.json({
+    success: true,
+    data,
+  });
+};
