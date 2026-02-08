@@ -102,6 +102,19 @@ export async function processLoyaltyAfterSale({
   }
 
   /* ==========================
+     MIN DAILY PURCHASE CHECK ✅ FIX
+  ========================== */
+  if (
+    settings.minDailyPurchase &&
+    saleAmount < settings.minDailyPurchase
+  ) {
+    return {
+      applied: false,
+      reason: "MIN_DAILY_PURCHASE_NOT_MET",
+    };
+  }
+
+  /* ==========================
      FIND / CREATE RUNNING CYCLE
   ========================== */
   let cycle = await db.collection("loyalty_cycles").findOne(
