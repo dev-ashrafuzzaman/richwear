@@ -23,6 +23,7 @@ export default function TableActions({ actions = [], row, onSuccess }) {
     } else if (typeof action.onClick === "function") {
       action.onClick(row);
     }
+    
   };
 
   const closeModal = () => {

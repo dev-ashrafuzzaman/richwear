@@ -243,11 +243,11 @@ export const SIDEBAR_MENU = [
     header: "Administration",
     roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN],
     items: [
-      // {
-      //   title: "Settings",
-      //   icon: Settings,
-      //   to: "/settings",
-      // },
+      {
+        title: "Settings",
+        icon: Settings,
+        to: "/settings/loyalty",
+      },
       {
         title: "User Management",
         icon: Users,

@@ -7,7 +7,7 @@ export default function PosCart({
   removeItem,
   isLowStock,
 }) {
-  console.log(cart)
+  console.log(cart);
   return (
     <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
       {/* Cart Header */}
@@ -101,10 +101,12 @@ export default function PosCart({
 
                   {/* Discount */}
                   <div className="col-span-2">
-                    <div className="flex items-center justify-center text-yellow-600 font-semibold">
-                      <p>{item.discountValue}</p>
-                      <p>{item.discountType === "PERCENT" ? "%" : "FLT"}</p>
-                    </div>
+                    {item.discountValue > 0 && (
+                      <div className="flex items-center justify-center text-yellow-600 font-semibold">
+                        <p>{item.discountValue}</p>
+                        <p>{item.discountType === "PERCENT" ? "%" : "FLT"}</p>
+                      </div>
+                    )}
                   </div>
 
                   {/* Line Total */}
