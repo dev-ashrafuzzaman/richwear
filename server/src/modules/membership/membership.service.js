@@ -142,3 +142,28 @@ export async function getMemberships({
     },
   };
 }
+
+export const updateLoyaltySettings = async (req, res) => {
+  const db = getDB();
+
+  const payload = {
+    productDiscountPercent: Number(req.body.productDiscountPercent || 0),
+    maxRewardValue: Number(req.body.maxRewardValue || 0),
+    minActivationAmount: Number(req.body.minActivationAmount || 0),
+    minDailyPurchase: Number(req.body.minDailyPurchase || 0),
+    requiredCount: Number(req.body.requiredCount || 0),
+
+    status: req.body.status || "ACTIVE",
+    updatedAt: new Date(),
+  };
+
+  await db.collection("loyalty_settings").updateOne(
+    { status: "ACTIVE" },
+    { $set: payload }
+  );
+
+  res.json({
+    success: true,
+    message: "Loyalty settings updated",
+  });
+};

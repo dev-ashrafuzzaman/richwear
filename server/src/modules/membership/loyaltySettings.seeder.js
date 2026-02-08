@@ -6,6 +6,7 @@ export async function seedLoyaltySettings(db) {
     minDailyPurchase: 1000,         // Loyalty count eligible
     requiredCount: 6,               // Steps to complete cycle
     maxRewardValue: 2000,           // Max flat discount
+    productDiscountPercent: 10,          
     rewardType: "FLAT",             // FLAT | PRODUCT
     resetMode: "AUTO",              // AUTO | MANUAL
 
