@@ -1,9 +1,8 @@
-// src/pages/sales/components/invoice/PosInvoiceModal.jsx
 import Modal from "../../../../components/modals/Modal";
 import Button from "../../../../components/ui/Button";
 import PosInvoicePreview from "./PosInvoicePreview";
-import { renderToStaticMarkup } from "react-dom/server";
 import PosInvoicePrint from "./PosInvoicePrint";
+import { renderToStaticMarkup } from "react-dom/server";
 import { useEffect, useRef } from "react";
 
 export default function PosInvoiceModal({
@@ -12,39 +11,47 @@ export default function PosInvoiceModal({
   data,
   onAfterClose,
 }) {
-  const hasPrintedRef = useRef(false);
+  console.log(data)
+  const printedRef = useRef(false);
+  const printWindowRef = useRef(null);
 
+  /* ================= AUTO PRINT (ONCE) ================= */
   useEffect(() => {
     if (!isOpen || !data) return;
-    if (hasPrintedRef.current) return;
+    if (printedRef.current) return;
 
-    hasPrintedRef.current = true;
+    printedRef.current = true;
 
     setTimeout(() => {
-      handlePrint();
+      openAndPrint();
     }, 150);
   }, [isOpen, data]);
 
-  const handlePrint = () => {
-    const win = window.open("about:blank", "_blank");
+  /* ================= RESET WHEN MODAL CLOSE ================= */
+  useEffect(() => {
+    if (!isOpen) {
+      printedRef.current = false;
+    }
+  }, [isOpen]);
+
+  /* ================= PRINT HANDLER ================= */
+  const openAndPrint = () => {
+    const win = window.open("", "_blank");
     if (!win) {
-      setIsOpen(false);
-      onAfterClose?.();
+      closeAll();
       return;
     }
 
-    win.document.open();
+    printWindowRef.current = win;
+
     win.document.write(`
       <html>
         <head>
           <title>Invoice</title>
-          <style>
-            ${printCss}
-          </style>
+          <style>${printCss}</style>
         </head>
         <body>
           <div id="print-root"></div>
-
         </body>
       </html>
     `);
@@ -52,31 +59,30 @@ export default function PosInvoiceModal({
     win.document.close();
 
     win.document.getElementById("print-root").innerHTML =
-      `${renderToStaticMarkup(<PosInvoicePrint data={data} />)}`;
+      renderToStaticMarkup(<PosInvoicePrint data={data} />);
 
     win.focus();
 
     setTimeout(() => {
       try {
         win.print();
-      } catch {""}
+      } catch {}
     }, 100);
 
     setTimeout(() => {
-      try {
-        win.close();
-      } catch {""}
-
-      setIsOpen(false);
-      onAfterClose?.(); 
+      closeAll();
     }, 1200);
   };
 
-  useEffect(() => {
-    if (isOpen && data) {
-      setTimeout(handlePrint, 150);
-    }
-  }, [isOpen, data]);
+  /* ================= CLOSE EVERYTHING ================= */
+  const closeAll = () => {
+    try {
+      printWindowRef.current?.close();
+    } catch {}
+
+    setIsOpen(false);
+    onAfterClose?.();
+  };
 
   return (
     <Modal
@@ -86,18 +92,20 @@ export default function PosInvoiceModal({
       size="xl"
       footer={
         <div className="flex justify-end gap-2">
-          <Button variant="ghost" onClick={() => setIsOpen(false)}>
+          <Button variant="ghost" onClick={closeAll}>
             Close
           </Button>
-          <Button variant="gradient" onClick={handlePrint}>
-            Print
+          <Button variant="gradient" onClick={openAndPrint}>
+            Print Again
           </Button>
         </div>
-      }>
+      }
+    >
       <PosInvoicePreview data={data} />
     </Modal>
   );
 }
+
 
 /* ================= PRINT CSS ================= */
 

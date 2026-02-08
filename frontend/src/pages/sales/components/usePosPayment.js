@@ -30,20 +30,17 @@ export default function usePosPayment(totalAmount) {
   ========================== */
 
   const paidAmount = useMemo(() => {
-    return payments.reduce(
-      (sum, p) => sum + parseAmount(p.amount),
-      0
-    );
+    return payments.reduce((sum, p) => sum + parseAmount(p.amount), 0);
   }, [payments]);
 
   const remaining = useMemo(
     () => Math.max(totalAmount - paidAmount, 0),
-    [totalAmount, paidAmount]
+    [totalAmount, paidAmount],
   );
 
   const changeAmount = useMemo(
     () => Math.max(paidAmount - totalAmount, 0),
-    [totalAmount, paidAmount]
+    [totalAmount, paidAmount],
   );
 
   /* =========================
@@ -56,10 +53,7 @@ export default function usePosPayment(totalAmount) {
 
   const addPayment = useCallback(() => {
     setPayments((prev) => {
-      const alreadyPaid = prev.reduce(
-        (s, p) => s + parseAmount(p.amount),
-        0
-      );
+      const alreadyPaid = prev.reduce((s, p) => s + parseAmount(p.amount), 0);
 
       const remainingAmount = totalAmount - alreadyPaid;
 
@@ -75,58 +69,68 @@ export default function usePosPayment(totalAmount) {
 
   const removePayment = useCallback((index) => {
     setPayments((prev) =>
-      prev.length > 1
-        ? prev.filter((_, i) => i !== index)
-        : prev
+      prev.length > 1 ? prev.filter((_, i) => i !== index) : prev,
     );
   }, []);
 
   const markManualClear = useCallback((index) => {
     setPayments((prev) =>
-      prev.map((p, i) =>
-        i === index ? { ...p, manualClear: true } : p
-      )
+      prev.map((p, i) => (i === index ? { ...p, manualClear: true } : p)),
     );
   }, []);
 
   const clearManualClear = useCallback((index) => {
     setPayments((prev) =>
-      prev.map((p, i) =>
-        i === index ? { ...p, manualClear: false } : p
-      )
+      prev.map((p, i) => (i === index ? { ...p, manualClear: false } : p)),
     );
   }, []);
 
-  const updatePayment = useCallback((index, field, value) => {
-    setPayments((prev) =>
-      prev.map((p, i) => {
-        if (i !== index) return p;
+  const updatePayment = useCallback(
+    (index, field, value) => {
+      setPayments((prev) =>
+        prev.map((p, i) => {
+          if (i !== index) return p;
 
-        // Prevent duplicate account selection
-        if (
-          field === "accountId" &&
-          prev.some(
-            (x, idx) => idx !== index && x.accountId === value
-          )
-        ) {
-          return p;
-        }
+          // Prevent duplicate account selection
+          if (
+            field === "accountId" &&
+            prev.some((x, idx) => idx !== index && x.accountId === value)
+          ) {
+            return p;
+          }
 
-        // Amount handling (allow empty)
-        if (field === "amount") {
-          if (value === "") return { ...p, amount: "" };
+          // =========================
+          // AMOUNT VALIDATION 🔥
+          // =========================
+          if (field === "amount") {
+            // allow empty
+            if (value === "") return { ...p, amount: "" };
 
-          const num = Number(value);
-          return {
-            ...p,
-            amount: isNaN(num) ? "" : String(Math.max(num, 0)),
-          };
-        }
+            let num = Number(value);
+            if (isNaN(num) || num < 0) num = 0;
 
-        return { ...p, [field]: value };
-      })
-    );
-  }, []);
+            // sum of other rows
+            const otherTotal = prev.reduce(
+              (s, x, idx) => (idx === index ? s : s + Number(x.amount || 0)),
+              0,
+            );
+
+            // max allowed for this row
+            const maxAllowed = Math.max(totalAmount - otherTotal, 0);
+
+            // cap the value
+            return {
+              ...p,
+              amount: String(Math.min(num, maxAllowed)),
+            };
+          }
+
+          return { ...p, [field]: value };
+        }),
+      );
+    },
+    [totalAmount],
+  );
 
   /* =========================
      Validation
@@ -137,10 +141,7 @@ export default function usePosPayment(totalAmount) {
     if (paidAmount < totalAmount) return false;
 
     return payments.every(
-      (p) =>
-        p.accountId &&
-        p.method &&
-        Number(p.amount) > 0 // 🔥 empty & 0 invalid
+      (p) => p.accountId && p.method && Number(p.amount) > 0, // 🔥 empty & 0 invalid
     );
   }, [payments, paidAmount, totalAmount]);
 

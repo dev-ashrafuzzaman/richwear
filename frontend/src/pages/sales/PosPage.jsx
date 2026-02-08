@@ -71,9 +71,11 @@ export default function PosPage() {
     setSalesman(null);
     setPayOpen(false);
     resetPayment();
+    
     requestAnimationFrame(() => {
       searchRef.current?.clearAndFocus();
     });
+
   };
 
   useEffect(() => {

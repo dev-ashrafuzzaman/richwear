@@ -37,7 +37,7 @@ export default function SalesReturnCreateModal({
             returnQty: 0,
             reason: "",
             salePrice: i.salePrice,          // gross unit price
-            itemDiscount: i.discountAmount,  // total item discount
+            itemDiscount: i.discount.amount,  // total item discount
           })),
         );
       },
@@ -143,7 +143,7 @@ export default function SalesReturnCreateModal({
           <div className="text-lg font-semibold">
             Total Refund:{" "}
             <span className="text-red-600">
-              BDT {totalRefund.toFixed(2)}
+              BDT {totalRefund}
             </span>
           </div>
 
@@ -231,7 +231,7 @@ export default function SalesReturnCreateModal({
               <div className="col-span-2 text-sm">
                 Refund:{" "}
                 <strong className="text-red-600">
-                  {refund > 0 ? `BDT ${refund.toFixed(2)}` : "-"}
+                  {refund > 0 ? `BDT ${refund}` : "-"}
                 </strong>
               </div>
 

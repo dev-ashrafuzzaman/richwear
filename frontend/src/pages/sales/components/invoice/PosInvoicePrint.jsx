@@ -59,7 +59,7 @@ export default function PosInvoicePrint({ data }) {
               <td>{i.sku}</td>
               <td>{i.qty}</td>
               <td>{i.unitPrice}</td>
-              <td>{i.discount}</td>
+              <td>{i.discount.amount}</td>
               <td>{i.lineTotal}</td>
             </tr>
           ))}
@@ -73,10 +73,10 @@ export default function PosInvoicePrint({ data }) {
         <span>{summary.subTotal}</span>
       </div>
 
-      {summary.totalItemDiscount > 0 && (
+      {summary.itemDiscount > 0 && (
         <div className="row">
           <span>Item Discount</span>
-          <span>{summary.totalItemDiscount}</span>
+          <span>-{summary.itemDiscount}</span>
         </div>
       )}
       {summary.billDiscount > 0 && (
