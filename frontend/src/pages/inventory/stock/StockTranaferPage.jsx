@@ -21,6 +21,49 @@ const StockTranaferPage = () => {
     openModal("viewStockDetails");
   };
 
+    const getStatusBadge = (status) => {
+    const config = {
+      RECEIVED: { 
+        color: "emerald", 
+        bg: "bg-emerald-50", 
+        text: "text-emerald-700",
+        label: "Received"
+      },
+      MISMATCH: { 
+        color: "rose", 
+        bg: "bg-rose-50", 
+        text: "text-rose-700",
+        label: "Mismatch"
+      },
+      PENDING: { 
+        color: "amber", 
+        bg: "bg-amber-50", 
+        text: "text-amber-700",
+        label: "Pending"
+      },
+      DEFAULT: { 
+        color: "blue", 
+        bg: "bg-blue-50", 
+        text: "text-blue-700",
+        label: "Processing"
+      }
+    };
+    
+    const statusConfig = config[status] || config.DEFAULT;
+    
+    return (
+      <Badge
+        className={`px-3 py-1.5 text-xs font-medium ${statusConfig.bg} ${statusConfig.text} border-0`}
+        color={statusConfig.color}
+      >
+        <div className="flex items-center gap-1.5">
+          <div className={`w-1.5 h-1.5 rounded-full ${statusConfig.bg.replace('bg-', 'bg-').replace('-50', '-500')}`} />
+          {statusConfig.label}
+        </div>
+      </Badge>
+    );
+  };
+  
   return (
     <Page
       title="Stock Transfer Manage"
@@ -41,22 +84,10 @@ const StockTranaferPage = () => {
           { key: "fromBranchName", label: "From" },
           { key: "toBranchName", label: "To" },
           {
-            key: "status",
-            label: "Status",
-            render: (r) => (
-              <Badge
-                color={
-                  r.status === "RECEIVED"
-                    ? "green"
-                    : r.status === "MISMATCH"
-                      ? "red"
-                      : "yellow"
-                }
-              >
-                {r.status}
-              </Badge>
-            ),
-          },
+              key: "status",
+              label: "Status",
+              render: (r) => getStatusBadge(r.status)
+            },
           {
             key: "action",
             label: "Action",
