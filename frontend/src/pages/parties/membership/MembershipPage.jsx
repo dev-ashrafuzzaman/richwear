@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import useModalManager from "../../../hooks/useModalManager";
 import Page from "../../../components/common/Page";
 import DataTable from "../../../components/table/DataTable";
@@ -7,6 +8,13 @@ import MembershipCreateModal from "./MembershipCreateModal";
 const MembershipPage = () => {
   const { modals, openModal, closeModal } = useModalManager();
   const table = useTableManager("/memberships");
+  const navigate = useNavigate();
+
+  const goToOverview = (row) => {
+console.log("memen",row)
+    navigate(`/memberships/${row.customerId}`);
+  };
+
   return (
     <Page title="Memberships" subTitle="Manage your organization memberships">
       {modals.createMembership?.isOpen && (
@@ -16,6 +24,7 @@ const MembershipPage = () => {
           refetch={table.refetch}
         />
       )}
+
       <DataTable
         table={table}
         title="Memberships"
@@ -33,20 +42,18 @@ const MembershipPage = () => {
             key: "branchName",
             label: "Branch",
             render: (r) => (
-              <div>
-                <div className="font-medium">{r.branchName}</div>
-              </div>
+              <div className="font-medium">{r.branchName}</div>
             ),
           },
 
           { key: "name", label: "Customer Name" },
-
           { key: "phone", label: "Phone" },
 
           {
             key: "createdAt",
             label: "Created At",
-            render: (r) => new Date(r.createdAt).toLocaleDateString("en-GB"),
+            render: (r) =>
+              new Date(r.createdAt).toLocaleDateString("en-GB"),
           },
 
           {
@@ -58,32 +65,34 @@ const MembershipPage = () => {
                   r.status === "ACTIVE"
                     ? "approved"
                     : r.status === "PENDING"
-                      ? "pending"
-                      : "rejected"
+                    ? "pending"
+                    : "rejected"
                 }`}
               >
                 {r.status}
               </span>
             ),
           },
+
+          /* 🔥 OVERVIEW ACTION */
+          {
+            key: "_action",
+            label: "Overview",
+            render: (row) => (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  goToOverview(row);
+                }}
+                className="px-3 py-1.5 rounded-md text-sm font-medium
+                           text-blue-600 hover:bg-blue-50"
+              >
+                View
+              </button>
+            ),
+          },
         ]}
-        actions={
-          [
-            // { type: "view", label: "View" },
-            // { type: "edit", label: "Edit" },
-            // {
-            //   type: "status",
-            //   label: "Change Status",
-            //   api: (row) => `/customers/${row._id}/status`,
-            // },
-            // {
-            //   type: "delete",
-            //   label: "Delete",
-            //   api: (row) => `/customers/${row._id}`,
-            //   hidden: (row) => row.isSystem === true,
-            // },
-          ]
-        }
       />
     </Page>
   );

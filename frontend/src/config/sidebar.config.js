@@ -127,7 +127,8 @@ export const SIDEBAR_MENU = [
         icon: Boxes,
         submenu: [
           { title: "Stock Details", to: "/inventory/stock" },
-          { title: "Stock Transfer", to: "/inventory/stock-transfer" },
+          { title: "Create Transfer", to: "/inventory/create-transfer" },
+          { title: "Manage Transfer", to: "/inventory/manage-transfer" },
           { title: "Low Stock Report", to: "/inventory/low-stock" },
         ],
       },
