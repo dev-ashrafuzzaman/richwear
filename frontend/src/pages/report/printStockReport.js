@@ -48,7 +48,7 @@ export function printStockReport({
      FILTER SUMMARY
   =============================== */
   const filterHtml = Object.entries(filters)
-    .filter(([_, v]) => v)
+    .filter(([, v]) => v)
     .map(
       ([k, v]) => `
       <div class="filter-item">

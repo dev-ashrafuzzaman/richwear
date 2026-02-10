@@ -6,11 +6,11 @@ import Select from "../../components/ui/Select";
 import useAxiosSecure from "../../hooks/useAxiosSecure";
 import ReportSmartSelect from "../../components/common/ReportSmartSelect";
 import { printStockReport } from "./printStockReport";
-import { 
-  BarChart3, 
-  Filter, 
-  RefreshCw, 
-  Printer, 
+import {
+  BarChart3,
+  Filter,
+  RefreshCw,
+  Printer,
   Package,
   TrendingUp,
   Layers,
@@ -19,7 +19,7 @@ import {
   Palette,
   Ruler,
   DollarSign,
-  Percent
+  Percent,
 } from "lucide-react";
 
 export default function StockReportPage() {
@@ -56,12 +56,15 @@ export default function StockReportPage() {
   const stats = useMemo(() => {
     if (!generated || rows.length === 0) return null;
 
-    const totals = rows.reduce((acc, row) => ({
-      qty: acc.qty + (row.totalQty || 0),
-      cost: acc.cost + (row.totalCost || 0),
-      sale: acc.sale + (row.totalSale || 0),
-      margin: acc.margin + (row.totalMargin || 0),
-    }), { qty: 0, cost: 0, sale: 0, margin: 0 });
+    const totals = rows.reduce(
+      (acc, row) => ({
+        qty: acc.qty + (row.totalQty || 0),
+        cost: acc.cost + (row.totalCost || 0),
+        sale: acc.sale + (row.totalSale || 0),
+        margin: acc.margin + (row.totalMargin || 0),
+      }),
+      { qty: 0, cost: 0, sale: 0, margin: 0 },
+    );
 
     const avgMargin = totals.sale > 0 ? (totals.margin / totals.sale) * 100 : 0;
 
@@ -121,19 +124,51 @@ export default function StockReportPage() {
         { key: "sku", label: "SKU", icon: <Hash className="w-4 h-4" /> },
         { key: "size", label: "Size", icon: <Ruler className="w-4 h-4" /> },
         { key: "color", label: "Color", icon: <Palette className="w-4 h-4" /> },
-        { key: "totalQty", label: "Quantity", icon: <Package className="w-4 h-4" /> },
-        { key: "totalCost", label: "Cost Value", icon: <DollarSign className="w-4 h-4" /> },
-        { key: "totalSale", label: "Sale Value", icon: <DollarSign className="w-4 h-4" /> },
-        { key: "totalMargin", label: "Margin", icon: <Percent className="w-4 h-4" /> },
+        {
+          key: "totalQty",
+          label: "Quantity",
+          icon: <Package className="w-4 h-4" />,
+        },
+        {
+          key: "totalCost",
+          label: "Cost Value",
+          icon: <DollarSign className="w-4 h-4" />,
+        },
+        {
+          key: "totalSale",
+          label: "Sale Value",
+          icon: <DollarSign className="w-4 h-4" />,
+        },
+        {
+          key: "totalMargin",
+          label: "Margin",
+          icon: <Percent className="w-4 h-4" />,
+        },
       ];
     }
 
     return [
       { key: "name", label: "Group", icon: <Layers className="w-4 h-4" /> },
-      { key: "totalQty", label: "Quantity", icon: <Package className="w-4 h-4" /> },
-      { key: "totalCost", label: "Cost Value", icon: <DollarSign className="w-4 h-4" /> },
-      { key: "totalSale", label: "Sale Value", icon: <DollarSign className="w-4 h-4" /> },
-      { key: "totalMargin", label: "Margin", icon: <Percent className="w-4 h-4" /> },
+      {
+        key: "totalQty",
+        label: "Quantity",
+        icon: <Package className="w-4 h-4" />,
+      },
+      {
+        key: "totalCost",
+        label: "Cost Value",
+        icon: <DollarSign className="w-4 h-4" />,
+      },
+      {
+        key: "totalSale",
+        label: "Sale Value",
+        icon: <DollarSign className="w-4 h-4" />,
+      },
+      {
+        key: "totalMargin",
+        label: "Margin",
+        icon: <Percent className="w-4 h-4" />,
+      },
     ];
   }, [filters.groupBy]);
 
@@ -173,12 +208,16 @@ export default function StockReportPage() {
     <Page
       title={
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg">
+          <div className="p-2 bg-linear-to-br from-blue-600 to-indigo-600 rounded-lg">
             <BarChart3 className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Stock Valuation Report</h1>
-            <p className="text-gray-600 text-sm mt-1">Branch, Category, Product & Variant wise stock valuation</p>
+            <h1 className="text-2xl font-bold text-gray-900">
+              Stock Valuation Report
+            </h1>
+            <p className="text-gray-600 text-sm mt-1">
+              Branch, Category, Product & Variant wise stock valuation
+            </p>
           </div>
         </div>
       }
@@ -186,175 +225,181 @@ export default function StockReportPage() {
       {/* =====================================================
          FILTERS CARD
       ===================================================== */}
-        <div className="p-6 ">
-          {/* Filter Row 1 */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            {/* Branch */}
-            <Controller
-              name="branch"
-              control={control}
-              render={({ field }) => (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Branch <span className="text-red-500">*</span>
-                  </label>
-                  <ReportSmartSelect
-                    route="/branches"
-                    displayField={["code", "name"]}
-                    value={field.value}
-                    onChange={field.onChange}
-                    placeholder="Select branch"
-                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                  />
-                </div>
-              )}
-            />
+      <div className="p-6 ">
+        {/* Filter Row 1 */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          {/* Branch */}
+          <Controller
+            name="branch"
+            control={control}
+            render={({ field }) => (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Branch <span className="text-red-500">*</span>
+                </label>
+                <ReportSmartSelect
+                  route="/branches"
+                  displayField={["code", "name"]}
+                  value={field.value}
+                  onChange={field.onChange}
+                  placeholder="Select branch"
+                  className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+            )}
+          />
 
-            {/* Group By */}
-            <Controller
-              name="groupBy"
-              control={control}
-              render={({ field }) => (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Group By
-                  </label>
-                  <Select
-                    value={field.value}
-                    onChange={field.onChange}
-                    options={[
-                      { label: "Main Category", value: "category_main" },
-                      { label: "Sub Category", value: "category_sub" },
-                      { label: "Product Type", value: "product_type" },
-                      { label: "Product", value: "product" },
-                      { label: "Variant (SKU)", value: "variant" },
-                    ]}
-                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                  />
-                </div>
-              )}
-            />
+          {/* Group By */}
+          <Controller
+            name="groupBy"
+            control={control}
+            render={({ field }) => (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Group By
+                </label>
+                <Select
+                  value={field.value}
+                  onChange={field.onChange}
+                  options={[
+                    { label: "Main Category", value: "category_main" },
+                    { label: "Sub Category", value: "category_sub" },
+                    { label: "Product Type", value: "product_type" },
+                    { label: "Product", value: "product" },
+                    { label: "Variant (SKU)", value: "variant" },
+                  ]}
+                  className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+            )}
+          />
 
-            {/* Product Type */}
-            <Controller
-              name="productType"
-              control={control}
-              render={({ field }) => (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Product Type
-                  </label>
-                  <ReportSmartSelect
-                    route="/products/types"
-                    displayField={["name"]}
-                    value={field.value}
-                    onChange={field.onChange}
-                    placeholder="Select product type"
-                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                  />
-                </div>
-              )}
-            />
-          </div>
-
-          {/* Filter Row 2 */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            {/* Main Category */}
-            <Controller
-              name="mainCategory"
-              control={control}
-              render={({ field }) => (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Main Category
-                  </label>
-                  <ReportSmartSelect
-                    route="/categories"
-                    extraParams={{ level: 1 }}
-                    displayField={["name"]}
-                    value={field.value}
-                    onChange={field.onChange}
-                    placeholder="Select main category"
-                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                  />
-                </div>
-              )}
-            />
-
-            {/* Sub Category */}
-            <Controller
-              name="subCategory"
-              control={control}
-              render={({ field }) => (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Sub Category
-                  </label>
-                  <ReportSmartSelect
-                    disabled={!mainCategory}
-                    route="/categories"
-                    extraParams={{
-                      level: 2,
-                      parentId: mainCategory?._id,
-                    }}
-                    displayField={["name"]}
-                    value={field.value}
-                    onChange={field.onChange}
-                    placeholder={mainCategory ? "Select sub category" : "Select main category first"}
-                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                  />
-                </div>
-              )}
-            />
-          </div>
-
-          {/* Filter Row 3 */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            {/* Product */}
-            <Controller
-              name="product"
-              control={control}
-              render={({ field }) => (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Product
-                  </label>
-                  <ReportSmartSelect
-                    route="/products"
-                    displayField={["name", "productCode"]}
-                    value={field.value}
-                    onChange={field.onChange}
-                    placeholder="Select product"
-                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                  />
-                </div>
-              )}
-            />
-
-            {/* Variant */}
-            <Controller
-              name="variant"
-              control={control}
-              render={({ field }) => (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Variant / SKU
-                  </label>
-                  <ReportSmartSelect
-                    disabled={!product}
-                    route="/variants"
-                    extraParams={{ productId: product?._id }}
-                    displayField={["sku"]}
-                    value={field.value}
-                    onChange={field.onChange}
-                    placeholder={product ? "Select variant" : "Select product first"}
-                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                  />
-                </div>
-              )}
-            />
-          </div>
+          {/* Product Type */}
+          <Controller
+            name="productType"
+            control={control}
+            render={({ field }) => (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Product Type
+                </label>
+                <ReportSmartSelect
+                  route="/products/types"
+                  displayField={["name"]}
+                  value={field.value}
+                  onChange={field.onChange}
+                  placeholder="Select product type"
+                  className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+            )}
+          />
         </div>
+
+        {/* Filter Row 2 */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          {/* Main Category */}
+          <Controller
+            name="mainCategory"
+            control={control}
+            render={({ field }) => (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Main Category
+                </label>
+                <ReportSmartSelect
+                  route="/categories"
+                  extraParams={{ level: 1 }}
+                  displayField={["name"]}
+                  value={field.value}
+                  onChange={field.onChange}
+                  placeholder="Select main category"
+                  className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+            )}
+          />
+
+          {/* Sub Category */}
+          <Controller
+            name="subCategory"
+            control={control}
+            render={({ field }) => (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Sub Category
+                </label>
+                <ReportSmartSelect
+                  disabled={!mainCategory}
+                  route="/categories"
+                  extraParams={{
+                    level: 2,
+                    parentId: mainCategory?._id,
+                  }}
+                  displayField={["name"]}
+                  value={field.value}
+                  onChange={field.onChange}
+                  placeholder={
+                    mainCategory
+                      ? "Select sub category"
+                      : "Select main category first"
+                  }
+                  className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+            )}
+          />
+        </div>
+
+        {/* Filter Row 3 */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          {/* Product */}
+          <Controller
+            name="product"
+            control={control}
+            render={({ field }) => (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Product
+                </label>
+                <ReportSmartSelect
+                  route="/products"
+                  displayField={["name", "productCode"]}
+                  value={field.value}
+                  onChange={field.onChange}
+                  placeholder="Select product"
+                  className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+            )}
+          />
+
+          {/* Variant */}
+          <Controller
+            name="variant"
+            control={control}
+            render={({ field }) => (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Variant / SKU
+                </label>
+                <ReportSmartSelect
+                  disabled={!product}
+                  route="/variants"
+                  extraParams={{ productId: product?._id }}
+                  displayField={["sku"]}
+                  value={field.value}
+                  onChange={field.onChange}
+                  placeholder={
+                    product ? "Select variant" : "Select product first"
+                  }
+                  className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+            )}
+          />
+        </div>
+      </div>
       {/* =====================================================
          ACTION BUTTONS
       ===================================================== */}
@@ -369,7 +414,7 @@ export default function StockReportPage() {
           >
             Reset Filters
           </Button>
-          
+
           <Button
             variant="outline"
             onClick={handlePrint}
@@ -384,7 +429,7 @@ export default function StockReportPage() {
         <Button
           onClick={handleGenerate}
           disabled={loading || !branch?._id}
-          className="px-8 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
+          className="px-8 py-2.5 bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
         >
           {loading ? (
             <span className="flex items-center gap-2">
@@ -412,42 +457,55 @@ export default function StockReportPage() {
       ===================================================== */}
       {generated && stats && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <div className="bg-gradient-to-br from-blue-50 to-white p-5 rounded-xl border border-blue-100">
+          <div className="bg-linear-to-br from-blue-50 to-white p-5 rounded-xl border border-blue-100">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-blue-700 font-medium">Total Items</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{stats.items}</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">
+                  {stats.items}
+                </p>
               </div>
               <Grid className="w-8 h-8 text-blue-400" />
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-emerald-50 to-white p-5 rounded-xl border border-emerald-100">
+          <div className="bg-linear-to-br from-emerald-50 to-white p-5 rounded-xl border border-emerald-100">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-emerald-700 font-medium">Total Quantity</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{stats.qty.toLocaleString()}</p>
+                <p className="text-sm text-emerald-700 font-medium">
+                  Total Quantity
+                </p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">
+                  {stats.qty.toLocaleString()}
+                </p>
               </div>
               <Package className="w-8 h-8 text-emerald-400" />
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-amber-50 to-white p-5 rounded-xl border border-amber-100">
+          <div className="bg-linear-to-br from-amber-50 to-white p-5 rounded-xl border border-amber-100">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-amber-700 font-medium">Total Value</p>
+                <p className="text-sm text-amber-700 font-medium">
+                  Total Value
+                </p>
                 <p className="text-2xl font-bold text-gray-900 mt-1">
-                  {stats.sale.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  {stats.sale.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
                 </p>
               </div>
               <DollarSign className="w-8 h-8 text-amber-400" />
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-purple-50 to-white p-5 rounded-xl border border-purple-100">
+          <div className="bg-linear-to-br from-purple-50 to-white p-5 rounded-xl border border-purple-100">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-purple-700 font-medium">Avg. Margin</p>
+                <p className="text-sm text-purple-700 font-medium">
+                  Avg. Margin
+                </p>
                 <p className="text-2xl font-bold text-gray-900 mt-1">
                   {stats.avgMargin.toFixed(1)}%
                 </p>
@@ -463,21 +521,27 @@ export default function StockReportPage() {
       ===================================================== */}
       {generated && (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
+          <div className="px-6 py-4 border-b border-gray-100 bg-linear-to-r from-gray-50 to-white">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-gray-100 rounded-lg">
                   <Layers className="w-5 h-5 text-gray-600" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-semibold text-gray-900">Stock Report</h2>
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    Stock Report
+                  </h2>
                   <p className="text-sm text-gray-500">
-                    {rows.length} records • {filters.groupBy.replace('_', ' ')} grouping
+                    {rows.length} records • {filters.groupBy.replace("_", " ")}{" "}
+                    grouping
                   </p>
                 </div>
               </div>
               <div className="text-sm text-gray-500">
-                Branch: <span className="font-semibold text-gray-900">{branch?.name}</span>
+                Branch:{" "}
+                <span className="font-semibold text-gray-900">
+                  {branch?.name}
+                </span>
               </div>
             </div>
           </div>
@@ -503,7 +567,10 @@ export default function StockReportPage() {
               <tbody className="divide-y divide-gray-100">
                 {loading ? (
                   <tr>
-                    <td colSpan={columns.length} className="px-6 py-12 text-center">
+                    <td
+                      colSpan={columns.length}
+                      className="px-6 py-12 text-center"
+                    >
                       <div className="flex flex-col items-center gap-3">
                         <RefreshCw className="w-8 h-8 text-gray-400 animate-spin" />
                         <p className="text-gray-500">Loading report data...</p>
@@ -512,13 +579,19 @@ export default function StockReportPage() {
                   </tr>
                 ) : rows.length === 0 ? (
                   <tr>
-                    <td colSpan={columns.length} className="px-6 py-12 text-center">
+                    <td
+                      colSpan={columns.length}
+                      className="px-6 py-12 text-center"
+                    >
                       <div className="flex flex-col items-center gap-3">
                         <Package className="w-12 h-12 text-gray-300" />
                         <div>
-                          <p className="text-gray-500 font-medium">No stock data found</p>
+                          <p className="text-gray-500 font-medium">
+                            No stock data found
+                          </p>
                           <p className="text-gray-400 text-sm mt-1">
-                            Try adjusting your filters or select a different branch
+                            Try adjusting your filters or select a different
+                            branch
                           </p>
                         </div>
                       </div>
@@ -532,14 +605,20 @@ export default function StockReportPage() {
                     >
                       {columns.map((col) => {
                         let value = row[col.key];
-                        
+
                         // Format numeric values
-                        if (col.key.includes('Cost') || col.key.includes('Sale') || col.key.includes('Margin')) {
-                          value = value ? `${parseFloat(value).toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2
-                          })}` : "-";
-                        } else if (col.key === 'totalQty') {
+                        if (
+                          col.key.includes("Cost") ||
+                          col.key.includes("Sale") ||
+                          col.key.includes("Margin")
+                        ) {
+                          value = value
+                            ? `${parseFloat(value).toLocaleString(undefined, {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              })}`
+                            : "-";
+                        } else if (col.key === "totalQty") {
                           value = value ? value.toLocaleString() : "-";
                         }
 
@@ -547,11 +626,11 @@ export default function StockReportPage() {
                           <td
                             key={col.key}
                             className={`px-6 py-4 whitespace-nowrap ${
-                              col.key === 'totalMargin'
+                              col.key === "totalMargin"
                                 ? parseFloat(row[col.key] || 0) >= 0
-                                  ? 'text-emerald-600 font-semibold'
-                                  : 'text-red-600 font-semibold'
-                                : 'text-gray-900'
+                                  ? "text-emerald-600 font-semibold"
+                                  : "text-red-600 font-semibold"
+                                : "text-gray-900"
                             }`}
                           >
                             {value || "-"}
@@ -568,7 +647,8 @@ export default function StockReportPage() {
           {rows.length > 0 && (
             <div className="px-6 py-3 border-t border-gray-100 bg-gray-50">
               <div className="text-sm text-gray-500">
-                Showing {rows.length} records • Generated at {new Date().toLocaleTimeString()}
+                Showing {rows.length} records • Generated at{" "}
+                {new Date().toLocaleTimeString()}
               </div>
             </div>
           )}
