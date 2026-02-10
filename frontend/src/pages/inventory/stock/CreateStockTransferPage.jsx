@@ -123,7 +123,7 @@ const CreateStockTransferPage = () => {
         "Stock transfer initiated successfully. Awaiting receive confirmation at destination.",
       onSuccess: () => {
         setItems([]);
-        navigate("manage-transfer");
+        navigate("/inventory/manage-transfer");
         searchRef.current?.clearAndFocus();
       },
       onError: (err) => {
@@ -190,7 +190,7 @@ const CreateStockTransferPage = () => {
         {/* -------- Quick Stats -------- */}
         {fromBranch && toBranch && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-100">
+            <Card className="bg-linear-to-r from-blue-50 to-indigo-50 border-blue-100">
               <div className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -208,7 +208,7 @@ const CreateStockTransferPage = () => {
               </div>
             </Card>
 
-            <Card className="bg-gradient-to-r from-green-50 to-emerald-50 border-green-100">
+            <Card className="bg-linear-to-r from-green-50 to-emerald-50 border-green-100">
               <div className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -226,7 +226,7 @@ const CreateStockTransferPage = () => {
               </div>
             </Card>
 
-            <Card className="bg-gradient-to-r from-purple-50 to-violet-50 border-purple-100">
+            <Card className="bg-linear-to-r from-purple-50 to-violet-50 border-purple-100">
               <div className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -373,7 +373,7 @@ const CreateStockTransferPage = () => {
             {(!fromBranch || !toBranch) && (
               <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
                 <div className="flex items-center gap-2 text-amber-700">
-                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                  <AlertCircle className="h-4 w-4 shrink-0" />
                   <p className="text-sm">
                     {!fromBranch && !toBranch
                       ? "Select source and destination branches to proceed"

@@ -104,6 +104,7 @@ const DiscountsPage = React.lazy(() => import("./pages/inventory/discount/Discou
 const MembershipsPage = React.lazy(() => import("./pages/parties/membership/MembershipPage"));
 const LoyaltySettingPage = React.lazy(() => import("./pages/setting/loyalty/LoyaltySettingPage"));
 const MembershipOverviewPage  = React.lazy(() => import("./pages/parties/membership/MembershipOverviewPage"));
+const ReceiveStockTransferPage  = React.lazy(() => import("./pages/inventory/stock/ReceiveStockTransferPage"));
 
 export default function App() {
   return (
@@ -127,6 +128,7 @@ export default function App() {
           <Route path="/dashboard" element={<Dashboard />} />
 
           <Route path="/memberships/:customerId" element={<MembershipOverviewPage  />} />
+          <Route path="/inventory/receive-transfer/:id" element={<ReceiveStockTransferPage  />} />
           <Route path="/settings/loyalty" element={<LoyaltySettingPage />} />
           <Route path="/memberships" element={<MembershipsPage />} />
           <Route path="/inventory/discounts" element={<DiscountsPage />} />

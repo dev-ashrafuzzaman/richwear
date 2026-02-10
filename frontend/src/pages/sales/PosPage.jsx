@@ -16,7 +16,7 @@ export default function PosPage() {
   const { modals, openModal, closeModal } = useModalManager();
   const {
     cart,
-    addItem,
+    addItem, 
     updateQty,
     updateDiscount,
     removeItem,

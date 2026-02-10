@@ -120,21 +120,39 @@ export const SIDEBAR_MENU = [
   ======================== */
   {
     header: "Inventory",
-    roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN],
+    roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.CASHIER],
     items: [
       {
         title: "Stock",
+        roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.CASHIER],
         icon: Boxes,
         submenu: [
-          { title: "Stock Details", to: "/inventory/stock" },
-          { title: "Create Transfer", to: "/inventory/create-transfer" },
-          { title: "Manage Transfer", to: "/inventory/manage-transfer" },
-          { title: "Low Stock Report", to: "/inventory/low-stock" },
+          {
+            title: "Stock Details",
+            roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN],
+            to: "/inventory/stock",
+          },
+          {
+            title: "Create Transfer",
+            roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN],
+            to: "/inventory/create-transfer",
+          },
+          {
+            title: "Manage Transfer",
+            roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.CASHIER],
+            to: "/inventory/manage-transfer",
+          },
+          {
+            title: "Low Stock Report",
+            roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN],
+            to: "/inventory/low-stock",
+          },
         ],
       },
       {
         title: "Discount",
         icon: DiscIcon,
+        roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN],
         submenu: [
           { title: "Discount Create", to: "/inventory/discount-create" },
           { title: "Discounts Manage", to: "/inventory/discounts" },
