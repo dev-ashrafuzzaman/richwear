@@ -7,6 +7,28 @@ import { getBusinessDateBD } from "../../utils/businessDate.js";
 import { calculateDiscount, getBDMidnight } from "./discount/discount.utils.js";
 import { getActiveProductDiscounts } from "./discount/discount.service.js";
 import { generateCode } from "../../utils/codeGenerator.js";
+import { getMainWarehouse } from "../branches/branch.utils.js";
+import { upsertStock } from "./stock.utils.js";
+import { recordStockMovement } from "./stockMovement.utils.js";
+import { STOCK_MOVEMENT_TYPES } from "../../config/constants/stockMovementTypes.js";
+
+/* ======================================================
+   Helpers
+====================================================== */
+const toObjectId = (value, label) => {
+  if (!value) throw new Error(`${label} is required`);
+  if (value instanceof ObjectId) return value;
+  if (!ObjectId.isValid(value)) {
+    throw new Error(`${label} must be a valid ObjectId`);
+  }
+  return new ObjectId(value);
+};
+
+const resolveVariantId = (item) => {
+  if (item.variantId) return toObjectId(item.variantId, "variantId");
+  if (item.variant?._id) return toObjectId(item.variant._id, "variant._id");
+  throw new Error("Variant ID missing in transfer item");
+};
 
 export const getAllStocks = async (req, res, next) => {
   try {
@@ -607,6 +629,18 @@ export const createStockTransfer = async (req, res, next) => {
         },
         { session },
       );
+
+      await recordStockMovement({
+        db,
+        session,
+        branchId: new ObjectId(fromBranchId),
+        variantId: new ObjectId(item.variantId),
+        type: STOCK_MOVEMENT_TYPES.TRANSFER_OUT,
+        qty: -item.qty,
+        refType: "STOCK_TRANSFER",
+        refId: insertedId,
+        note: `Transferred to branch ${toBranchId}`,
+      });
     }
 
     await db.collection("stock_transfer_logs").insertOne(
@@ -634,49 +668,199 @@ export const createStockTransfer = async (req, res, next) => {
   }
 };
 
+/* ======================================================
+   RECEIVE STOCK TRANSFER
+====================================================== */
+
 export const receiveStockTransfer = async (req, res, next) => {
   const session = getDB().client.startSession();
 
   try {
     const db = getDB();
-    const transferId = new ObjectId(req.params.id);
-    const { items } = req.body;
+
+    const transferId = toObjectId(req.params.id, "transferId");
+    const items = Array.isArray(req.body.items) ? req.body.items : [];
+
+    if (!items.length) {
+      throw new Error("No items provided for receiving");
+    }
 
     session.startTransaction();
 
-    let mismatch = false;
+    /* ===============================
+       LOAD TRANSFER
+    =============================== */
+    const transfer = await db
+      .collection("stock_transfers")
+      .findOne({ _id: transferId }, { session });
 
+    if (!transfer) throw new Error("Transfer not found");
+    if (transfer.status !== "PENDING") {
+      throw new Error("Transfer already processed");
+    }
+
+    const fromBranchId = toObjectId(transfer.fromBranchId, "fromBranchId");
+    const toBranchId = toObjectId(transfer.toBranchId, "toBranchId");
+
+    /* ===============================
+       MAIN WAREHOUSE (FOR MISMATCH)
+    =============================== */
+    const mainWarehouse = await getMainWarehouse(db, session);
+    const mainWarehouseId = toObjectId(mainWarehouse._id, "mainWarehouseId");
+
+    /* ===============================
+       PRELOAD STOCK SNAPSHOTS
+       (SOURCE BRANCH IS TRUTH)
+    =============================== */
+    const variantIds = items.map(resolveVariantId);
+
+    const stockSnapshots = await db
+      .collection("stocks")
+      .find(
+        {
+          branchId: fromBranchId,
+          variantId: { $in: variantIds },
+        },
+        { session },
+      )
+      .toArray();
+
+    const stockMap = new Map(
+      stockSnapshots.map((s) => [s.variantId.toString(), s]),
+    );
+
+    let hasMismatch = false;
+
+    /* ===============================
+       PROCESS EACH ITEM
+    =============================== */
     for (const item of items) {
-      if (item.receivedQty !== item.sentQty) mismatch = true;
+      const transferItemId = toObjectId(item._id, "transferItemId");
+      const variantId = resolveVariantId(item);
 
+      const snapshot = stockMap.get(variantId.toString());
+      if (!snapshot) {
+        throw new Error(
+          `Stock snapshot not found for variant ${variantId.toString()}`,
+        );
+      }
+
+      const sentQty = Number(item.sentQty || 0);
+      const receivedQty = Number(item.receivedQty || 0);
+
+      if (receivedQty < 0 || receivedQty > sentQty) {
+        throw new Error(
+          `Invalid received quantity for variant ${variantId.toString()}`,
+        );
+      }
+
+      const mismatchQty = sentQty - receivedQty;
+      if (mismatchQty !== 0) hasMismatch = true;
+
+      /* ---------- Update transfer item ---------- */
       await db.collection("stock_transfer_items").updateOne(
-        { _id: new ObjectId(item._id) },
+        { _id: transferItemId },
         {
           $set: {
-            receivedQty: item.receivedQty,
-            status: item.receivedQty === item.sentQty ? "OK" : "MISMATCH",
+            receivedQty,
+            mismatchQty,
+            status: mismatchQty === 0 ? "RECEIVED" : "MISMATCH",
           },
         },
         { session },
       );
 
-      // ➕ Add to destination stock
-      await upsertStock({
-        db,
-        session,
-        branchId: req.body.toBranchId,
-        variantId: item.variantId,
-        qty: item.receivedQty,
-      });
+      /* ---------- Transfer IN (Destination) ---------- */
+      if (receivedQty > 0) {
+        await upsertStock({
+          db,
+          session,
+          branchId: toBranchId,
+          variantId: snapshot.variantId,
+          productId: snapshot.productId,
+          productName: snapshot.productName,
+          sku: snapshot.sku,
+          attributes: snapshot.attributes,
+          searchableText: snapshot.searchableText,
+          salePrice: snapshot.salePrice,
+          qty: receivedQty,
+        });
+
+        await recordStockMovement({
+          db,
+          session,
+          branchId: toBranchId,
+          variantId,
+          type: STOCK_MOVEMENT_TYPES.TRANSFER_IN,
+          qty: receivedQty,
+          refType: "STOCK_TRANSFER",
+          refId: transferId,
+        });
+      }
+
+      /* ---------- MISMATCH → MAIN WAREHOUSE ---------- */
+      if (mismatchQty > 0) {
+        await upsertStock({
+          db,
+          session,
+          branchId: mainWarehouseId,
+          variantId: snapshot.variantId,
+          productId: snapshot.productId,
+          productName: snapshot.productName,
+          sku: snapshot.sku,
+          attributes: snapshot.attributes,
+          searchableText: snapshot.searchableText,
+          salePrice: snapshot.salePrice,
+          qty: mismatchQty,
+        });
+
+        await recordStockMovement({
+          db,
+          session,
+          branchId: mainWarehouseId,
+          variantId,
+          type: STOCK_MOVEMENT_TYPES.TRANSFER_MISMATCH_IN,
+          qty: mismatchQty,
+          refType: "STOCK_TRANSFER",
+          refId: transferId,
+          note: "Mismatch during transfer receive",
+        });
+
+        await db.collection("stock_mismatches").insertOne(
+          {
+            transferId,
+            transferNo: transfer.transferNo,
+
+            transferItemId,
+            variantId,
+
+            sentQty,
+            receivedQty,
+            mismatchQty,
+
+            sourceBranchId: fromBranchId,
+            destinationBranchId: toBranchId,
+            tempWarehouseId: mainWarehouseId,
+
+            status: "PENDING",
+            createdAt: new Date(),
+            createdBy: toObjectId(req.user?._id, "userId"),
+          },
+          { session },
+        );
+      }
     }
 
+    /* ===============================
+       UPDATE TRANSFER HEADER
+    =============================== */
     await db.collection("stock_transfers").updateOne(
       { _id: transferId },
       {
         $set: {
-          status: mismatch ? "MISMATCH" : "RECEIVED",
+          status: hasMismatch ? "MISMATCH" : "RECEIVED",
           receivedAt: new Date(),
-          receivedBy: req.user._id,
+          receivedBy: toObjectId(req.user?._id, "userId"),
         },
       },
       { session },
@@ -684,7 +868,10 @@ export const receiveStockTransfer = async (req, res, next) => {
 
     await session.commitTransaction();
 
-    res.json({ success: true });
+    res.json({
+      success: true,
+      status: hasMismatch ? "MISMATCH" : "RECEIVED",
+    });
   } catch (err) {
     await session.abortTransaction();
     next(err);
@@ -693,17 +880,10 @@ export const receiveStockTransfer = async (req, res, next) => {
   }
 };
 
-
 export const listTransfersService = async ({ user, query }) => {
   const db = getDB();
 
-  const {
-    status,
-    fromBranchId,
-    toBranchId,
-    limit = 20,
-    page = 1,
-  } = query;
+  const { status, fromBranchId, toBranchId, limit = 20, page = 1 } = query;
 
   /* ===============================
      MATCH BUILDER (QUERY DRIVEN)
@@ -804,10 +984,7 @@ export const listTransfersService = async ({ user, query }) => {
 /* ===============================
    TRANSFER DETAILS (RECEIVE PAGE)
 =============================== */
-export const getTransferDetailsService = async ({
-  user,
-  transferId,
-}) => {
+export const getTransferDetailsService = async ({ user, transferId }) => {
   const db = getDB();
 
   if (!ObjectId.isValid(transferId)) {
@@ -973,4 +1150,206 @@ export const getTransferDetailsService = async ({
     success: true,
     data: transfer,
   };
+};
+
+// Mismatches
+export const listStockMismatches = async (req, res, next) => {
+  const db = getDB();
+
+  const { status = "PENDING", page = 1, limit = 20 } = req.query;
+
+  const match = {};
+  if (status) match.status = status;
+
+  const data = await db
+    .collection("stock_mismatches")
+    .aggregate([
+      { $match: match },
+
+      {
+        $lookup: {
+          from: "branches",
+          localField: "destinationBranchId",
+          foreignField: "_id",
+          as: "destinationBranch",
+        },
+      },
+      { $unwind: "$destinationBranch" },
+
+      {
+        $lookup: {
+          from: "product_variants",
+          localField: "variantId",
+          foreignField: "_id",
+          as: "variant",
+        },
+      },
+      { $unwind: "$variant" },
+
+      {
+        $project: {
+          mismatchQty: 1,
+          sentQty: 1,
+          receivedQty: 1,
+          status: 1,
+          createdAt: 1,
+
+          destinationBranchName: "$destinationBranch.name",
+          sku: "$variant.sku",
+          attributes: "$variant.attributes",
+        },
+      },
+
+      { $sort: { createdAt: -1 } },
+      { $skip: (page - 1) * limit },
+      { $limit: Number(limit) },
+    ])
+    .toArray();
+
+  res.json({
+    success: true,
+    data,
+    pagination: {
+      page: Number(page),
+      limit: Number(limit),
+      hasMore: data.length === Number(limit),
+    },
+  });
+};
+
+export const resolveStockMismatch = async (req, res, next) => {
+  const session = getDB().client.startSession();
+
+  try {
+    const db = getDB();
+    const mismatchId = new ObjectId(req.params.id);
+    const { resolutionType, note } = req.body;
+
+    session.startTransaction();
+
+    const mismatch = await db
+      .collection("stock_mismatches")
+      .findOne({ _id: mismatchId }, { session });
+
+    if (!mismatch) throw new Error("Mismatch not found");
+    if (mismatch.status === "RESOLVED")
+      throw new Error("Mismatch already resolved");
+
+    const qty = mismatch.mismatchQty;
+
+    /* ===============================
+       RESOLUTION TYPES
+    =============================== */
+
+    // 1️⃣ LOSS → remove from MAIN warehouse
+    if (resolutionType === "LOSS") {
+      await decrementStockCache({
+        db,
+        session,
+        branchId: mismatch.tempWarehouseId,
+        variantId: mismatch.variantId,
+        qty,
+      });
+
+      await recordStockMovement({
+        db,
+        session,
+        branchId: mismatch.tempWarehouseId,
+        variantId: mismatch.variantId,
+        type: STOCK_MOVEMENT_TYPES.STOCK_ADJUSTMENT,
+        qty: -qty,
+        refType: "STOCK_MISMATCH",
+        refId: mismatchId,
+        note: "Written off as loss",
+      });
+    }
+
+    // 2️⃣ FOUND → move to destination
+    if (resolutionType === "FOUND") {
+      await upsertStock({
+        db,
+        session,
+        branchId: mismatch.destinationBranchId,
+        variantId: mismatch.variantId,
+        qty,
+      });
+
+      await decrementStockCache({
+        db,
+        session,
+        branchId: mismatch.tempWarehouseId,
+        variantId: mismatch.variantId,
+        qty,
+      });
+
+      await recordStockMovement({
+        db,
+        session,
+        branchId: mismatch.destinationBranchId,
+        variantId: mismatch.variantId,
+        type: STOCK_MOVEMENT_TYPES.TRANSFER_ADJUSTMENT,
+        qty,
+        refType: "STOCK_MISMATCH",
+        refId: mismatchId,
+        note: "Recovered stock",
+      });
+    }
+
+    // 3️⃣ RETURN_TO_SOURCE
+    if (resolutionType === "RETURN_TO_SOURCE") {
+      await upsertStock({
+        db,
+        session,
+        branchId: mismatch.sourceBranchId,
+        variantId: mismatch.variantId,
+        qty,
+      });
+
+      await decrementStockCache({
+        db,
+        session,
+        branchId: mismatch.tempWarehouseId,
+        variantId: mismatch.variantId,
+        qty,
+      });
+
+      await recordStockMovement({
+        db,
+        session,
+        branchId: mismatch.sourceBranchId,
+        variantId: mismatch.variantId,
+        type: STOCK_MOVEMENT_TYPES.TRANSFER_ADJUSTMENT,
+        qty,
+        refType: "STOCK_MISMATCH",
+        refId: mismatchId,
+        note: "Returned to source branch",
+      });
+    }
+
+    /* ===============================
+       MARK RESOLVED
+    =============================== */
+    await db.collection("stock_mismatches").updateOne(
+      { _id: mismatchId },
+      {
+        $set: {
+          status: "RESOLVED",
+          resolutionType,
+          resolvedBy: req.user._id,
+          resolvedAt: new Date(),
+          note: note || null,
+        },
+      },
+      { session },
+    );
+
+    await session.commitTransaction();
+
+    res.json({ success: true });
+  } catch (err) {
+    await session.abortTransaction();
+    next(err);
+  } finally {
+    session.endSession();
+  }
 };

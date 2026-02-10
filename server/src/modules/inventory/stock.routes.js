@@ -1,8 +1,17 @@
 import { Router } from "express";
 import { authenticate } from "../../middlewares/auth.middleware.js";
-import { createStockTransfer, getAllStocks,getLowStock,getPosItems, getTransferItems } from "./stock.controller.js";
-import { getStockTransferDetails, listStockTransfers } from "./stockTransfer.controller.js";
-
+import {
+  createStockTransfer,
+  getAllStocks,
+  getLowStock,
+  getPosItems,
+  getTransferItems,
+  receiveStockTransfer,
+} from "./stock.controller.js";
+import {
+  getStockTransferDetails,
+  listStockTransfers,
+} from "./stockTransfer.controller.js";
 
 const router = Router();
 
@@ -15,5 +24,6 @@ router.get("/low", getLowStock);
 router.post("/transfers", createStockTransfer);
 router.get("/transfers", listStockTransfers);
 router.get("/transfers/:id", getStockTransferDetails);
+router.post("/transfers/:id/receive", receiveStockTransfer);
 
 export default router;
