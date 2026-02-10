@@ -108,6 +108,7 @@ const ReceiveStockTransferPage  = React.lazy(() => import("./pages/inventory/sto
 const StockAuditsListPage  = React.lazy(() => import("./pages/inventory/stockAudit/StockAuditsListPage"));
 const StockAuditsScanPage  = React.lazy(() => import("./pages/inventory/stockAudit/AuditScanPage"));
 const StockAuditsReportPage  = React.lazy(() => import("./pages/inventory/stockAudit/AuditReportPage"));
+const StockReportPage  = React.lazy(() => import("./pages/report/StockReportPage"));
 
 export default function App() {
   return (
@@ -130,6 +131,7 @@ export default function App() {
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<Dashboard />} />
 
+          <Route path="/reports/stocks" element={<StockReportPage  />} />
           <Route path="/stock-audit/report/:auditId" element={<StockAuditsReportPage  />} />
           <Route path="/stock-audit/manage" element={<StockAuditsListPage  />} />
           <Route path="/stock-audit/scan/:auditId" element={<StockAuditsScanPage  />} />

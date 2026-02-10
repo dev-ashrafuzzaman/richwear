@@ -235,6 +235,7 @@ export const SIDEBAR_MENU = [
         roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN],
         icon: BarChart3,
         submenu: [
+          { title: "Stocks Reports", to: "/reports/stocks" },
           { title: "Trial Balance", to: "/reports/trial-balance" },
           { title: "Profit & Loss", to: "/reports/profit-loss" },
           { title: "Balance Sheet", to: "/reports/balance-sheet" },
