@@ -11,6 +11,7 @@ import { getMainWarehouse } from "../branches/branch.utils.js";
 import { upsertStock } from "./stock.utils.js";
 import { recordStockMovement } from "./stockMovement.utils.js";
 import { STOCK_MOVEMENT_TYPES } from "../../config/constants/stockMovementTypes.js";
+import { buildStockReport } from "./stockReport.service.js";
 
 /* ======================================================
    Helpers
@@ -22,6 +23,24 @@ const toObjectId = (value, label) => {
     throw new Error(`${label} must be a valid ObjectId`);
   }
   return new ObjectId(value);
+};
+export const generateStockReport = async (req, res) => {
+  try {
+    const report = await buildStockReport({
+      user: req.user,
+      filters: req.body,
+    });
+
+    res.json({
+      success: true,
+      rows: report,
+    });
+  } catch (e) {
+    res.status(400).json({
+      success: false,
+      message: e.message || "Report generation failed",
+    });
+  }
 };
 
 const resolveVariantId = (item) => {

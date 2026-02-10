@@ -2,6 +2,7 @@ import { Router } from "express";
 import { authenticate } from "../../middlewares/auth.middleware.js";
 import {
   createStockTransfer,
+  generateStockReport,
   getAllStocks,
   getLowStock,
   getPosItems,
@@ -18,6 +19,7 @@ const router = Router();
 router.use(authenticate);
 
 router.get("/", getAllStocks);
+router.post("/report", generateStockReport);
 router.get("/pos-items", getPosItems);
 router.get("/transfer-items", getTransferItems);
 router.get("/low", getLowStock);
