@@ -14,7 +14,7 @@ export async function stocksIndexes(db) {
     {
       unique: true,
       name: "uniq_stock_branch_variant",
-    }
+    },
   );
 
   // 2️⃣ POS Barcode / SKU lookup
@@ -23,7 +23,7 @@ export async function stocksIndexes(db) {
     { branchId: 1, sku: 1 },
     {
       name: "idx_pos_branch_sku",
-    }
+    },
   );
 
   // 3️⃣ POS Typing Search
@@ -35,7 +35,7 @@ export async function stocksIndexes(db) {
       weights: {
         searchableText: 10,
       },
-    }
+    },
   );
 
   // 4️⃣ Cursor pagination safety
@@ -44,7 +44,7 @@ export async function stocksIndexes(db) {
     { branchId: 1, sku: 1, _id: 1 },
     {
       name: "idx_pos_cursor",
-    }
+    },
   );
 
   // 5️⃣ Low stock / dashboard
@@ -53,15 +53,20 @@ export async function stocksIndexes(db) {
     { branchId: 1, qty: 1 },
     {
       name: "idx_stock_qty",
-    }
+    },
   );
 
   /* ============================
      STOCK MOVEMENTS (Ledger)
   ============================ */
-  const movementsCol = db.collection("stock_movements");
+  const stock_auditCol = db.collection("stock_audit_items");
 
   // 6️⃣ FIFO consume (🔥 MOST IMPORTANT)
+  await ensureIndex(stock_auditCol, { auditId: 1, sku: 1 }, { unique: true });
+
+
+  const movementsCol = db.collection("stock_movements");
+
   await ensureIndex(
     movementsCol,
     {
@@ -73,7 +78,7 @@ export async function stocksIndexes(db) {
     },
     {
       name: "idx_fifo_consume",
-    }
+    },
   );
 
   // 7️⃣ Stock ledger report
@@ -86,7 +91,7 @@ export async function stocksIndexes(db) {
     },
     {
       name: "idx_stock_ledger",
-    }
+    },
   );
 
   // 8️⃣ Audit / closing stock
@@ -98,7 +103,7 @@ export async function stocksIndexes(db) {
     },
     {
       name: "idx_stock_audit",
-    }
+    },
   );
 
   // 9️⃣ Reference lookup (SALE / PURCHASE / TRANSFER)
@@ -110,6 +115,6 @@ export async function stocksIndexes(db) {
     },
     {
       name: "idx_stock_ref",
-    }
+    },
   );
 }

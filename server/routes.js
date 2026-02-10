@@ -25,6 +25,7 @@ import trialBalanceRoutes from "./src/modules/accounting/reports/trialBalance/tr
 import stockRoutes from "./src/modules/inventory/stock.routes.js";
 import adminRoutes from "./src/modules/administration/admin.route.js";
 import dashboardRoutes from "./src/modules/dashboard/dashboard.route.js";
+import stockAuditRoutes from "./src/modules/inventory/stockAudit/stockAudit.routes.js";
 
 
 import { authenticate } from "./src/middlewares/auth.middleware.js";
@@ -50,7 +51,9 @@ router.use("/purchases", purchaseRoutes);
 router.use("/attendance", attendanceRoutes);
 router.use("/sales", saleRoutes);
 router.use("/stocks", stockRoutes); 
+router.use("/audits", stockAuditRoutes); 
 router.use("/dashboard", dashboardRoutes); 
+
 
 // REPORTS ROUTES
 router.use("/reports/profit-loss", profitAndLossAdvanceRoutes);

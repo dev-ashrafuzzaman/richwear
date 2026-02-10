@@ -1,48 +1,38 @@
-import express from "express";
-import { validate } from "../../../middlewares/validate.middleware.js";
-
+import { Router } from "express";
 import {
-  startAudit,
-  scanItem,
-  updateQty,
-  submitAudit,
-  approveAudit
+  createAuditCtrl,
+  getAuditCtrl,
+  getAuditReportCtrl,
+  scanItemCtrl,
+  submitAuditCtrl
 } from "./stockAudit.controller.js";
+import { getAll } from "../../../controllers/base.controller.js";
 
-import {
-  startAuditSchema,
-  scanSchema,
-  updateQtySchema
-} from "./stockAudit.validation.js";
+const router = Router();
 
-const router = express.Router();
+// create audit
+router.post("/",  createAuditCtrl);
 
-router.post(
+router.get(
   "/",
-  validate(startAuditSchema),
-  startAudit
+  getAll({
+    collection: "stock_audits",
+    searchableFields: ["auditNo", "branchName", "status"],
+    filterableFields: ["status","startedAt"],
+  }),
 );
 
-router.post(
-  "/:auditId/scan",
-  validate(scanSchema),
-  scanItem
-);
 
-router.patch(
-  "/:auditId/items/:itemId",
-  validate(updateQtySchema),
-  updateQty
-);
 
-router.post(
-  "/:auditId/submit",
-  submitAudit
-);
+// get single audit (resume / view)
+router.get("/:auditId",  getAuditCtrl);
 
-router.post(
-  "/:auditId/approve",
-  approveAudit
-);
+// scan sku
+router.post("/:auditId/scan",  scanItemCtrl);
+
+// submit audit
+router.post("/:auditId/submit",  submitAuditCtrl);
+
+router.get("/:auditId/report",  getAuditReportCtrl);
 
 export default router;

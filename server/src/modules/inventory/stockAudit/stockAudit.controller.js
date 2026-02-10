@@ -1,41 +1,73 @@
+import withTransaction from "../../../utils/withTransaction.js";
 import * as service from "./stockAudit.service.js";
+import { getAuditReport } from "./stockAudit.service.js";
 
-export const startAudit = async (req, res, next) => {
+/* ===============================
+   CREATE AUDIT
+================================ */
+export const createAuditCtrl = async (req, res) => {
   try {
-    res.json(await service.startAudit(req));
+    const audit = await withTransaction((session) =>
+      service.createAudit(req.body.branchId, req.user._id, session)
+    );
+    res.json(audit);
   } catch (e) {
-    next(e);
+    res.status(400).json({ message: e.message });
   }
 };
 
-export const scanItem = async (req, res, next) => {
+/* ===============================
+   GET AUDIT (RESUME)
+================================ */
+export const getAuditCtrl = async (req, res) => {
   try {
-    res.json(await service.scanItem(req));
+    const data = await service.getAudit(req.params.auditId);
+    res.json(data);
   } catch (e) {
-    next(e);
+    res.status(404).json({ message: e.message });
   }
 };
 
-export const updateQty = async (req, res, next) => {
+/* ===============================
+   SCAN SKU  ✅ FIXED
+================================ */
+export const scanItemCtrl = async (req, res) => {
   try {
-    res.json(await service.updateQty(req));
+    const item = await withTransaction((session) =>
+      service.scanItem(
+        req.params.auditId,
+        req.body.sku,
+        session
+      )
+    );
+
+    // 🔥 ERP-grade delta response
+    res.json({ item });
   } catch (e) {
-    next(e);
+    res.status(400).json({ message: e.message });
   }
 };
 
-export const submitAudit = async (req, res, next) => {
+/* ===============================
+   SUBMIT AUDIT
+================================ */
+export const submitAuditCtrl = async (req, res) => {
   try {
-    res.json(await service.submitAudit(req));
+    const result = await withTransaction((session) =>
+      service.submitAudit(req.params.auditId, req.user._id, session)
+    );
+    res.json(result);
   } catch (e) {
-    next(e);
+    res.status(400).json({ message: e.message });
   }
 };
 
-export const approveAudit = async (req, res, next) => {
+
+export const getAuditReportCtrl = async (req, res) => {
   try {
-    res.json(await service.approveAudit(req));
+    const report = await getAuditReport(req.params.auditId);
+    res.json(report);
   } catch (e) {
-    next(e);
+    res.status(404).json({ message: e.message });
   }
 };
