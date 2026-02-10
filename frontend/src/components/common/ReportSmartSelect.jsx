@@ -213,9 +213,9 @@ export default function ReportSmartSelect({
             <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />
           )}
           {open ? (
-            <ChevronUp className="w-4 h-4 text-gray-500 flex-shrink-0" />
+            <ChevronUp className="w-4 h-4 text-gray-500 shrink-0" />
           ) : (
-            <ChevronDown className="w-4 h-4 text-gray-500 flex-shrink-0" />
+            <ChevronDown className="w-4 h-4 text-gray-500 shrink-0" />
           )}
         </div>
       </div>
@@ -294,7 +294,7 @@ export default function ReportSmartSelect({
                           {renderLabel(item)}
                         </span>
                         {isSelected && (
-                          <div className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" />
+                          <div className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />
                         )}
                       </div>
                     </div>
