@@ -40,7 +40,7 @@ const ReceiveStockTransferPage = () => {
         })),
       );
     });
-  }, [id]);
+  }, [id, request]);
 
   /* ===============================
      AUTO FOCUS SCAN

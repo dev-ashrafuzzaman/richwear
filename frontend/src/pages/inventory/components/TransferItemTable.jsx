@@ -40,7 +40,7 @@ const TransferItemsTable = ({ items, setItems }) => {
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
       {/* Table Header */}
-      <div className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
+      <div className="px-6 py-4 border-b border-gray-100 bg-linear-to-r from-gray-50 to-white">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-primary/10 rounded-lg">
@@ -107,7 +107,7 @@ const TransferItemsTable = ({ items, setItems }) => {
                   {/* Product Details */}
                   <td className="py-4 px-6">
                     <div className="flex items-start gap-3">
-                      <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg flex items-center justify-center">
+                      <div className="shrink-0 w-10 h-10 bg-linear-to-br from-blue-50 to-indigo-50 rounded-lg flex items-center justify-center">
                         <Package className="h-5 w-5 text-blue-600" />
                       </div>
                       <div>
@@ -222,7 +222,7 @@ const TransferItemsTable = ({ items, setItems }) => {
 
       {/* Mobile Cards View */}
       <div className="lg:hidden divide-y divide-gray-100">
-        {items.map((i, index) => {
+        {items.map((i) => {
           const isMax = i.qty === i.availableQty;
           const availablePercentage = (i.qty / i.availableQty) * 100;
 
@@ -233,7 +233,7 @@ const TransferItemsTable = ({ items, setItems }) => {
             >
               <div className="flex justify-between items-start mb-3">
                 <div className="flex items-start gap-3 flex-1">
-                  <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg flex items-center justify-center">
+                  <div className="shrink-0 w-12 h-12 bg-linear-to-br from-blue-50 to-indigo-50 rounded-lg flex items-center justify-center">
                     <Package className="h-6 w-6 text-blue-600" />
                   </div>
                   <div className="flex-1 min-w-0">

@@ -105,6 +105,9 @@ const MembershipsPage = React.lazy(() => import("./pages/parties/membership/Memb
 const LoyaltySettingPage = React.lazy(() => import("./pages/setting/loyalty/LoyaltySettingPage"));
 const MembershipOverviewPage  = React.lazy(() => import("./pages/parties/membership/MembershipOverviewPage"));
 const ReceiveStockTransferPage  = React.lazy(() => import("./pages/inventory/stock/ReceiveStockTransferPage"));
+const StockAuditsListPage  = React.lazy(() => import("./pages/inventory/stockAudit/StockAuditsListPage"));
+const StockAuditsScanPage  = React.lazy(() => import("./pages/inventory/stockAudit/AuditScanPage"));
+const StockAuditsReportPage  = React.lazy(() => import("./pages/inventory/stockAudit/AuditReportPage"));
 
 export default function App() {
   return (
@@ -127,6 +130,9 @@ export default function App() {
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<Dashboard />} />
 
+          <Route path="/stock-audit/report/:auditId" element={<StockAuditsReportPage  />} />
+          <Route path="/stock-audit/manage" element={<StockAuditsListPage  />} />
+          <Route path="/stock-audit/scan/:auditId" element={<StockAuditsScanPage  />} />
           <Route path="/memberships/:customerId" element={<MembershipOverviewPage  />} />
           <Route path="/inventory/receive-transfer/:id" element={<ReceiveStockTransferPage  />} />
           <Route path="/settings/loyalty" element={<LoyaltySettingPage />} />

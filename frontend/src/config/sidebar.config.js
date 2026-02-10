@@ -19,6 +19,7 @@ import {
   Activity,
   DollarSignIcon,
   DiscIcon,
+  SendToBack,
 } from "lucide-react";
 import { ROLES } from "../constants/roles";
 
@@ -146,6 +147,21 @@ export const SIDEBAR_MENU = [
             title: "Low Stock Report",
             roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN],
             to: "/inventory/low-stock",
+          },
+        ],
+      },
+      {
+        title: "Stock Audit",
+        icon: SendToBack,
+        roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN],
+        submenu: [
+          {
+            title: "Manage Audit",
+            to: "/stock-audit/manage",
+          },
+          {
+            title: "New Audit",
+            to: "/stock-audits/create",
           },
         ],
       },

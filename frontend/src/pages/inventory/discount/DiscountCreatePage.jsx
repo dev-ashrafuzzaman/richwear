@@ -60,7 +60,7 @@ export default function DiscountCreatePage() {
     });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4 md:p-6">
+    <div className="min-h-screen bg-linear-to-br from-gray-50 to-gray-100 p-4 md:p-6">
       <div className="max-w-3xl mx-auto">
         <div className="mb-8">
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Create Discount Campaign</h1>
@@ -185,7 +185,7 @@ export default function DiscountCreatePage() {
               />
               
               {form.targetLabel && (
-                <div className="px-4 py-3 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100">
+                <div className="px-4 py-3 rounded-xl bg-linear-to-r from-blue-50 to-indigo-50 border border-blue-100">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-gray-600">Selected Target</p>
@@ -264,7 +264,7 @@ export default function DiscountCreatePage() {
               <button
                 onClick={submit}
                 disabled={loading}
-                className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium py-3.5 px-6 rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/25"
+                className="flex-1 bg-linear-to-r from-blue-600 to-indigo-600 text-white font-medium py-3.5 px-6 rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/25"
               >
                 {loading ? (
                   <div className="flex items-center justify-center gap-2">

@@ -137,7 +137,7 @@ export default function StockTransferDetailsModal({ isOpen, setIsOpen, data }) {
       {/* ================= MAIN CONTENT ================= */}
       <div className="px-8 py-8 space-y-8">
         {/* Branch Transfer Flow */}
-        <div className="bg-gradient-to-br from-gray-50 to-white rounded-2xl border border-gray-200 p-6">
+        <div className="bg-linear-to-br from-gray-50 to-white rounded-2xl border border-gray-200 p-6">
           <div className="grid grid-cols-3 gap-8">
             {/* From Branch */}
             <div className="space-y-3">
@@ -277,10 +277,10 @@ export default function StockTransferDetailsModal({ isOpen, setIsOpen, data }) {
                   <th className="py-4 px-6 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                     Attributes
                   </th>
-                  <th className="py-4 px-6 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider text-center">
+                  <th className="py-4 px-6 text-xs font-semibold text-gray-700 uppercase tracking-wider text-center">
                     Sent Qty
                   </th>
-                  <th className="py-4 px-6 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider text-center">
+                  <th className="py-4 px-6 text-xs font-semibold text-gray-700 uppercase tracking-wider text-center">
                     Received Qty
                   </th>
                   <th className="py-4 px-6 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
@@ -398,7 +398,7 @@ export default function StockTransferDetailsModal({ isOpen, setIsOpen, data }) {
         </div>
 
         {/* Progress Summary */}
-        <div className="bg-gradient-to-r from-gray-50 to-white rounded-2xl border border-gray-200 p-6">
+        <div className="bg-linear-to-r from-gray-50 to-white rounded-2xl border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-4">
             <h4 className="text-lg font-semibold text-gray-900">
               Transfer Progress
