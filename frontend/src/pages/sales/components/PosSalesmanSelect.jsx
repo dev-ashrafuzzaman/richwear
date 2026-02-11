@@ -8,7 +8,7 @@ const PosSalesmanSelect = forwardRef(({ value, onChange }, ref) => {
 
     return {
       value: value._id,
-      label: `${value.code} — ${value.personal.name}`,
+      label: `${value.code} — ${value.name}`,
       raw: value,
     };
   }, [value]);
@@ -29,8 +29,8 @@ const PosSalesmanSelect = forwardRef(({ value, onChange }, ref) => {
 
           <SmartSelect
             ref={ref}                 // 🔥 expose ref
-            customRoute="/employees?role=salesman"
-            displayField={["code", "personal.name"]}
+            customRoute="/employees?role=Salesman"
+            displayField={[ "name", "code"]}
             idField="_id"
             placeholder="Search salesman"
             preLoad

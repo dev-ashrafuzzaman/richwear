@@ -27,23 +27,17 @@ export default function EmployeeCreateModal({ isOpen, setIsOpen, refetch }) {
     formState: { errors },
   } = useForm({
     defaultValues: {
-      personal: {
-        name: "",
-        fatherName: "",
-        dob: "",
-        gender: "",
-      },
-      contact: {
-        phone: "",
-        email: "",
-        address: "",
-      },
-      employment: {
-        role: "",
-        designation: "",
-        joiningDate: "",
-        branchId: null,
-      },
+      name: "",
+      fatherName: "",
+      dob: "",
+      gender: "",
+      phone: "",
+      email: "",
+      address: "",
+      role: "",
+      designation: "",
+      joiningDate: "",
+      branchId: null,
       payroll: {
         salaryType: "monthly",
         baseSalary: "",
@@ -72,11 +66,12 @@ export default function EmployeeCreateModal({ isOpen, setIsOpen, refetch }) {
   const commissionType = watch("payroll.commissionType");
 
   const onSubmit = async (data) => {
+    console.log("data",data)
     if (data.payroll.commissionType && !data.payroll.commissionValue) {
       return toast.error("Commission value is required");
     }
 
-    await request("/employees", "POST", data, {
+   const res = await request("/employees", "POST", data, {
       successMessage: "Employee created successfully",
       onSuccess: () => {
         reset();
@@ -84,6 +79,7 @@ export default function EmployeeCreateModal({ isOpen, setIsOpen, refetch }) {
         refetch?.();
       },
     });
+    console.log("Payrole",res)
   };
 
   return (
@@ -100,7 +96,8 @@ export default function EmployeeCreateModal({ isOpen, setIsOpen, refetch }) {
           <Button
             variant="outline"
             onClick={() => setIsOpen(false)}
-            className="px-6 hover:bg-gray-50 transition-colors">
+            className="px-6 hover:bg-gray-50 transition-colors"
+          >
             Cancel
           </Button>
 
@@ -109,11 +106,13 @@ export default function EmployeeCreateModal({ isOpen, setIsOpen, refetch }) {
             disabled={loading}
             prefix={loading && <Loader2 className="w-4 h-4 animate-spin" />}
             variant="gradient"
-            className="px-8 bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-sm">
+            className="px-8 bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-sm"
+          >
             Create Employee
           </Button>
         </div>
-      }>
+      }
+    >
       <div className="flex flex-col gap-6 p-1">
         {/* ================= PERSONAL INFO ================= */}
         <section className="rounded-2xl border border-gray-100 bg-linear-to-br from-white to-blue-50/30 p-6 shadow-sm">
@@ -132,8 +131,8 @@ export default function EmployeeCreateModal({ isOpen, setIsOpen, refetch }) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <Input
               label="Employee Name"
-              error={errors.personal?.name?.message}
-              {...register("personal.name", {
+              error={errors?.name?.message}
+              {...register("name", {
                 required: "Name is required",
               })}
               className="bg-white focus:bg-white border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
@@ -141,14 +140,14 @@ export default function EmployeeCreateModal({ isOpen, setIsOpen, refetch }) {
 
             <Input
               label="Father Name"
-              {...register("personal.fatherName")}
+              {...register("fatherName")}
               className="bg-white focus:bg-white border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
             />
 
             <Input
               label="Date of Birth"
               type="date"
-              {...register("personal.dob")}
+              {...register("dob")}
               className="bg-white focus:bg-white border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
             />
 
@@ -157,8 +156,9 @@ export default function EmployeeCreateModal({ isOpen, setIsOpen, refetch }) {
                 Gender
               </label>
               <select
-                {...register("personal.gender")}
-                className="w-full px-4 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-800 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 outline-none transition-all">
+                {...register("gender")}
+                className="w-full px-4 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-800 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 outline-none transition-all"
+              >
                 <option value="" className="text-gray-400">
                   Select Gender
                 </option>
@@ -195,7 +195,7 @@ export default function EmployeeCreateModal({ isOpen, setIsOpen, refetch }) {
               label="Phone"
               placeholder="017XXXXXXXX"
               error={errors.contact?.phone?.message}
-              {...register("contact.phone", {
+              {...register("phone", {
                 required: "Phone is required",
                 pattern: {
                   value: /^(01)[0-9]{9}$/,
@@ -208,14 +208,14 @@ export default function EmployeeCreateModal({ isOpen, setIsOpen, refetch }) {
             <Input
               label="Email"
               type="email"
-              {...register("contact.email")}
+              {...register("email")}
               className="bg-white focus:bg-white border-gray-200 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100"
             />
 
             <div className="md:col-span-2">
               <Input
                 label="Address"
-                {...register("contact.address")}
+                {...register("address")}
                 className="bg-white focus:bg-white border-gray-200 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100"
               />
             </div>
@@ -244,37 +244,38 @@ export default function EmployeeCreateModal({ isOpen, setIsOpen, refetch }) {
                 Role <span className="text-red-500">*</span>
               </label>
               <select
-                {...register("employment.role", {
+                {...register("role", {
                   required: "Role is required",
                 })}
-                className="w-full px-4 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-800 focus:border-purple-400 focus:ring-2 focus:ring-purple-100 outline-none transition-all">
+                className="w-full px-4 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-800 focus:border-purple-400 focus:ring-2 focus:ring-purple-100 outline-none transition-all"
+              >
                 <option value="" className="text-gray-400">
                   Select Role
                 </option>
-                <option value="ADMIN" className="text-gray-800">
+                <option value="Admin" className="text-gray-800">
                   Admin
                 </option>
-                <option value="MANAGER" className="text-gray-800">
+                <option value="Manager" className="text-gray-800">
                   Manager
                 </option>
-                <option value="CASHIER" className="text-gray-800">
+                <option value="Cashier" className="text-gray-800">
                   Cashier
                 </option>
-                <option value="SALESMAN" className="text-gray-800">
+                <option value="Salesman" className="text-gray-800">
                   Sales Man
                 </option>
               </select>
-              {errors.employment?.role && (
+              {errors?.role && (
                 <p className="mt-1 text-sm text-red-600">
-                  {errors.employment.role.message}
+                  {errors.role.message}
                 </p>
               )}
             </div>
 
             <Input
               label="Designation"
-              error={errors.employment?.designation?.message}
-              {...register("employment.designation", {
+              error={errors?.designation?.message}
+              {...register("designation", {
                 required: "Designation is required",
               })}
               className="bg-white focus:bg-white border-gray-200 focus:border-purple-400 focus:ring-2 focus:ring-purple-100"
@@ -283,12 +284,12 @@ export default function EmployeeCreateModal({ isOpen, setIsOpen, refetch }) {
             <Input
               label="Joining Date"
               type="date"
-              {...register("employment.joiningDate")}
+              {...register("joiningDate")}
               className="bg-white focus:bg-white border-gray-200 focus:border-purple-400 focus:ring-2 focus:ring-purple-100"
             />
 
             <Controller
-              name="employment.branchId"
+              name="branchId"
               control={control}
               rules={{ required: "Branch is required" }}
               render={({ field }) => (
@@ -301,7 +302,7 @@ export default function EmployeeCreateModal({ isOpen, setIsOpen, refetch }) {
                     loadOptions={loadBranches}
                     value={field.value}
                     onChange={field.onChange}
-                    error={errors.employment?.branchId?.message}
+                    error={errors?.branchId?.message}
                     className="border-gray-200 focus:border-purple-400 focus:ring-2 focus:ring-purple-100"
                   />
                 </div>
@@ -331,7 +332,8 @@ export default function EmployeeCreateModal({ isOpen, setIsOpen, refetch }) {
               </label>
               <select
                 {...register("payroll.salaryType")}
-                className="w-full px-4 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-800 focus:border-amber-400 focus:ring-2 focus:ring-amber-100 outline-none transition-all">
+                className="w-full px-4 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-800 focus:border-amber-400 focus:ring-2 focus:ring-amber-100 outline-none transition-all"
+              >
                 <option value="monthly" className="text-gray-800">
                   Monthly
                 </option>
@@ -359,7 +361,8 @@ export default function EmployeeCreateModal({ isOpen, setIsOpen, refetch }) {
               </label>
               <select
                 {...register("payroll.commissionType")}
-                className="w-full px-4 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-800 focus:border-amber-400 focus:ring-2 focus:ring-amber-100 outline-none transition-all">
+                className="w-full px-4 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-800 focus:border-amber-400 focus:ring-2 focus:ring-amber-100 outline-none transition-all"
+              >
                 <option value="" className="text-gray-400">
                   No Commission
                 </option>

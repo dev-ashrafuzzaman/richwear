@@ -22,11 +22,11 @@ const EmployeePage = () => {
         headerActions={[{variant: "gradient", label: "Add Employee", onClick: () => openModal("addEmployee")}]}
         columns={[
           { key: "code", label: "Code" },
-          { key: "personal.name", label: "Name" },
-          { key: "contact.phone", label: "Phone" },
-          { key: "contact.address", label: "Address" },
-          { key: "employment.role", label: "Role" },
-          { key: "employment.designation", label: "Designation" },
+          { key: "name", label: "Name" },
+          { key: "phone", label: "Phone" },
+          { key: "address", label: "Address" },
+          { key: "role", label: "Role" },
+          { key: "designation", label: "Designation" },
           { key: "createdAt", label: "Created At" },
           {
             key: "status",

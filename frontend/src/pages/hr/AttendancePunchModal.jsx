@@ -47,7 +47,7 @@ export default function AttendancePunchModal({
     );
 
     return res?.data?.map((e) => ({
-      label: `${e.personal.name} (${e.code})`,
+      label: `${e.name} (${e.code})`,
       value: e._id,
     }));
   };

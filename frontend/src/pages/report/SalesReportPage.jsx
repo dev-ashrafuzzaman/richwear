@@ -399,8 +399,8 @@ export default function SalesReportPage() {
                 render={({ field }) => (
                   <ReportSmartSelect
                     route="/employees"
-                    extraParams={{ roleName: "Salesman" }}
-                    displayField={["code", "name"]}
+                    extraParams={{ role: "Salesman" }}
+                    displayField={["name","code" ]}
                     value={field.value}
                     onChange={field.onChange}
                     placeholder="Select salesperson"

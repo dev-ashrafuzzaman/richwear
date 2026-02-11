@@ -91,7 +91,6 @@ export default function UserCreateModal({ isOpen, setIsOpen, refetch }) {
       }
     >
       <div className="space-y-4">
-
         {/* 👤 Employee */}
         {!isSuperAdmin && (
           <Controller
@@ -99,11 +98,11 @@ export default function UserCreateModal({ isOpen, setIsOpen, refetch }) {
             control={control}
             rules={{ required: "Employee is required" }}
             render={({ field }) => (
-              <SmartSelect 
+              <SmartSelect
                 key={`emp-${isOpen}`}
                 label="Employee"
                 customRoute="/employees"
-                displayField={["code", "personal.name"]}
+                displayField={["role", "code", "name"]}
                 idField="_id"
                 preLoad={true}
                 placeholder="Search employee"
@@ -191,8 +190,7 @@ export default function UserCreateModal({ isOpen, setIsOpen, refetch }) {
             error={errors.confirmPassword?.message}
             {...register("confirmPassword", {
               required: "Confirm password",
-              validate: (v) =>
-                v === password || "Passwords do not match",
+              validate: (v) => v === password || "Passwords do not match",
             })}
           />
           <button
@@ -203,7 +201,6 @@ export default function UserCreateModal({ isOpen, setIsOpen, refetch }) {
             {showConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
           </button>
         </div>
-
       </div>
     </Modal>
   );

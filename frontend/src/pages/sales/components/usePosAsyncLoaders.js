@@ -34,7 +34,7 @@ export default function usePosAsyncLoaders() {
       );
 
       return res?.data?.map((e) => ({
-        label: `${e.code} - ${e.personal?.name}`,
+        label: `${e.code} - ${e?.name}`,
         value: e._id,
         raw: e,
       }));
