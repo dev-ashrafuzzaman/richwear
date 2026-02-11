@@ -175,6 +175,9 @@ export const createSaleService = async ({ db, payload, user }) => {
           customerId: payload.customerId
             ? new ObjectId(payload.customerId)
             : null,
+          salesmanId: payload.salesmanId
+            ? new ObjectId(payload.salesmanId)
+            : null,
           subTotal,
           itemDiscount,
           billDiscount,

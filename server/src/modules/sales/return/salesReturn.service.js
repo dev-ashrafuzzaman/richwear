@@ -42,9 +42,7 @@ export const createSalesReturnService = async ({
 
     const branch = await resolveBranch({ db, user, session });
     const branchId = ensureObjectId(sale.branchId, "branchId");
-    const customerId = sale.customerId
-      ? ensureObjectId(sale.customerId)
-      : null;
+    const customerId = sale.customerId ? ensureObjectId(sale.customerId) : null;
 
     const saleItems = await db
       .collection(COLLECTIONS.SALE_ITEMS)
@@ -55,9 +53,7 @@ export const createSalesReturnService = async ({
       throw new Error("Sale items not found");
     }
 
-    const saleItemMap = new Map(
-      saleItems.map((i) => [i._id.toString(), i]),
-    );
+    const saleItemMap = new Map(saleItems.map((i) => [i._id.toString(), i]));
 
     /* =====================
        2️⃣ RETURN INVOICE
@@ -102,63 +98,63 @@ export const createSalesReturnService = async ({
       );
 
     /* =====================
-       5️⃣ PROCESS EACH ITEM
-    ====================== */
+   5️⃣ PROCESS EACH ITEM (OPTIMIZED)
+====================== */
+
     for (const r of payload.items) {
-      const saleItem = saleItemMap.get(r.saleItemId);
+      const saleItem = saleItemMap.get(r.saleItemId?.toString());
       if (!saleItem) {
         throw new Error("Invalid saleItemId");
       }
 
+      /* ---------- RETURN QTY VALIDATION (MULTI RETURN SAFE) ---------- */
       const returnQty = Number(r.qty);
-      if (returnQty <= 0 || returnQty > saleItem.qty) {
-        throw new Error("Invalid return quantity");
+
+      const alreadyReturnedQty = saleItem.returnedQty || 0;
+      const remainingQty = saleItem.qty - alreadyReturnedQty;
+
+      if (
+        !Number.isFinite(returnQty) ||
+        returnQty <= 0 ||
+        returnQty > remainingQty
+      ) {
+        throw new Error(
+          `Invalid return quantity. Remaining allowed: ${remainingQty}`,
+        );
       }
 
       totalReturnQty += returnQty;
 
       /* ---------- GROSS ---------- */
-      const unitGross = roundMoney(
-        saleItem.salePrice
-      );
+      const unitGross = roundMoney(Number(saleItem.salePrice || 0));
       const returnGross = roundMoney(unitGross * returnQty);
 
-      /* ---------- ITEM DISCOUNT ---------- */
-      const unitItemDiscount = roundMoney(
-        saleItem.discountAmount / saleItem.qty
-      );
-      const returnItemDiscount = roundMoney(
-        unitItemDiscount * returnQty
-      );
+      /* ---------- ITEM DISCOUNT (NEW STRUCTURE SAFE) ---------- */
+      const totalItemDiscount = Number(saleItem.discount?.amount || 0);
 
-      /* ---------- BILL DISCOUNT (PROPORTIONAL) ---------- */
+      const unitItemDiscount =
+        saleItem.qty > 0 ? roundMoney(totalItemDiscount / saleItem.qty) : 0;
+
+      const returnItemDiscount = roundMoney(unitItemDiscount * returnQty);
+
+      /* ---------- BILL DISCOUNT (PROPORTIONAL SAFE) ---------- */
       const billDiscountRatio =
-        sale.subTotal > 0
-          ? sale.billDiscount / sale.subTotal
-          : 0;
+        sale.subTotal > 0 ? Number(sale.billDiscount || 0) / sale.subTotal : 0;
 
-      const returnBillDiscount = roundMoney(
-        returnGross * billDiscountRatio
-      );
+      const returnBillDiscount = roundMoney(returnGross * billDiscountRatio);
 
-      /* ---------- VAT (PROPORTIONAL) ---------- */
+      /* ---------- VAT (PROPORTIONAL SAFE) ---------- */
       const vatRatio =
-        sale.subTotal > 0
-          ? sale.taxAmount / sale.subTotal
-          : 0;
+        sale.subTotal > 0 ? Number(sale.taxAmount || 0) / sale.subTotal : 0;
 
-      const returnVat = roundMoney(
-        returnGross * vatRatio
-      );
+      const returnVat = roundMoney(returnGross * vatRatio);
 
       /* ---------- FINAL REFUND ---------- */
       const refundAmount = roundMoney(
-        returnGross -
-          returnItemDiscount -
-          returnBillDiscount +
-          returnVat
+        returnGross - returnItemDiscount - returnBillDiscount + returnVat,
       );
 
+      /* ---------- ACCUMULATE TOTALS ---------- */
       returnGrossTotal += returnGross;
       returnDiscountTotal += returnItemDiscount + returnBillDiscount;
       returnVatTotal += returnVat;
@@ -174,12 +170,21 @@ export const createSalesReturnService = async ({
           sku: saleItem.sku,
           qty: returnQty,
           returnGross,
-          returnDiscount:
-            returnItemDiscount + returnBillDiscount,
+          returnDiscount: returnItemDiscount + returnBillDiscount,
           returnVat,
           refundAmount,
           reason: r.reason || null,
           createdAt: new Date(),
+        },
+        { session },
+      );
+
+      /* ---------- UPDATE SALE ITEM RETURNED QTY ---------- */
+      await db.collection(COLLECTIONS.SALE_ITEMS).updateOne(
+        { _id: saleItem._id },
+        {
+          $inc: { returnedQty: returnQty },
+          $set: { updatedAt: new Date() },
         },
         { session },
       );
@@ -196,7 +201,7 @@ export const createSalesReturnService = async ({
 
       totalReturnCogs += cogs;
 
-      /* ---------- STOCK CACHE ---------- */
+      /* ---------- STOCK CACHE UPDATE ---------- */
       await db.collection(COLLECTIONS.STOCKS).updateOne(
         { branchId, variantId: saleItem.variantId },
         {
@@ -210,8 +215,7 @@ export const createSalesReturnService = async ({
     /* =====================
        6️⃣ FINAL STATUS
     ====================== */
-    const totalReturnedSoFar =
-      (sale.returnedAmount || 0) + refundAmountTotal;
+    const totalReturnedSoFar = (sale.returnedAmount || 0) + refundAmountTotal;
 
     const status =
       totalReturnedSoFar >= sale.grandTotal
@@ -252,10 +256,7 @@ export const createSalesReturnService = async ({
       returnDiscount: returnDiscountTotal,
       returnVat: returnVatTotal,
       refundAmount: refundAmountTotal,
-      dueAdjust:
-        payload.refundMethod === "ADJUST_DUE"
-          ? refundAmountTotal
-          : 0,
+      dueAdjust: payload.refundMethod === "ADJUST_DUE" ? refundAmountTotal : 0,
       customerId,
       branchId,
     });
@@ -271,8 +272,7 @@ export const createSalesReturnService = async ({
     /* =====================
        8️⃣ COMMISSION REVERSAL
     ====================== */
-    const returnRatio =
-      refundAmountTotal / sale.grandTotal;
+    const returnRatio = refundAmountTotal / sale.grandTotal;
 
     await reverseSaleCommission({
       db,
@@ -302,7 +302,6 @@ export const createSalesReturnService = async ({
     if (ownSession) session.endSession();
   }
 };
-
 
 export const createSalesExchangeService = async ({
   db,

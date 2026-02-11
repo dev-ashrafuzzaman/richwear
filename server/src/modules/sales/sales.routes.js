@@ -12,11 +12,13 @@ import { getPaymentMethods, getSingleSale } from "./sales.service.js";
 import { getAll } from "../../controllers/base.controller.js";
 import { createSalesReturn } from "./return/salesReturn.controller.js";
 import { getSalesReturns } from "./return/salesReturn.service.js";
+import { salesReportController } from "./salesReport/salesReport.controller.js";
 
 const router = Router();
 
 router.use(authenticate);
 
+router.post("/reports", salesReportController);
 router.post("/", beforeCreateSale, createSale);
 router.get("/:saleId/reprint", reprintSale);
 router.get(
