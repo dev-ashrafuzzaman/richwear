@@ -34,7 +34,7 @@ router.get(
   getAll({
     collection: COLLECTION,
     searchableFields: ["name", "phone", "email", "role"],
-    filterableFields: ["status", "role"],
+    filterableFields: ["status", "role","branchId"],
   }),
 );
 

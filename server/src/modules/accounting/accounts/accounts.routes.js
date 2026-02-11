@@ -32,10 +32,5 @@ router.post(
   createAccount
 );
 
-router.patch(
-  "/:id",
-  validate(updateAccountSchema),
-  updateAccount
-);
 
 export default router;

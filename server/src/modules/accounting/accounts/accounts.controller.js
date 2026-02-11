@@ -41,14 +41,108 @@ export const getAllAccounts = async (req, res, next) => {
   try {
     const db = getDB();
 
-    const accounts = await db.collection("accounts")
-      .find({})
+    const {
+      page = 1,
+      limit = 20,
+      search,
+      type,
+      subType,
+      parentId,
+      isSystem,
+      branchId,
+      code,
+      level,
+    } = req.query;
+
+    const pageNo = Math.max(parseInt(page), 1);
+    const limitNo = Math.min(parseInt(limit), 100);
+    const skip = (pageNo - 1) * limitNo;
+
+    const filter = {};
+
+    /* ======================
+       SEARCH (name + code)
+    ====================== */
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { code: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    /* ======================
+       FILTER BY TYPE
+    ====================== */
+    if (type) {
+      filter.type = type;
+    }
+
+    /* ======================
+       FILTER BY SUBTYPE
+    ====================== */
+    if (subType) {
+      filter.subType = subType;
+    }
+
+    /* ======================
+       FILTER BY CODE
+    ====================== */
+    if (code) {
+      filter.code = code;
+    }
+
+    /* ======================
+       FILTER BY PARENT
+    ====================== */
+    if (parentId) {
+      filter.parentId = new ObjectId(parentId);
+    }
+
+    /* ======================
+       FILTER BY SYSTEM
+    ====================== */
+    if (isSystem !== undefined) {
+      filter.isSystem = isSystem === "true";
+    }
+
+    /* ======================
+       FILTER BY BRANCH
+    ====================== */
+    if (branchId === "null") {
+      filter.branchId = null;
+    } else if (branchId) {
+      filter.branchId = new ObjectId(branchId);
+    }
+
+    /* ======================
+       LEAF LEVEL ONLY
+       (No children)
+    ====================== */
+    if (level === "leaf") {
+      const parentIds = await db.collection("accounts")
+        .distinct("parentId");
+
+      filter._id = { $nin: parentIds.filter(Boolean) };
+    }
+
+    const total = await db.collection("accounts").countDocuments(filter);
+
+    const data = await db.collection("accounts")
+      .find(filter)
       .sort({ code: 1 })
+      .skip(skip)
+      .limit(limitNo)
       .toArray();
 
     res.json({
       success: true,
-      data: accounts
+      data,
+      pagination: {
+        page: pageNo,
+        limit: limitNo,
+        total,
+        hasMore: skip + data.length < total,
+      },
     });
   } catch (err) {
     next(err);

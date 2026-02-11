@@ -26,7 +26,9 @@ import stockRoutes from "./src/modules/inventory/stock.routes.js";
 import adminRoutes from "./src/modules/administration/admin.route.js";
 import dashboardRoutes from "./src/modules/dashboard/dashboard.route.js";
 import stockAuditRoutes from "./src/modules/inventory/stockAudit/stockAudit.routes.js";
-
+import expensesRoutes from "./src/modules/accounting/expenses/expense.routes.js";
+import accountsRoutes from "./src/modules/accounting/accounts/accounts.routes.js";
+import payrollRoutes from "./src/modules/hr/payroll/payroll.routes.js";
 
 import { authenticate } from "./src/middlewares/auth.middleware.js";
 
@@ -35,6 +37,7 @@ const router = Router();
 router.use("/auth", authRoutes);
 
 router.use(authenticate);
+router.use("/payroll", payrollRoutes);
 router.use("/memberships", membershipRoutes);
 router.use("/discounts", discountRoutes);
 router.use("/activities", adminRoutes);
@@ -50,10 +53,12 @@ router.use("/suppliers", supplierRoutes);
 router.use("/purchases", purchaseRoutes);
 router.use("/attendance", attendanceRoutes);
 router.use("/sales", saleRoutes);
-router.use("/stocks", stockRoutes); 
-router.use("/audits", stockAuditRoutes); 
-router.use("/dashboard", dashboardRoutes); 
+router.use("/stocks", stockRoutes);
+router.use("/audits", stockAuditRoutes);
+router.use("/accounts", accountsRoutes);
+router.use("/expenses", expensesRoutes);
 
+router.use("/dashboard", dashboardRoutes);
 
 // REPORTS ROUTES
 router.use("/reports/profit-loss", profitAndLossAdvanceRoutes);
@@ -62,6 +67,5 @@ router.use("/reports/balance-sheet", balanceSheetRoutes);
 router.use("/reports/close-year", closingRoutes);
 router.use("/reports/statement", statementRoutes);
 router.use("/reports/trial-balance", trialBalanceRoutes);
-
 
 export default router;

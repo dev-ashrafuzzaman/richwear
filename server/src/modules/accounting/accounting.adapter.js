@@ -17,9 +17,9 @@ export const salesAccounting = async ({
   db,
   session,
   saleId,
-  grossAmount,        // subTotal
+  grossAmount, // subTotal
   discountAmount = 0, // itemDiscount + billDiscount
-  vatAmount = 0,      // taxAmount
+  vatAmount = 0, // taxAmount
   payments = [],
   customerId,
   branchId,
@@ -115,7 +115,6 @@ export const salesAccounting = async ({
   });
 };
 
-
 /* ======================================================
    SALES COGS ACCOUNTING (FIFO)
 ====================================================== */
@@ -155,9 +154,6 @@ export const salesCogsAccounting = async ({
   });
 };
 
-/* ======================================================
-   SALES RETURN ACCOUNTING
-====================================================== */
 /* ======================================================
    SALES RETURN ACCOUNTING (V2 - SAFE & FLEXIBLE)
 ====================================================== */
@@ -227,7 +223,6 @@ export const salesReturnAccounting = async ({
   });
 };
 
-
 export const salesReturnCogsAccounting = async ({
   db,
   session,
@@ -272,26 +267,22 @@ export const purchaseAccounting = async ({
   session,
   purchaseId,
   totalAmount,
+  paymentAccountId = null,
   cashPaid = 0,
-  dueAmount = 0,
   supplierId,
   branchId,
   narration,
 }) => {
-  if (cashPaid + dueAmount !== totalAmount) {
-    throw new Error("Purchase amount mismatch");
-  }
-
   const SYS = await resolveSystemAccounts(db);
+  const dueAmount = totalAmount - cashPaid;
 
-  const supplierControlAccountId = await resolveAccountByCode(
-    db,
-    "2001", // Accounts Payable
-  );
+  if (cashPaid < 0 || dueAmount < 0) {
+    throw new Error("Invalid purchase amount");
+  }
 
   const entries = [];
 
-  // Inventory
+  // Inventory increase
   entries.push({
     accountId: SYS.INVENTORY,
     debit: totalAmount,
@@ -308,7 +299,7 @@ export const purchaseAccounting = async ({
   // Supplier Due
   if (dueAmount > 0) {
     entries.push({
-      accountId: supplierControlAccountId,
+      accountId: SYS.SUPPLIER_AP,
       credit: dueAmount,
       partyType: "SUPPLIER",
       partyId: supplierId,
@@ -345,36 +336,18 @@ export const purchaseReturnAccounting = async ({
   const cash = roundMoney(cashRefund);
   const due = roundMoney(dueAdjust);
 
-  /* =====================
-     1️⃣ SAFETY CHECK
-  ====================== */
   if (roundMoney(cash + due) !== total) {
     throw new Error("Purchase return amount mismatch");
   }
-
-  /* =====================
-     2️⃣ SYSTEM ACCOUNTS
-  ====================== */
   const SYS = await resolveSystemAccounts(db);
-
-  const supplierControlAccountId = await resolveAccountByCode(
-    db,
-    "2001", // Accounts Payable (Supplier Control)
-  );
 
   const entries = [];
 
-  /* =====================
-     3️⃣ INVENTORY DECREASE
-  ====================== */
   entries.push({
     accountId: SYS.INVENTORY,
     credit: total,
   });
 
-  /* =====================
-     4️⃣ CASH REFUND
-  ====================== */
   if (cash > 0) {
     entries.push({
       accountId: SYS.CASH,
@@ -382,22 +355,15 @@ export const purchaseReturnAccounting = async ({
     });
   }
 
-  /* =====================
-     5️⃣ SUPPLIER DUE ADJUST
-     (AP debit reduces supplier balance)
-  ====================== */
   if (due > 0) {
     entries.push({
-      accountId: supplierControlAccountId,
+      accountId: SYS.SUPPLIER_AP,
       debit: due,
       partyType: "SUPPLIER",
       partyId: supplierId,
     });
   }
 
-  /* =====================
-     6️⃣ JOURNAL POST
-  ====================== */
   return postJournalEntry({
     db,
     session,
@@ -409,28 +375,31 @@ export const purchaseReturnAccounting = async ({
     branchId,
   });
 };
+
 /* ======================================================
-   SUPPLIER PAYMENT
+   SUPPLIER PAYMENT V0.1
 ====================================================== */
 export const supplierPaymentAccounting = async ({
   db,
   session,
   paymentId,
   amount,
-  paymentMethod,
-  supplierAccountId,
+  paymentAccountId,
+  supplierId,
   branchId,
+  narration = "Supplier Payment",
 }) => {
   const SYS = await resolveSystemAccounts(db);
 
-  if (!["CASH", "BANK"].includes(paymentMethod)) {
-    throw new Error("Invalid payment method");
-  }
-
   const entries = [
-    { accountId: supplierAccountId, debit: amount },
     {
-      accountId: paymentMethod === "CASH" ? SYS.CASH : SYS.BANK,
+      accountId: SYS.SUPPLIER_AP,
+      debit: amount,
+      partyType: "SUPPLIER",
+      partyId: supplierId,
+    },
+    {
+      accountId: paymentAccountId,
       credit: amount,
     },
   ];
@@ -441,7 +410,7 @@ export const supplierPaymentAccounting = async ({
     date: new Date(),
     refType: "SUPPLIER_PAYMENT",
     refId: paymentId,
-    narration: "Supplier Payment",
+    narration,
     entries,
     branchId,
   });
@@ -486,23 +455,94 @@ export const customerPaymentAccounting = async ({
 };
 
 /* ======================================================
-   SALARY PAYMENT
+   SALARY ACCRUAL (BRANCH MONTHLY REQUEST)
 ====================================================== */
+
+export const salaryAccrualAccounting = async ({
+  db,
+  session,
+  salarySheetId,
+  employeeId,
+  amount,
+  branchId,
+  narration = "Monthly Salary Accrual",
+}) => {
+  const total = roundMoney(amount);
+
+  if (total <= 0) {
+    throw new Error("Invalid salary amount");
+  }
+
+  const SYS = await resolveSystemAccounts(db);
+
+  const entries = [
+    /* 1️⃣ Salary Expense */
+    {
+      accountId: SYS.SALARY_EXPENSE,
+      debit: total,
+    },
+
+    /* 2️⃣ Salary Payable (Employee Wise) */
+    {
+      accountId: SYS.SALARY_PAYABLE,
+      credit: total,
+      partyType: "EMPLOYEE",
+      partyId: employeeId,
+    },
+  ];
+
+  return postJournalEntry({
+    db,
+    session,
+    date: new Date(),
+    refType: "SALARY_ACCRUAL",
+    refId: salarySheetId,
+    narration,
+    entries,
+    branchId,
+  });
+};
+
+
+/* ======================================================
+   SALARY PAYMENT (FINAL PAYOUT)
+====================================================== */
+
 export const salaryPaymentAccounting = async ({
   db,
   session,
   salaryPaymentId,
+  employeeId,
   amount,
-  paymentMethod,
+  paymentAccountId,
   branchId,
+  narration = "Salary Payment",
 }) => {
+  const total = roundMoney(amount);
+
+  if (total <= 0) {
+    throw new Error("Invalid payment amount");
+  }
+
+  if (!paymentAccountId) {
+    throw new Error("Payment account required");
+  }
+
   const SYS = await resolveSystemAccounts(db);
 
   const entries = [
-    { accountId: SYS.SALARY_EXPENSE, debit: amount },
+    /* 1️⃣ Reduce Salary Payable */
     {
-      accountId: paymentMethod === "CASH" ? SYS.CASH : SYS.BANK,
-      credit: amount,
+      accountId: SYS.SALARY_PAYABLE,
+      debit: total,
+      partyType: "EMPLOYEE",
+      partyId: employeeId,
+    },
+
+    /* 2️⃣ Cash / Bank Decrease */
+    {
+      accountId: paymentAccountId,
+      credit: total,
     },
   ];
 
@@ -512,11 +552,12 @@ export const salaryPaymentAccounting = async ({
     date: new Date(),
     refType: "SALARY_PAYMENT",
     refId: salaryPaymentId,
-    narration: "Salary Payment",
+    narration,
     entries,
     branchId,
   });
 };
+
 
 /* ======================================================
    COMMISSION PAYMENT V0.1 
@@ -669,11 +710,11 @@ export const openingBalanceAccounting = async ({
 
   const entries = [
     {
-      accountId: SYS.CASH,           // 💵 Business Cash
+      accountId: SYS.CASH, // 💵 Business Cash
       debit: openingAmount,
     },
     {
-      accountId: SYS.OWNER_CAPITAL,  // 👤 Owner Equity
+      accountId: SYS.OWNER_CAPITAL, // 👤 Owner Equity
       credit: openingAmount,
     },
   ];

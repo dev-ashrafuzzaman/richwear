@@ -93,8 +93,6 @@ export const createOneTx =
     }
   };
 
-
-
 export const getAll = ({
   collection,
   searchableFields = [],
@@ -106,24 +104,50 @@ export const getAll = ({
     try {
       const db = getDB();
 
-      /* ---------- Pagination ---------- */
+      /* =====================================================
+         1️⃣ Pagination
+      ===================================================== */
       const page = Math.max(parseInt(req.query.page) || 1, 1);
       const limit = Math.min(parseInt(req.query.limit) || 10, 100);
       const skip = (page - 1) * limit;
 
-      /* ---------- Sorting ---------- */
+      /* =====================================================
+         2️⃣ Sorting
+      ===================================================== */
       const sortField = req.query.sortBy || "createdAt";
       const sortOrder = req.query.sort === "asc" ? 1 : -1;
 
-      /* ---------- Filtering ---------- */
-      const filter = {};
-      const castValue = (value) => {
-        if (!isNaN(value)) return Number(value);
-        if (value === "true" || value === "false") return value === "true";
-        if (/^[0-9a-fA-F]{24}$/.test(value)) return new ObjectId(value);
-        if (value.includes(",")) return { $in: value.split(",") };
+      /* =====================================================
+         3️⃣ Smart Value Casting
+      ===================================================== */
+      const castSingleValue = (value) => {
+        if (value === "true") return true;
+        if (value === "false") return false;
+
+        // Number
+        if (!isNaN(value) && value.trim() !== "") return Number(value);
+
+        // ObjectId
+        if (/^[0-9a-fA-F]{24}$/.test(value))
+          return new ObjectId(value);
+
         return value;
       };
+
+      const castValue = (value) => {
+        // Comma separated → $in
+        if (value.includes(",")) {
+          return {
+            $in: value.split(",").map((v) => castSingleValue(v.trim())),
+          };
+        }
+        return castSingleValue(value);
+      };
+
+      /* =====================================================
+         4️⃣ Filtering
+      ===================================================== */
+      const filter = {};
 
       filterableFields.forEach((field) => {
         if (req.query[field] !== undefined) {
@@ -131,13 +155,21 @@ export const getAll = ({
         }
       });
 
-      /* ---------- Searching ---------- */
+      /* =====================================================
+         5️⃣ Global Search
+      ===================================================== */
       if (req.query.search && searchableFields.length) {
         filter.$or = searchableFields.map((field) => ({
-          [field]: { $regex: req.query.search, $options: "i" },
+          [field]: {
+            $regex: req.query.search,
+            $options: "i",
+          },
         }));
       }
 
+      /* =====================================================
+         6️⃣ Query Execute
+      ===================================================== */
       const cursor = db
         .collection(collection)
         .find(filter)

@@ -2,12 +2,7 @@
 import { ObjectId } from "mongodb";
 
 export const seedChartOfAccounts = async (db) => {
-  /**
-   * 🔒 SYSTEM LOCKED CHART OF ACCOUNTS
-   * Bangladesh ERP / POS Standard (FINAL)
-   */
-
-  await db.collection("accounts").deleteMany({});
+  await db.collection("accounts").deleteMany({ isSystem: true });
 
   const accounts = [
     /* ======================
@@ -216,48 +211,252 @@ export const seedChartOfAccounts = async (db) => {
     /* ======================
        EXPENSES (4000)
     ====================== */
+    // { code: "4000", name: "Expenses", type: "EXPENSE", subType: "GROUP" },
+
+    // {
+    //   code: "4002",
+    //   name: "Salary Expense",
+    //   type: "EXPENSE",
+    //   subType: "SALARY",
+    //   parent: "4000",
+    // },
+    // {
+    //   code: "4003",
+    //   name: "Rent Expense",
+    //   type: "EXPENSE",
+    //   subType: "RENT",
+    //   parent: "4000",
+    // },
+    // {
+    //   code: "4004",
+    //   name: "Utility Expense",
+    //   type: "EXPENSE",
+    //   subType: "UTILITY",
+    //   parent: "4000",
+    // },
+    // {
+    //   code: "4005",
+    //   name: "Commission Expense",
+    //   type: "EXPENSE",
+    //   subType: "COMMISSION",
+    //   parent: "4000",
+    // },
+    // {
+    //   code: "4006",
+    //   name: "Discount Expense",
+    //   type: "EXPENSE",
+    //   subType: "DISCOUNT",
+    //   parent: "4000",
+    // },
+
+    // {
+    //   code: "4007",
+    //   name: "Cost of Goods Sold",
+    //   type: "EXPENSE",
+    //   subType: "COGS",
+    //   parent: "4000",
+    // },
+
+    /* ======================
+   EXPENSES (4000)
+====================== */
     { code: "4000", name: "Expenses", type: "EXPENSE", subType: "GROUP" },
 
-    // ❌ Inventory purchase is NOT expense
-    // ✅ Only non-inventory expenses here
-
+    /* ======================
+   4100 - OPERATING EXPENSES
+====================== */
     {
-      code: "4002",
-      name: "Salary Expense",
+      code: "4100",
+      name: "Operating Expenses",
       type: "EXPENSE",
-      subType: "SALARY",
+      subType: "GROUP",
       parent: "4000",
     },
     {
-      code: "4003",
-      name: "Rent Expense",
+      code: "4101",
+      name: "Shop Rent",
       type: "EXPENSE",
       subType: "RENT",
-      parent: "4000",
+      parent: "4100",
     },
     {
-      code: "4004",
+      code: "4102",
+      name: "Warehouse Rent",
+      type: "EXPENSE",
+      subType: "RENT",
+      parent: "4100",
+    },
+    {
+      code: "4103",
       name: "Utility Expense",
       type: "EXPENSE",
       subType: "UTILITY",
+      parent: "4100",
+    },
+    {
+      code: "4104",
+      name: "Internet & Communication",
+      type: "EXPENSE",
+      subType: "UTILITY",
+      parent: "4100",
+    },
+    {
+      code: "4105",
+      name: "Office Supplies",
+      type: "EXPENSE",
+      subType: "OTHER",
+      parent: "4100",
+    },
+
+    /* ======================
+   4200 - ADMINISTRATIVE
+====================== */
+    {
+      code: "4200",
+      name: "Administrative Expenses",
+      type: "EXPENSE",
+      subType: "GROUP",
       parent: "4000",
     },
     {
-      code: "4005",
+      code: "4201",
+      name: "Salary Expense",
+      type: "EXPENSE",
+      subType: "SALARY",
+      parent: "4200",
+    },
+    {
+      code: "4202",
+      name: "Staff Welfare",
+      type: "EXPENSE",
+      subType: "OTHER",
+      parent: "4200",
+    },
+    {
+      code: "4203",
+      name: "Training & Development",
+      type: "EXPENSE",
+      subType: "OTHER",
+      parent: "4200",
+    },
+
+    /* ======================
+   4300 - SELLING & DISTRIBUTION
+====================== */
+    {
+      code: "4300",
+      name: "Selling & Distribution",
+      type: "EXPENSE",
+      subType: "GROUP",
+      parent: "4000",
+    },
+    {
+      code: "4301",
+      name: "Delivery Expense",
+      type: "EXPENSE",
+      subType: "OTHER",
+      parent: "4300",
+    },
+    {
+      code: "4302",
+      name: "Packaging Expense",
+      type: "EXPENSE",
+      subType: "OTHER",
+      parent: "4300",
+    },
+    {
+      code: "4303",
       name: "Commission Expense",
       type: "EXPENSE",
       subType: "COMMISSION",
+      parent: "4300",
+    },
+
+    /* ======================
+   4400 - PRODUCTION
+====================== */
+    {
+      code: "4400",
+      name: "Production Expenses",
+      type: "EXPENSE",
+      subType: "GROUP",
       parent: "4000",
     },
     {
-      code: "4006",
+      code: "4401",
+      name: "Tailoring Labour",
+      type: "EXPENSE",
+      subType: "OTHER",
+      parent: "4400",
+    },
+    {
+      code: "4402",
+      name: "Finishing Cost",
+      type: "EXPENSE",
+      subType: "OTHER",
+      parent: "4400",
+    },
+
+    /* ======================
+   4500 - FINANCIAL CHARGES
+====================== */
+    {
+      code: "4500",
+      name: "Financial Charges",
+      type: "EXPENSE",
+      subType: "GROUP",
+      parent: "4000",
+    },
+    {
+      code: "4501",
+      name: "Bank Charge",
+      type: "EXPENSE",
+      subType: "OTHER",
+      parent: "4500",
+    },
+    {
+      code: "4502",
+      name: "Loan Interest",
+      type: "EXPENSE",
+      subType: "OTHER",
+      parent: "4500",
+    },
+
+    /* ======================
+   4600 - MARKETING & PROMOTION
+====================== */
+    {
+      code: "4600",
+      name: "Marketing & Promotion",
+      type: "EXPENSE",
+      subType: "GROUP",
+      parent: "4000",
+    },
+    {
+      code: "4601",
+      name: "Facebook Ads",
+      type: "EXPENSE",
+      subType: "OTHER",
+      parent: "4600",
+    },
+    {
+      code: "4602",
+      name: "Campaign Expense",
+      type: "EXPENSE",
+      subType: "OTHER",
+      parent: "4600",
+    },
+    {
+      code: "4603",
       name: "Discount Expense",
       type: "EXPENSE",
       subType: "DISCOUNT",
-      parent: "4000",
+      parent: "4600",
     },
 
-    // ✅ COGS (VERY IMPORTANT)
+    /* ======================
+   CORE COST
+====================== */
     {
       code: "4007",
       name: "Cost of Goods Sold",

@@ -41,7 +41,7 @@ router.get(
   getAll({
     collection: COLLECTION,
     searchableFields: ["name", "code", "address"],
-    filterableFields: ["status", "isMain"]
+    filterableFields: ["status", "isMain", "_id"]
   })
 );
 

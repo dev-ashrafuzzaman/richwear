@@ -99,6 +99,13 @@ export const postJournalEntry = async ({
       session,
     });
   }
+    return {
+    _id: journalId,
+    voucherNo,
+    totalDebit,
+    totalCredit,
+  };
+  
 };
 
 export const createJournalService = async ({ db, payload, session }) => {

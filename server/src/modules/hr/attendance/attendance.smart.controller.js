@@ -11,7 +11,7 @@ export const smartAttendance = async (req, res, next) => {
     /* 🔍 Employee */
     const employee = await db.collection(COLLECTIONS.EMPLOYEES).findOne({
       _id: new ObjectId(employeeId),
-      "status": "active",
+      status: "active",
     });
 
     if (!employee)
@@ -33,7 +33,11 @@ export const smartAttendance = async (req, res, next) => {
       });
 
     /* 📅 Today normalize */
-    const today = new Date();
+    const now = new Date();
+
+    const today = new Date(
+      now.toLocaleString("en-US", { timeZone: "Asia/Dhaka" }),
+    );
     today.setHours(0, 0, 0, 0);
 
     const attendanceCol = db.collection(COLLECTIONS.ATTENDANCES);

@@ -17,9 +17,9 @@ import { seedAttributes } from "../src/modules/variants/seed.attributes.js";
 
   const db = await connectDB();
 
+  await seedChartOfAccounts(db);
   await seedSystemUsers(db);
   await seedBranches(db);
-  await seedChartOfAccounts(db);
   await seedAttributes(db);
   await seedcommissionRules(db);
   await seedProductTypes(db);
