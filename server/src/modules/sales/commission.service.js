@@ -24,7 +24,7 @@ export const calculateSaleCommission = async ({
 
   if (
     rule.eligibleRoles &&
-    !rule.eligibleRoles.includes(employee.employment.role)
+    !rule.eligibleRoles.includes(employee.role)
   ) {
     return 0;
   }
@@ -72,7 +72,7 @@ export const reverseSaleCommission = async ({
   session,
   saleId,
   salesReturnId,
-  returnRatio, // e.g. returnedAmount / sale.grandTotal
+  returnRatio, 
   branchId,
 }) => {
   const ledger = await db.collection("commission_ledgers").findOne(

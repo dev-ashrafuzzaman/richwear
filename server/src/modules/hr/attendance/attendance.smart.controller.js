@@ -11,7 +11,7 @@ export const smartAttendance = async (req, res, next) => {
     /* 🔍 Employee */
     const employee = await db.collection(COLLECTIONS.EMPLOYEES).findOne({
       _id: new ObjectId(employeeId),
-      "employment.status": "active",
+      "status": "active",
     });
 
     if (!employee)

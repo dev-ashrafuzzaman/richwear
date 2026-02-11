@@ -27,19 +27,14 @@ const COLLECTION = COLLECTIONS.EMPLOYEES;
 
 router.use(authenticate);
 
-router.post(
-  "/",
-  validate(createEmployeeSchema),
-  beforeCreateEmployee,
-  create,
-);
+router.post("/", validate(createEmployeeSchema), beforeCreateEmployee, create);
 
 router.get(
   "/",
   getAll({
     collection: COLLECTION,
-    searchableFields: ["name", "phone", "email","employment.role"],
-    filterableFields: ["status","employment.role"],
+    searchableFields: ["name", "phone", "email", "role"],
+    filterableFields: ["status", "role"],
   }),
 );
 
@@ -47,9 +42,9 @@ router.get(
   "/pos",
   getAllSmart({
     collection: COLLECTIONS.EMPLOYEES,
-    searchableFields: ["code", "name", "phone"],
+    searchableFields: ["code", "name", "phone", "role"],
     filterableFields: ["status"],
-  })
+  }),
 );
 
 router.get(
@@ -71,7 +66,7 @@ router.post(
   "/:id/status",
   toggleStatus({
     collection: COLLECTION,
-  })
+  }),
 );
 
 router.delete(

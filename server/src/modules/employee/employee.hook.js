@@ -7,7 +7,7 @@ export const beforeCreateEmployee = async (req, res, next) => {
   try {
     const db = getDB();
 
-    const { branchId } = req.body.employment || {};
+    const { branchId } = req.body || {};
 
     if (!branchId) {
       return res.status(400).json({
@@ -29,7 +29,7 @@ export const beforeCreateEmployee = async (req, res, next) => {
     }
 
     const exists = await db.collection(COLLECTIONS.EMPLOYEES).findOne({
-      "contact.phone": req.body.contact.phone,
+      phone: req.body.phone,
     });
 
     if (exists) {

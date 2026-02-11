@@ -40,7 +40,7 @@ export const createUser = async (req, res, next) => {
         message: "Employee not found",
       });
     }
-    if (!employee.contact || !employee.contact.email) {
+    if (!employee || !employee.email) {
       return res.status(400).json({
         success: false,
         message: "Employee email not found",
@@ -68,8 +68,8 @@ export const createUser = async (req, res, next) => {
     const hashedPassword = await bcrypt.hash(payload.password, 10);
 
     const userDoc = {
-      name: employee.personal.name,
-      email: employee.contact.email || null,
+      name: employee.name,
+      email: employee.email || null,
       employeeId: employee._id,
       password: hashedPassword,
       roleId: roleData.roleId,

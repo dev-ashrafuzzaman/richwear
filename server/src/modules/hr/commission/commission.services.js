@@ -16,7 +16,7 @@ export const createSalesCommission = async ({
   const rule = await resolveCommissionRule({
     db,
     branchId: sale.branchId,
-    role: employee.employment.role,
+    role: employee.role,
     salesAmount: sale.netAmount,
   });
 
@@ -36,7 +36,7 @@ export const createSalesCommission = async ({
 
     employeeId: employee._id,
     employeeCode: employee.code,
-    employeeName: employee.personal.name,
+    employeeName: employee.name,
 
     branchId: sale.branchId,
     branchCode: sale.branchCode,

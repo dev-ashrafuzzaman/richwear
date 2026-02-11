@@ -72,9 +72,9 @@ export const attendanceReport = async (req, res, next) => {
               $first: {
                 id: "$employee._id",
                 code: "$employee.code",
-                name: "$employee.personal.name",
-                role: "$employee.employment.role",
-                designation: "$employee.employment.designation",
+                name: "$employee.name",
+                role: "$employee.role",
+                designation: "$employee.designation",
               },
             },
 
@@ -155,9 +155,9 @@ export const attendanceReport = async (req, res, next) => {
           employee: {
             id: "$employee._id",
             code: "$employee.code",
-            name: "$employee.personal.name",
-            role: "$employee.employment.role",
-            designation: "$employee.employment.designation",
+            name: "$employee.name",
+            role: "$employee.role",
+            designation: "$employee.designation",
           },
 
           branch: {

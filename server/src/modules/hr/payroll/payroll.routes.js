@@ -29,8 +29,8 @@ router.post(
       const employees = await db
         .collection(COLLECTIONS.EMPLOYEES)
         .find({
-          "employment.branchId": branch._id.toString(),
-          "employment.status": "active",
+          "branchId": branch._id.toString(),
+          "status": "active",
         })
         .toArray();
 
@@ -74,7 +74,7 @@ router.post(
         payrollDocs.push({
           employeeId: emp._id,
           employeeCode: emp.code,
-          employeeName: emp.personal.name,
+          employeeName: emp.name,
 
           branchId: branch._id,
           branchCode: branch.code,

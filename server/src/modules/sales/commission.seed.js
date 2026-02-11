@@ -4,7 +4,7 @@ export const seedcommissionRules = async (db) => {
     type: "PERCENT",
     value: 5,
     base: "NET",
-    eligibleRoles: ["SALESMAN"],
+    eligibleRoles: ["Salesman"],
     minSaleAmount: 0,
     maxSaleAmount: null,
     status: "active",

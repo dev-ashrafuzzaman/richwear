@@ -18,8 +18,8 @@ router.get(
   "/loyalty",
   getAll({
     collection: "loyalty_settings",
-    searchableFields: ["name", "phone", "email", "employment.role"],
-    filterableFields: ["status", "employment.role"],
+    searchableFields: ["name", "phone", "email", "role"],
+    filterableFields: ["status", "role"],
   }),
 );
 router.put("/loyalty", updateLoyaltySettings);
