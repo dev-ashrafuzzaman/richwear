@@ -47,9 +47,9 @@ export default function usePosCart() {
 
           ...(item.discountId && {
             discountId: item.discountId,
-            discountType: item.discountType,
-            discountValue: Number(item.discountValue),
           }),
+          discountType: item.discountType,
+          discountValue: Number(item.discountValue),
         },
       ];
     });

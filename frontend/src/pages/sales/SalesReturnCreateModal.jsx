@@ -27,7 +27,7 @@ export default function SalesReturnCreateModal({
       onSuccess: (res) => {
         const saleData = res.data;
         setSale(saleData);
-
+        console.log("return data", res);
         setItems(
           saleData.items.map((i) => ({
             saleItemId: i._id,
@@ -36,8 +36,8 @@ export default function SalesReturnCreateModal({
             soldQty: i.qty,
             returnQty: 0,
             reason: "",
-            salePrice: i.salePrice,          // gross unit price
-            itemDiscount: i.discount.amount,  // total item discount
+            salePrice: i.salePrice, // gross unit price
+            itemDiscount: i?.discount?.amount || 0, // total item discount
           })),
         );
       },
@@ -67,27 +67,18 @@ export default function SalesReturnCreateModal({
     const returnBillDiscount = returnGross * billDiscountRatio;
 
     // VAT (proportional)
-    const vatRatio =
-      sale.subTotal > 0 ? sale.taxAmount / sale.subTotal : 0;
+    const vatRatio = sale.subTotal > 0 ? sale.taxAmount / sale.subTotal : 0;
     const returnVat = returnGross * vatRatio;
 
     // Final refund
-    return (
-      returnGross -
-      returnItemDiscount -
-      returnBillDiscount +
-      returnVat
-    );
+    return returnGross - returnItemDiscount - returnBillDiscount + returnVat;
   };
 
   /* =====================
      TOTAL REFUND
   ====================== */
   const totalRefund = useMemo(() => {
-    return items.reduce(
-      (sum, item) => sum + calculateRefund(item),
-      0,
-    );
+    return items.reduce((sum, item) => sum + calculateRefund(item), 0);
   }, [items, sale]);
 
   /* =====================
@@ -142,9 +133,7 @@ export default function SalesReturnCreateModal({
         <div className="flex justify-between items-center">
           <div className="text-lg font-semibold">
             Total Refund:{" "}
-            <span className="text-red-600">
-              BDT {totalRefund}
-            </span>
+            <span className="text-red-600">BDT {totalRefund}</span>
           </div>
 
           <div className="flex gap-2">
@@ -171,9 +160,7 @@ export default function SalesReturnCreateModal({
           </div>
           <div className="flex justify-between">
             <span>Date:</span>
-            <strong>
-              {new Date(sale.createdAt).toLocaleDateString()}
-            </strong>
+            <strong>{new Date(sale.createdAt).toLocaleDateString()}</strong>
           </div>
         </div>
 
@@ -243,9 +230,7 @@ export default function SalesReturnCreateModal({
                   onChange={(e) =>
                     setItems((prev) =>
                       prev.map((x, j) =>
-                        j === idx
-                          ? { ...x, reason: e.target.value }
-                          : x,
+                        j === idx ? { ...x, reason: e.target.value } : x,
                       ),
                     )
                   }
@@ -268,8 +253,8 @@ export default function SalesReturnCreateModal({
             htmlFor="confirmReturn"
             className="text-sm text-gray-700 select-none"
           >
-            I confirm that the above return quantities and refund amount
-            are correct
+            I confirm that the above return quantities and refund amount are
+            correct
           </label>
         </div>
       </div>

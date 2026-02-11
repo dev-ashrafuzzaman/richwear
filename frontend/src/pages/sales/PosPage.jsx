@@ -52,9 +52,9 @@ export default function PosPage() {
         salePrice: i.salePrice,
         ...(i.discountId && {
           discountId: i.discountId,
-          discountType: i.discountType,
-          discountValue: Number(i.discountValue),
         }),
+        discountType: i.discountType,
+          discountValue: Number(i.discountValue),
       })),
 
       billDiscount,

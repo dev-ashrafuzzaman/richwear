@@ -54,7 +54,12 @@ const ReceiveStockTransferPage = () => {
   /* ===============================
      RBAC
   =============================== */
-  const isReceiver = String(transfer.toBranch._id) === String(user.branchId);
+  const allowedRoles = ["Admin", "Super Admin"];
+
+  const isReceiver =
+    (transfer?.toBranch?.code === "WH-MAIN" &&
+      allowedRoles.includes(user?.roleName)) ||
+    String(transfer?.toBranch?._id) === String(user?.branchId);
 
   /* ===============================
      ITEM STATUS HELPERS
@@ -122,7 +127,7 @@ const ReceiveStockTransferPage = () => {
     }
 
     setLoading(true);
-console.log("iteam",items)
+    console.log("iteam", items);
     try {
       await request(
         `/stocks/transfers/${id}/receive`,
