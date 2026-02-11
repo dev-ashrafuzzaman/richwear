@@ -12,6 +12,8 @@ import { upsertStock } from "./stock.utils.js";
 import { recordStockMovement } from "./stockMovement.utils.js";
 import { STOCK_MOVEMENT_TYPES } from "../../config/constants/stockMovementTypes.js";
 import { buildStockReport } from "./stockReport.service.js";
+import { consumeStockFIFOWithLayers } from "./consumeStockFIFO.js";
+import { decrementStockCache } from "./decrementStockCache.js";
 
 /* ======================================================
    Helpers
@@ -24,6 +26,13 @@ const toObjectId = (value, label) => {
   }
   return new ObjectId(value);
 };
+
+const resolveVariantId = (item) => {
+  if (item.variantId) return toObjectId(item.variantId, "variantId");
+  if (item.variant?._id) return toObjectId(item.variant._id, "variant._id");
+  throw new Error("Variant ID missing in transfer item");
+};
+
 export const generateStockReport = async (req, res) => {
   try {
     const report = await buildStockReport({
@@ -41,12 +50,6 @@ export const generateStockReport = async (req, res) => {
       message: e.message || "Report generation failed",
     });
   }
-};
-
-const resolveVariantId = (item) => {
-  if (item.variantId) return toObjectId(item.variantId, "variantId");
-  if (item.variant?._id) return toObjectId(item.variant._id, "variant._id");
-  throw new Error("Variant ID missing in transfer item");
 };
 
 export const getAllStocks = async (req, res, next) => {
@@ -596,8 +599,28 @@ export const createStockTransfer = async (req, res, next) => {
     const db = getDB();
     const { fromBranchId, toBranchId, items } = req.body;
 
-    if (fromBranchId === toBranchId)
+    if (!Array.isArray(items) || items.length === 0) {
+      throw new Error("Transfer items required");
+    }
+
+    if (fromBranchId === toBranchId) {
       throw new Error("Source & destination cannot be same");
+    }
+
+    // 🔒 Validate duplicates
+    const seen = new Set();
+    for (const item of items) {
+      if (!item.variantId) throw new Error("Variant missing");
+      if (!Number.isInteger(Number(item.qty)) || Number(item.qty) <= 0) {
+        throw new Error("Invalid quantity");
+      }
+
+      const key = item.variantId.toString();
+      if (seen.has(key)) {
+        throw new Error("Duplicate variant in transfer");
+      }
+      seen.add(key);
+    }
 
     session.startTransaction();
 
@@ -609,7 +632,7 @@ export const createStockTransfer = async (req, res, next) => {
       scope: "YEAR",
     });
 
-    const transfer = {
+    const transferDoc = {
       transferNo,
       fromBranchId: new ObjectId(fromBranchId),
       toBranchId: new ObjectId(toBranchId),
@@ -619,52 +642,93 @@ export const createStockTransfer = async (req, res, next) => {
       createdAt: new Date(),
     };
 
-    const { insertedId } = await db
+    const { insertedId: transferId } = await db
       .collection("stock_transfers")
-      .insertOne(transfer, { session });
+      .insertOne(transferDoc, { session });
+
+    const transferItemDocs = [];
+    const snapshotBulk = [];
+    const movementBulk = [];
 
     for (const item of items) {
-      // 🔒 Lock stock (deduct immediately but reversible)
-      const result = await db.collection("stocks").updateOne(
-        {
-          branchId: new ObjectId(fromBranchId),
-          variantId: new ObjectId(item.variantId),
-          qty: { $gte: item.qty },
-        },
-        { $inc: { qty: -item.qty } },
-        { session },
-      );
+      const variantId = new ObjectId(item.variantId);
+      const qty = Number(item.qty);
 
-      if (!result.modifiedCount)
-        throw new Error("Insufficient stock during transfer");
-
-      await db.collection("stock_transfer_items").insertOne(
-        {
-          transferId: insertedId,
-          variantId: new ObjectId(item.variantId),
-          sentQty: item.qty,
-          receivedQty: 0,
-          status: "PENDING",
-        },
-        { session },
-      );
-
-      await recordStockMovement({
+      // 1️⃣ FIFO consume
+      const transferLayers = await consumeStockFIFOWithLayers({
         db,
         session,
         branchId: new ObjectId(fromBranchId),
-        variantId: new ObjectId(item.variantId),
-        type: STOCK_MOVEMENT_TYPES.TRANSFER_OUT,
-        qty: -item.qty,
-        refType: "STOCK_TRANSFER",
-        refId: insertedId,
-        note: `Transferred to branch ${toBranchId}`,
+        variantId,
+        qty,
+      });
+
+      // 2️⃣ Prepare transfer item
+      transferItemDocs.push({
+        transferId,
+        variantId,
+        sentQty: qty,
+        receivedQty: 0,
+        layers: transferLayers,
+        status: "PENDING",
+        createdAt: new Date(),
+      });
+
+      // 3️⃣ Snapshot decrement (NO $gte check)
+      snapshotBulk.push({
+        updateOne: {
+          filter: {
+            branchId: new ObjectId(fromBranchId),
+            variantId,
+          },
+          update: {
+            $inc: { qty: -qty },
+            $set: { updatedAt: new Date() },
+          },
+        },
+      });
+
+      // 4️⃣ Movement audit
+      movementBulk.push({
+        insertOne: {
+          document: {
+            branchId: new ObjectId(fromBranchId),
+            variantId,
+            type: "TRANSFER_OUT",
+            qty: -qty,
+            refType: "STOCK_TRANSFER",
+            refId: transferId,
+            createdAt: new Date(),
+          },
+        },
       });
     }
 
+    // 🔥 Bulk insert transfer items
+    if (transferItemDocs.length) {
+      await db
+        .collection("stock_transfer_items")
+        .insertMany(transferItemDocs, { session });
+    }
+
+    // 🔥 Bulk snapshot update
+    if (snapshotBulk.length) {
+      await db
+        .collection(COLLECTIONS.STOCKS)
+        .bulkWrite(snapshotBulk, { session });
+    }
+
+    // 🔥 Bulk movement insert
+    if (movementBulk.length) {
+      await db
+        .collection(COLLECTIONS.STOCK_MOVEMENTS)
+        .bulkWrite(movementBulk, { session });
+    }
+
+    // Log
     await db.collection("stock_transfer_logs").insertOne(
       {
-        transferId: insertedId,
+        transferId,
         action: "CREATED",
         userId: req.user._id,
         createdAt: new Date(),
@@ -676,14 +740,14 @@ export const createStockTransfer = async (req, res, next) => {
 
     res.json({
       success: true,
-      message: "Stock transfer created",
+      message: "Stock transfer created successfully",
       transferNo,
     });
   } catch (err) {
     await session.abortTransaction();
     next(err);
   } finally {
-    session.endSession();
+    await session.endSession();
   }
 };
 
@@ -696,7 +760,6 @@ export const receiveStockTransfer = async (req, res, next) => {
 
   try {
     const db = getDB();
-
     const transferId = toObjectId(req.params.id, "transferId");
     const items = Array.isArray(req.body.items) ? req.body.items : [];
 
@@ -718,23 +781,22 @@ export const receiveStockTransfer = async (req, res, next) => {
       throw new Error("Transfer already processed");
     }
 
-    const fromBranchId = toObjectId(transfer.fromBranchId, "fromBranchId");
-    const toBranchId = toObjectId(transfer.toBranchId, "toBranchId");
+    const fromBranchId = toObjectId(transfer.fromBranchId);
+    const toBranchId = toObjectId(transfer.toBranchId);
 
     /* ===============================
-       MAIN WAREHOUSE (FOR MISMATCH)
+       PRELOAD SOURCE SNAPSHOTS (PERFORMANCE SAFE)
     =============================== */
-    const mainWarehouse = await getMainWarehouse(db, session);
-    const mainWarehouseId = toObjectId(mainWarehouse._id, "mainWarehouseId");
+    const transferItems = await db
+      .collection("stock_transfer_items")
+      .find({ transferId })
+      .toArray();
 
-    /* ===============================
-       PRELOAD STOCK SNAPSHOTS
-       (SOURCE BRANCH IS TRUTH)
-    =============================== */
-    const variantIds = items.map(resolveVariantId);
-
-    const stockSnapshots = await db
-      .collection("stocks")
+    const variantIds = transferItems.map((t) =>
+      toObjectId(t.variantId, "variantId"),
+    );
+    const sourceSnapshots = await db
+      .collection(COLLECTIONS.STOCKS)
       .find(
         {
           branchId: fromBranchId,
@@ -744,39 +806,148 @@ export const receiveStockTransfer = async (req, res, next) => {
       )
       .toArray();
 
-    const stockMap = new Map(
-      stockSnapshots.map((s) => [s.variantId.toString(), s]),
+    const snapshotMap = new Map(
+      sourceSnapshots.map((s) => [s.variantId.toString(), s]),
     );
 
     let hasMismatch = false;
+
+    const purchaseBulk = [];
+    const snapshotBulk = [];
+    const movementBulk = [];
+    const restoreBulk = [];
+    const mismatchDocs = [];
 
     /* ===============================
        PROCESS EACH ITEM
     =============================== */
     for (const item of items) {
-      const transferItemId = toObjectId(item._id, "transferItemId");
-      const variantId = resolveVariantId(item);
-
-      const snapshot = stockMap.get(variantId.toString());
-      if (!snapshot) {
-        throw new Error(
-          `Stock snapshot not found for variant ${variantId.toString()}`,
-        );
-      }
-
-      const sentQty = Number(item.sentQty || 0);
+      const transferItemId = toObjectId(item._id);
       const receivedQty = Number(item.receivedQty || 0);
 
+      const transferItem = await db
+        .collection("stock_transfer_items")
+        .findOne({ _id: transferItemId }, { session });
+
+      if (!transferItem) throw new Error("Transfer item not found");
+
+      const { variantId, sentQty, layers } = transferItem;
+
       if (receivedQty < 0 || receivedQty > sentQty) {
-        throw new Error(
-          `Invalid received quantity for variant ${variantId.toString()}`,
-        );
+        throw new Error("Invalid received quantity");
       }
 
       const mismatchQty = sentQty - receivedQty;
-      if (mismatchQty !== 0) hasMismatch = true;
+      if (mismatchQty > 0) hasMismatch = true;
 
-      /* ---------- Update transfer item ---------- */
+      const sourceSnapshot = snapshotMap.get(variantId.toString());
+      if (!sourceSnapshot) {
+        throw new Error("Source stock snapshot not found");
+      }
+
+      /* =========================================
+         1️⃣ FIFO RECREATE (DESTINATION)
+      ========================================= */
+      if (receivedQty > 0) {
+        let remaining = receivedQty;
+
+        for (const layer of layers) {
+          if (remaining <= 0) break;
+
+          const portionQty = Math.min(layer.qty, remaining);
+
+          // Recreate FIFO purchase layer
+          purchaseBulk.push({
+            insertOne: {
+              document: {
+                branchId: toBranchId,
+                variantId,
+                type: "PURCHASE",
+                qty: portionQty,
+                costPrice: layer.costPrice,
+                balanceQty: portionQty,
+                refType: "STOCK_TRANSFER",
+                refId: transferId,
+                createdAt: new Date(),
+              },
+            },
+          });
+
+          // Snapshot rebuild (copy metadata from source)
+          snapshotBulk.push({
+            updateOne: {
+              filter: { branchId: toBranchId, variantId },
+              update: {
+                $inc: { qty: portionQty },
+                $setOnInsert: {
+                  branchId: toBranchId,
+                  variantId,
+                  productId: sourceSnapshot.productId,
+                  productName: sourceSnapshot.productName,
+                  sku: sourceSnapshot.sku,
+                  attributes: sourceSnapshot.attributes,
+                  searchableText: sourceSnapshot.searchableText,
+                  salePrice: sourceSnapshot.salePrice,
+                  createdAt: new Date(),
+                },
+                $set: { updatedAt: new Date() },
+              },
+              upsert: true,
+            },
+          });
+
+          movementBulk.push({
+            insertOne: {
+              document: {
+                branchId: toBranchId,
+                variantId,
+                type: "TRANSFER_IN",
+                qty: portionQty,
+                refType: "STOCK_TRANSFER",
+                refId: transferId,
+                createdAt: new Date(),
+              },
+            },
+          });
+
+          remaining -= portionQty;
+        }
+      }
+
+      /* =========================================
+         2️⃣ RESTORE SOURCE IF MISMATCH
+      ========================================= */
+      if (mismatchQty > 0) {
+        for (const layer of layers) {
+          restoreBulk.push({
+            updateOne: {
+              filter: { _id: layer.purchaseLayerId },
+              update: { $inc: { balanceQty: layer.qty } },
+            },
+          });
+        }
+
+        snapshotBulk.push({
+          updateOne: {
+            filter: { branchId: fromBranchId, variantId },
+            update: {
+              $inc: { qty: mismatchQty },
+              $set: { updatedAt: new Date() },
+            },
+          },
+        });
+
+        mismatchDocs.push({
+          transferId,
+          transferItemId,
+          variantId,
+          sentQty,
+          receivedQty,
+          mismatchQty,
+          createdAt: new Date(),
+        });
+      }
+
       await db.collection("stock_transfer_items").updateOne(
         { _id: transferItemId },
         {
@@ -788,99 +959,57 @@ export const receiveStockTransfer = async (req, res, next) => {
         },
         { session },
       );
-
-      /* ---------- Transfer IN (Destination) ---------- */
-      if (receivedQty > 0) {
-        await upsertStock({
-          db,
-          session,
-          branchId: toBranchId,
-          variantId: snapshot.variantId,
-          productId: snapshot.productId,
-          productName: snapshot.productName,
-          sku: snapshot.sku,
-          attributes: snapshot.attributes,
-          searchableText: snapshot.searchableText,
-          salePrice: snapshot.salePrice,
-          qty: receivedQty,
-        });
-
-        await recordStockMovement({
-          db,
-          session,
-          branchId: toBranchId,
-          variantId,
-          type: STOCK_MOVEMENT_TYPES.TRANSFER_IN,
-          qty: receivedQty,
-          refType: "STOCK_TRANSFER",
-          refId: transferId,
-        });
-      }
-
-      /* ---------- MISMATCH → MAIN WAREHOUSE ---------- */
-      if (mismatchQty > 0) {
-        await upsertStock({
-          db,
-          session,
-          branchId: mainWarehouseId,
-          variantId: snapshot.variantId,
-          productId: snapshot.productId,
-          productName: snapshot.productName,
-          sku: snapshot.sku,
-          attributes: snapshot.attributes,
-          searchableText: snapshot.searchableText,
-          salePrice: snapshot.salePrice,
-          qty: mismatchQty,
-        });
-
-        await recordStockMovement({
-          db,
-          session,
-          branchId: mainWarehouseId,
-          variantId,
-          type: STOCK_MOVEMENT_TYPES.TRANSFER_MISMATCH_IN,
-          qty: mismatchQty,
-          refType: "STOCK_TRANSFER",
-          refId: transferId,
-          note: "Mismatch during transfer receive",
-        });
-
-        await db.collection("stock_mismatches").insertOne(
-          {
-            transferId,
-            transferNo: transfer.transferNo,
-
-            transferItemId,
-            variantId,
-
-            sentQty,
-            receivedQty,
-            mismatchQty,
-
-            sourceBranchId: fromBranchId,
-            destinationBranchId: toBranchId,
-            tempWarehouseId: mainWarehouseId,
-
-            status: "PENDING",
-            createdAt: new Date(),
-            createdBy: toObjectId(req.user?._id, "userId"),
-          },
-          { session },
-        );
-      }
     }
 
     /* ===============================
-       UPDATE TRANSFER HEADER
+       BULK EXECUTION
     =============================== */
+
+    if (purchaseBulk.length)
+      await db
+        .collection(COLLECTIONS.STOCK_MOVEMENTS)
+        .bulkWrite(purchaseBulk, { session });
+
+    if (restoreBulk.length)
+      await db
+        .collection(COLLECTIONS.STOCK_MOVEMENTS)
+        .bulkWrite(restoreBulk, { session });
+
+    if (snapshotBulk.length)
+      await db
+        .collection(COLLECTIONS.STOCKS)
+        .bulkWrite(snapshotBulk, { session });
+
+    if (movementBulk.length)
+      await db
+        .collection(COLLECTIONS.STOCK_MOVEMENTS)
+        .bulkWrite(movementBulk, { session });
+
+    if (mismatchDocs.length)
+      await db
+        .collection("stock_mismatches")
+        .insertMany(mismatchDocs, { session });
+
     await db.collection("stock_transfers").updateOne(
       { _id: transferId },
       {
         $set: {
           status: hasMismatch ? "MISMATCH" : "RECEIVED",
           receivedAt: new Date(),
-          receivedBy: toObjectId(req.user?._id, "userId"),
+          receivedBy: req.user._id,
         },
+      },
+      { session },
+    );
+
+    // Log
+    await db.collection("stock_transfer_logs").insertOne(
+      {
+        transferId,
+        status: hasMismatch ? "MISMATCH" : "RECEIVED",
+        action: "RECEIVED",
+        receivedBy: req.user._id,
+        receivedAt: new Date(),
       },
       { session },
     );
@@ -895,7 +1024,7 @@ export const receiveStockTransfer = async (req, res, next) => {
     await session.abortTransaction();
     next(err);
   } finally {
-    session.endSession();
+    await session.endSession();
   }
 };
 
