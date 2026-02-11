@@ -223,6 +223,7 @@ export default function PosPaymentModal({
                       </span>
                       <Input
                         type="number"
+                        onWheel={(e) => e.currentTarget.blur()}
                         value={p.amount}
                         onChange={(e) =>
                           updatePayment(index, "amount", e.target.value)

@@ -114,6 +114,7 @@ export default function DiscountCreatePage() {
               <div className="relative">
                 <input
                   type="number"
+                  onWheel={(e) => e.currentTarget.blur()}
                   className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                   placeholder={form.type === "PERCENT" ? "e.g., 15" : "e.g., 50"}
                   value={form.value}

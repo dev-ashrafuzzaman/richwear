@@ -211,6 +211,7 @@ export default function SalesReturnCreateModal({
               <div className="col-span-2">
                 <Input
                   type="number"
+                  onWheel={(e) => e.currentTarget.blur()}
                   min={0}
                   max={item.soldQty}
                   value={item.returnQty}

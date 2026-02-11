@@ -72,30 +72,35 @@ console.log("modal",row)
         <Input
           label="Membership Product Discount (%)"
           type="number"
+          onWheel={(e) => e.currentTarget.blur()}
           {...register("productDiscountPercent", { min: 0, max: 100 })}
         />
 
         <Input
           label="Min Activation Amount"
           type="number"
+          onWheel={(e) => e.currentTarget.blur()}
           {...register("minActivationAmount", { required: true })}
         />
 
         <Input
           label="Min Daily Purchase"
           type="number"
+          onWheel={(e) => e.currentTarget.blur()}
           {...register("minDailyPurchase", { required: true })}
         />
 
         <Input
           label="Required Purchase Count"
           type="number"
+          onWheel={(e) => e.currentTarget.blur()}
           {...register("requiredCount", { required: true })}
         />
 
         <Input
           label="Max Reward Value"
           type="number"
+          onWheel={(e) => e.currentTarget.blur()}
           {...register("maxRewardValue", { required: true })}
         />
       </div>

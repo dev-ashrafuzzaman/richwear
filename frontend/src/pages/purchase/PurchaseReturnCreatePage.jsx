@@ -209,6 +209,7 @@ export default function PurchaseReturnCreatePage() {
                   <input
                     {...register("cashRefund")}
                     type="number"
+                    onWheel={(e) => e.currentTarget.blur()}
                     step="0.01"
                     className="w-full pl-8 pr-4 py-3 rounded-lg border border-gray-300 bg-white text-gray-800 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 outline-none transition-all"
                     placeholder="0.00"
@@ -225,6 +226,7 @@ export default function PurchaseReturnCreatePage() {
                   <input
                     {...register("dueAdjust")}
                     type="number"
+                    onWheel={(e) => e.currentTarget.blur()}
                     step="0.01"
                     className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 bg-white text-gray-800 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 outline-none transition-all"
                     placeholder="0.00"
@@ -287,6 +289,7 @@ export default function PurchaseReturnCreatePage() {
                       <td className="py-4 px-6">
                         <input
                           type="number"
+                          onWheel={(e) => e.currentTarget.blur()}
                           min={0}
                           max={item.purchasedQty}
                           value={item.returnQty}

@@ -327,6 +327,7 @@ export default function OpeningBalancePage() {
                         <Input
                           {...field}
                           type="number"
+                          onWheel={(e) => e.currentTarget.blur()}
                           placeholder="0.00"
                           step="0.01"
                           min="0"

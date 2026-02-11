@@ -79,6 +79,7 @@ export default function PosCart({
                       <div className="relative">
                         <Input
                           type="number"
+                          onWheel={(e) => e.currentTarget.blur()}
                           min={1}
                           value={item.qty}
                           onChange={(e) =>
@@ -183,6 +184,7 @@ export default function PosCart({
                   </label>
                   <Input
                     type="number"
+                    onWheel={(e) => e.currentTarget.blur()}
                     min={1}
                     value={item.qty}
                     onChange={(e) =>
@@ -225,6 +227,7 @@ export default function PosCart({
                   </label>
                   <Input
                     type="number"
+                    onWheel={(e) => e.currentTarget.blur()}
                     min={0}
                     placeholder="0"
                     disabled={!item.discountType}

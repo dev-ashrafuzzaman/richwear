@@ -45,10 +45,11 @@ export default function usePosCart() {
           stockQty: Number(item.qty), // 🔥 freeze stock
           qty: 1,
 
-          /* 🔥 Discount snapshot from backend */
-          discountId: item.discountId || null,
-          discountType: item.discountType || null,
-          discountValue: Number(item.discountValue || 0),
+          ...(item.discountId && {
+            discountId: item.discountId,
+            discountType: item.discountType,
+            discountValue: Number(item.discountValue),
+          }),
         },
       ];
     });

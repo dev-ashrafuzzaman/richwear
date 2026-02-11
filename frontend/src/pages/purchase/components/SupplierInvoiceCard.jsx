@@ -57,6 +57,7 @@ export default function SupplierInvoiceCard({
             </span>
             <input
               type="number"
+              onWheel={(e) => e.currentTarget.blur()}
               {...register("paidAmount")}
               placeholder="0.00"
               className="pl-8 pr-4 py-2.5 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"

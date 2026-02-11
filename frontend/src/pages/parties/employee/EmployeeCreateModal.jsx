@@ -344,6 +344,7 @@ export default function EmployeeCreateModal({ isOpen, setIsOpen, refetch }) {
             <Input
               label="Base Salary"
               type="number"
+              onWheel={(e) => e.currentTarget.blur()}
               error={errors.payroll?.baseSalary?.message}
               {...register("payroll.baseSalary", {
                 required: "Base salary is required",
@@ -374,6 +375,7 @@ export default function EmployeeCreateModal({ isOpen, setIsOpen, refetch }) {
             <Input
               label="Commission Value"
               type="number"
+              onWheel={(e) => e.currentTarget.blur()}
               disabled={!commissionType}
               {...register("payroll.commissionValue")}
               className={`bg-white border-gray-200 focus:ring-2 outline-none transition-all ${

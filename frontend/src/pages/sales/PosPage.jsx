@@ -16,7 +16,7 @@ export default function PosPage() {
   const { modals, openModal, closeModal } = useModalManager();
   const {
     cart,
-    addItem, 
+    addItem,
     updateQty,
     updateDiscount,
     removeItem,
@@ -26,7 +26,7 @@ export default function PosPage() {
     grandTotal,
     isLowStock,
     resetCart,
-    applyMembershipPricing
+    applyMembershipPricing,
   } = usePosCart();
 
   const [customer, setCustomer] = useState(null);
@@ -47,12 +47,14 @@ export default function PosPage() {
       items: cart.map((i) => ({
         productId: i.productId,
         variantId: i.variantId,
-        discountId: i.discountId,
         qty: i.qty,
         sku: i.sku,
         salePrice: i.salePrice,
-        discountType: i.discountType || undefined,
-        discountValue: i.discountValue || undefined,
+        ...(i.discountId && {
+          discountId: i.discountId,
+          discountType: i.discountType,
+          discountValue: Number(i.discountValue),
+        }),
       })),
 
       billDiscount,
@@ -63,6 +65,8 @@ export default function PosPage() {
         reference: p.method === "Cash" ? "Hand Cash" : p.reference,
       })),
     };
+
+    console.log("sales", payload);
     const res = await request("/sales", "POST", payload);
     setModalData(res.data);
     openModal("printPosInvoice");
@@ -72,11 +76,10 @@ export default function PosPage() {
     setSalesman(null);
     setPayOpen(false);
     resetPayment();
-    
+
     requestAnimationFrame(() => {
       searchRef.current?.clearAndFocus();
     });
-
   };
 
   useEffect(() => {
@@ -146,22 +149,19 @@ export default function PosPage() {
     return () => window.removeEventListener("keydown", handleKey);
   }, [canProceed, cart.length, modals]);
 
-
   useEffect(() => {
-  if (!customerSummary) return;
+    if (!customerSummary) return;
 
-  const isMember =
-    customerSummary.membership?.status === "ACTIVE";
+    const isMember = customerSummary.membership?.status === "ACTIVE";
 
-  const membershipPercent =
-    customerSummary.settings?.productDiscountPercent || 0;
+    const membershipPercent =
+      customerSummary.settings?.productDiscountPercent || 0;
 
-  applyMembershipPricing({
-    isMember,
-    membershipPercent,
-  });
-}, [customerSummary, applyMembershipPricing]);
-
+    applyMembershipPricing({
+      isMember,
+      membershipPercent,
+    });
+  }, [customerSummary, applyMembershipPricing]);
 
   return (
     <>

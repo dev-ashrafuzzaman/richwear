@@ -275,18 +275,21 @@ export default function ProductCreateModal({ isOpen, setIsOpen, refetch }) {
                     <Input
                       label="Min Size"
                       type="number"
+                      onWheel={(e) => e.currentTarget.blur()}
                       {...register("sizeMin", { required: true })}
                       className="bg-gray-50"
                     />
                     <Input
                       label="Max Size"
                       type="number"
+                      onWheel={(e) => e.currentTarget.blur()}
                       {...register("sizeMax", { required: true })}
                       className="bg-gray-50"
                     />
                     <Input
                       label="Step"
                       type="number"
+                      onWheel={(e) => e.currentTarget.blur()}
                       {...register("sizeStep")}
                       className="bg-gray-50"
                     />

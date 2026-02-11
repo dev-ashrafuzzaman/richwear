@@ -101,6 +101,7 @@ export default function PosSummary({
 
               <Input
                 type="number"
+                onWheel={(e) => e.currentTarget.blur()}
                 value={billDiscount}
                 disabled
                 className="w-full bg-white border-emerald-200 text-emerald-800 font-medium"

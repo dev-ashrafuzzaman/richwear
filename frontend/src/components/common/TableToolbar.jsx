@@ -242,6 +242,7 @@ export default function TableToolbar({
                 <div className="absolute right-0 mt-2 bg-white border rounded-md shadow-lg p-3 z-50 w-56">
                   <input
                     type="number"
+                    onWheel={(e) => e.currentTarget.blur()}
                     placeholder="Min"
                     className="border px-2 py-1 rounded text-sm mb-2"
                     onChange={(e) =>
@@ -250,6 +251,7 @@ export default function TableToolbar({
                   />
                   <input
                     type="number"
+                    onWheel={(e) => e.currentTarget.blur()}
                     placeholder="Max"
                     className="border px-2 py-1 rounded text-sm"
                     onChange={(e) =>

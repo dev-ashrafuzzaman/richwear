@@ -171,6 +171,7 @@ const TransferItemsTable = ({ items, setItems }) => {
                       <div className="relative">
                         <input
                           type="number"
+                          onWheel={(e) => e.currentTarget.blur()}
                           min={1}
                           max={i.availableQty}
                           value={i.qty}
@@ -291,6 +292,7 @@ const TransferItemsTable = ({ items, setItems }) => {
                   <div className="relative">
                     <input
                       type="number"
+                      onWheel={(e) => e.currentTarget.blur()}
                       min={1}
                       max={i.availableQty}
                       value={i.qty}
