@@ -220,16 +220,17 @@ export const SIDEBAR_MENU = [
     header: "Accounting",
     roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN],
     items: [
-      // {
-      //   title: "Accounts",
-      //   icon: Calculator,
-      //   submenu: [
-      //     { title: "Chart of Accounts", to: "/accounting/coa" },
-      //     // { title: "Journal Entry", to: "/journal/entries" },
-      //     { title: "Journal Manage", to: "/accounting/journal" },
-      //     { title: "Ledger Manage", to: "/accounting/ledger" },
-      //   ],
-      // },
+      {
+        title: "Accounts",
+        icon: Calculator,
+        submenu: [
+          { title: "Expenses", to: "/accounting/expenses" },
+          // { title: "Chart of Accounts", to: "/accounting/coa" },
+          // { title: "Journal Entry", to: "/journal/entries" },
+          // { title: "Journal Manage", to: "/accounting/journal" },
+          // { title: "Ledger Manage", to: "/accounting/ledger" },
+        ],
+      },
       {
         title: "Reports",
         roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN],
@@ -265,11 +266,16 @@ export const SIDEBAR_MENU = [
       //   icon: Wallet,
       //   to: "/hr/commission",
       // },
-      // {
-      //   title: "Payroll",
-      //   icon: Briefcase,
-      //   to: "/hr/payroll",
-      // },
+      {
+        title: "Payroll Create",
+        icon: Briefcase,
+        to: "/hr/payroll",
+      },
+      {
+        title: "Payroll Manage",
+        icon: Briefcase,
+        to: "/hr/payroll/salary-sheet",
+      },
     ],
   },
 

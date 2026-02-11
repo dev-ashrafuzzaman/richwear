@@ -110,6 +110,10 @@ const StockAuditsScanPage  = React.lazy(() => import("./pages/inventory/stockAud
 const StockAuditsReportPage  = React.lazy(() => import("./pages/inventory/stockAudit/AuditReportPage"));
 const StockReportPage  = React.lazy(() => import("./pages/report/StockReportPage"));
 const SalesReportPage  = React.lazy(() => import("./pages/report/SalesReportPage"));
+const ExpensePage  = React.lazy(() => import("./pages/accounting/expenses/ExpensePage"));
+const SalarySheetPage  = React.lazy(() => import("./pages/hr/salary/SalarySheetPage"));
+const SalarySheetList  = React.lazy(() => import("./pages/hr/salary/SalarySheetList"));
+const SalarySheetDetails  = React.lazy(() => import("./pages/hr/salary/SalarySheetDetails"));
 
 export default function App() {
   return (
@@ -132,6 +136,10 @@ export default function App() {
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<Dashboard />} />
 
+          <Route path="/hr/payroll/salary-sheet/:id" element={<SalarySheetDetails  />} />
+          <Route path="/hr/payroll/salary-sheet" element={<SalarySheetList  />} />
+          <Route path="/hr/payroll" element={<SalarySheetPage  />} />
+          <Route path="/accounting/expenses" element={<ExpensePage  />} />
           <Route path="/reports/sales" element={<SalesReportPage  />} />
           <Route path="/reports/stocks" element={<StockReportPage  />} />
           <Route path="/stock-audit/report/:auditId" element={<StockAuditsReportPage  />} />
