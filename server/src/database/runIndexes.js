@@ -6,6 +6,7 @@ import { attributesIndexes } from "../modules/attributes/attributes.indexes.js";
 import { branchesIndexes } from "../modules/branches/branches.indexes.js";
 import { categoriesIndexes } from "../modules/categories/categories.indexes.js";
 import { customersIndexes } from "../modules/customers/customers.indexes.js";
+import { salarySheetIndexes } from "../modules/hr/payroll/payroll.indexes.js";
 import { discountsIndexes } from "../modules/inventory/discount/discount.indexes.js";
 import { stocksIndexes } from "../modules/inventory/stocks.indexes.js";
 import { membershipsIndexes } from "../modules/membership/membership.indexes.js";
@@ -38,6 +39,7 @@ export async function runIndexes(db) {
   await accountsIndexes(db);
   await discountsIndexes(db);
   await membershipsIndexes(db);
+  await salarySheetIndexes(db);
 
   console.log("✅ All indexes ensured (migration-safe)");
 }

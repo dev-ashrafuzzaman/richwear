@@ -1,25 +1,44 @@
 import { ObjectId } from "mongodb";
 import { getDB } from "../../../config/db.js";
-import { createSalarySheet, processSalaryPayment } from "./payroll.salarySheet.js";
+import {
+  createSalarySheet,
+  processSalaryPayment,
+} from "./payroll.salarySheet.js";
 
 export const createSalarySheetController = async (req, res, next) => {
-const db = getDB()
+  const db = getDB();
   const session = db.client.startSession();
-  session.startTransaction();
 
   try {
-    const { month, employees,branchId } = req.body;
+    let { month, employees, branchId } = req.body;
 
-    const sheetId = await createSalarySheet({
-      db,
-      session,
-      branchId,
-      month,
-      employees,
-      userId: req.user._id,
+    /* ===============================
+       SECURE BRANCH HANDLING
+    =============================== */
+
+    if (req.user.branchId) {
+      branchId = req.user.branchId;
+    }
+
+    if (!branchId) throw new Error("Branch is required");
+
+    if (!month) throw new Error("Month is required");
+
+    if (!employees?.length) throw new Error("No employees selected");
+
+    let sheetId;
+
+    await session.withTransaction(async () => {
+      sheetId = await createSalarySheet({
+        db,
+        session,
+        branchId,
+        month,
+        employees,
+        userId: req.user._id,
+      });
     });
 
-    await session.commitTransaction();
     session.endSession();
 
     res.status(201).json({
@@ -27,36 +46,43 @@ const db = getDB()
       sheetId,
     });
   } catch (err) {
-    await session.abortTransaction();
     session.endSession();
     next(err);
   }
 };
-
 
 export const paySalaryController = async (req, res, next) => {
-  const session = client.startSession();
-  session.startTransaction();
+  const db = getDB();
+  const session = db.client.startSession();
 
   try {
-    const paymentId = await processSalaryPayment({
-      db,
-      session,
-      ...req.body,
-      userId: req.user._id
+    const { salarySheetItemId, amount, paymentAccountId, payment } = req.body;
+
+    let journalId;
+
+    await session.withTransaction(async () => {
+      journalId = await processSalaryPayment({
+        db,
+        session,
+        salarySheetItemId,
+        amountPaid: Number(amount),
+        paymentAccountId,
+        payment,
+        userId: req.user._id,
+      });
     });
 
-    await session.commitTransaction();
     session.endSession();
 
-    res.status(201).json({ success: true, paymentId });
+    res.status(201).json({
+      success: true,
+      journalId,
+    });
   } catch (err) {
-    await session.abortTransaction();
     session.endSession();
     next(err);
   }
 };
-
 
 export const getSalarySheets = async (req, res, next) => {
   try {
@@ -85,8 +111,6 @@ export const getSalarySheets = async (req, res, next) => {
     next(err);
   }
 };
-
-
 
 export const getSalarySheetDetails = async (req, res, next) => {
   try {
@@ -184,10 +208,7 @@ export const getSalarySheetDetails = async (req, res, next) => {
                   input: "$items",
                   as: "item",
                   in: {
-                    $subtract: [
-                      "$$item.netSalary",
-                      "$$item.payableRemaining",
-                    ],
+                    $subtract: ["$$item.netSalary", "$$item.payableRemaining"],
                   },
                 },
               },
@@ -297,7 +318,6 @@ export const getSalarySheetDetails = async (req, res, next) => {
         items,
       },
     });
-
   } catch (err) {
     console.error("SalarySheetDetails Error:", err);
     next(err);

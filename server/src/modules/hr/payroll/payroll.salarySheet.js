@@ -8,39 +8,35 @@ export const createSalarySheet = async ({
   session,
   branchId,
   month,
-  employees, // [{ employeeId, bonus, deduction }]
+  employees,
   userId,
 }) => {
-  console.log("Branch", branchId);
-  if (!branchId) {
-    throw new Error("No Branch selected");
-  }
+  if (!branchId) throw new Error("Branch required");
+  if (!month) throw new Error("Month required");
+  if (!employees?.length) throw new Error("No employees selected");
+
+  const branchObjectId = new ObjectId(branchId);
+  const userObjectId = new ObjectId(userId);
 
   const SYS = await resolveSystemAccounts(db);
 
-  /* =====================================================
-     PREVENT DUPLICATE SHEET
-  ===================================================== */
+  /* ===============================
+     DUPLICATE PROTECTION
+  =============================== */
+
   const existing = await db
     .collection("salary_sheets")
-    .findOne({ branchId, month }, { session });
+    .findOne({ branchId: branchObjectId, month }, { session });
 
-  if (existing) {
-    throw new Error("Salary sheet already created for this month");
-  }
-
-  if (!employees || employees.length === 0) {
-    throw new Error("No employees selected");
-  }
-
-  let totalExpense = 0;
-  const entries = [];
+  if (existing) throw new Error("Salary sheet already exists for this month");
 
   const sheetId = new ObjectId();
+  let totalNet = 0;
+  const journalEntries = [];
 
-  /* =====================================================
+  /* ===============================
      LOOP EMPLOYEES
-  ===================================================== */
+  =============================== */
 
   for (const emp of employees) {
     const employee = await db.collection("employees").findOne(
@@ -53,37 +49,31 @@ export const createSalarySheet = async ({
 
     if (!employee) throw new Error("Employee not found");
 
-    if (!employee?.payroll?.baseSalary) {
-      throw new Error("Base salary not configured");
-    }
-
-    const base = roundMoney(employee.payroll.baseSalary);
+    const base = roundMoney(employee?.payroll?.baseSalary || 0);
     const bonus = roundMoney(emp.bonus || 0);
     const deduction = roundMoney(emp.deduction || 0);
 
     const net = roundMoney(base + bonus - deduction);
 
-    if (net < 0) {
-      throw new Error("Net salary cannot be negative");
-    }
+    if (net < 0) throw new Error("Net salary cannot be negative");
 
-    totalExpense += net;
+    totalNet += net;
 
-    /* ---------------- Accounting Entries ---------------- */
+    /* Accounting Entries */
 
-    entries.push({
+    journalEntries.push({
       accountId: SYS.SALARY_EXPENSE,
       debit: net,
     });
 
-    entries.push({
+    journalEntries.push({
       accountId: SYS.SALARY_PAYABLE,
       credit: net,
       partyType: "EMPLOYEE",
       partyId: employee._id,
     });
 
-    /* ---------------- Insert Sheet Item ---------------- */
+    /* Insert Item */
 
     await db.collection("salary_sheet_items").insertOne(
       {
@@ -101,39 +91,36 @@ export const createSalarySheet = async ({
     );
   }
 
-  /* =====================================================
-     POST JOURNAL ENTRY (WITH SESSION)
-  ===================================================== */
+  /* ===============================
+     POST ACCRUAL JOURNAL
+  =============================== */
 
   const journal = await postJournalEntry({
     db,
-    session, // make sure postJournalEntry also uses session internally
+    session,
     date: new Date(),
     refType: "SALARY_ACCRUAL",
     refId: sheetId,
     narration: `Salary Sheet ${month}`,
-    entries,
-    branchId,
+    entries: journalEntries,
+    branchId: branchObjectId,
   });
 
-  if (!journal?._id) {
-    throw new Error("Journal entry failed");
-  }
+  if (!journal?._id) throw new Error("Journal failed");
 
-  console.log("journal", journal);
-  /* =====================================================
+  /* ===============================
      INSERT MAIN SHEET
-  ===================================================== */
+  =============================== */
 
   await db.collection("salary_sheets").insertOne(
     {
       _id: sheetId,
       month,
-      branchId : new ObjectId(branchId),
+      branchId: branchObjectId,
+      totalNet,
       status: "POSTED",
-      totalNet: totalExpense,
-      journalId: journal?._id,
-      createdBy: new ObjectId(userId),
+      journalId: journal._id,
+      createdBy: userObjectId,
       createdAt: new Date(),
     },
     { session },
@@ -147,24 +134,96 @@ export const processSalaryPayment = async ({
   session,
   salarySheetItemId,
   amountPaid,
-  paymentMethod,
-  branchId,
+  paymentAccountId,
+  payment,
   userId,
 }) => {
-  const SYS = await resolveSystemAccounts(db);
+  console.log("amou", amountPaid);
+  if (!ObjectId.isValid(salarySheetItemId))
+    throw new Error("Invalid Salary Item ID");
 
-  const item = await db.collection("salary_sheet_items").findOne({
-    _id: new ObjectId(salarySheetItemId),
-  });
-
-  if (!item) throw new Error("Salary item not found");
+  if (!ObjectId.isValid(paymentAccountId))
+    throw new Error("Invalid Payment Account");
 
   if (amountPaid <= 0) throw new Error("Invalid payment amount");
+
+  const SYS = await resolveSystemAccounts(db);
+
+  /* ===============================
+     FETCH SALARY ITEM (WITH SESSION)
+  =============================== */
+
+  const item = await db
+    .collection("salary_sheet_items")
+    .findOne({ _id: new ObjectId(salarySheetItemId) }, { session });
+
+  if (!item) throw new Error("Salary item not found");
 
   if (amountPaid > item.payableRemaining)
     throw new Error("Payment exceeds remaining amount");
 
-  /* ---------------- Accounting Entry ---------------- */
+  /* ===============================
+     FETCH SHEET (FOR BRANCH)
+  =============================== */
+
+  const sheet = await db
+    .collection("salary_sheets")
+    .findOne({ _id: item.salarySheetId }, { session });
+
+  if (!sheet) throw new Error("Salary sheet not found");
+
+  /* ===============================
+     ATOMIC UPDATE (RACE SAFE)
+  =============================== */
+
+  const updated = await db.collection("salary_sheet_items").findOneAndUpdate(
+    {
+      _id: item._id,
+      payableRemaining: { $gte: amountPaid },
+    },
+    [
+      {
+        $set: {
+          payableRemaining: {
+            $subtract: ["$payableRemaining", amountPaid],
+          },
+        },
+      },
+      {
+        $set: {
+          status: {
+            $cond: [
+              { $eq: [{ $subtract: ["$payableRemaining", amountPaid] }, 0] },
+              "PAID",
+              "PARTIAL",
+            ],
+          },
+        },
+      },
+    ],
+    {
+      session,
+      returnDocument: "after",
+    },
+  );
+
+  if (!updated?._id) {
+    throw new Error(
+      "Payment could not be processed. Please refresh and try again.",
+    );
+  }
+
+  const newRemaining = updated.payableRemaining;
+
+  const newStatus = newRemaining === 0 ? "PAID" : "PARTIAL";
+
+  await db
+    .collection("salary_sheet_items")
+    .updateOne({ _id: item._id }, { $set: { status: newStatus } }, { session });
+
+  /* ===============================
+     ACCOUNTING ENTRY
+  =============================== */
 
   const entries = [
     {
@@ -174,7 +233,7 @@ export const processSalaryPayment = async ({
       partyId: item.employeeId,
     },
     {
-      accountId: paymentMethod === "CASH" ? SYS.CASH : SYS.BANK,
+      accountId: paymentAccountId,
       credit: amountPaid,
     },
   ];
@@ -185,39 +244,54 @@ export const processSalaryPayment = async ({
     date: new Date(),
     refType: "SALARY_PAYMENT",
     refId: item._id,
-    narration: "Salary Payment",
+    narration: `Salary Payment for ${sheet.month} via ${payment}`,
     entries,
-    branchId,
+    branchId: sheet.branchId,
   });
 
-  /* ---------------- Update Salary Item ---------------- */
+  /* ===============================
+     INSERT PAYMENT RECORD
+  =============================== */
 
-  const remaining = item.payableRemaining - amountPaid;
-
-  await db.collection("salary_sheet_items").updateOne(
-    { _id: item._id },
+  await db.collection("payroll_payments").insertOne(
     {
-      $set: {
-        payableRemaining: remaining,
-        status: remaining === 0 ? "PAID" : "PARTIAL",
-      },
+      salarySheetId: item.salarySheetId,
+      salarySheetItemId: item._id,
+      employeeId: item.employeeId,
+      branchId: sheet.branchId,
+      paymentAccountId: new ObjectId(paymentAccountId),
+      payment,
+      amountPaid,
+      journalId: journal._id,
+      createdBy: new ObjectId(userId),
+      createdAt: new Date(),
     },
+    { session },
   );
 
-  /* ---------------- Insert Payment Record ---------------- */
+  /* ===============================
+     AUTO COMPLETE SHEET
+  =============================== */
 
-  const result = await db.collection("payroll_payments").insertOne({
-    salarySheetId: item.salarySheetId,
-    salarySheetItemId: item._id,
-    employeeId: item.employeeId,
-    branchId,
-    amountPaid,
-    paymentMethod,
-    paymentDate: new Date(),
-    journalId: journal._id,
-    createdBy: userId,
-    createdAt: new Date(),
-  });
+  const remainingCount = await db
+    .collection("salary_sheet_items")
+    .countDocuments(
+      {
+        salarySheetId: item.salarySheetId,
+        status: { $ne: "PAID" },
+      },
+      { session },
+    );
 
-  return result.insertedId;
+  if (remainingCount === 0) {
+    await db
+      .collection("salary_sheets")
+      .updateOne(
+        { _id: item.salarySheetId },
+        { $set: { status: "COMPLETED" } },
+        { session },
+      );
+  }
+
+  return journal._id;
 };
