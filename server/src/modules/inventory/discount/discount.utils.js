@@ -29,23 +29,29 @@ export const calculateDiscount = ({
   type,
   value,
 }) => {
-  let amount = 0;
+  // Convert to poisha
+  const priceInMinor = Math.round(salePrice * 100);
+
+  let discountInMinor = 0;
 
   if (type === "PERCENT") {
-    amount = (salePrice * value) / 100;
+    discountInMinor = Math.round(
+      (priceInMinor * value) / 100
+    );
   }
 
   if (type === "FLAT") {
-    amount = value;
+    discountInMinor = Math.round(value * 100);
   }
 
-  amount = Number(amount.toFixed(2));
+  // Prevent negative
+  const finalInMinor = Math.max(
+    priceInMinor - discountInMinor,
+    0
+  );
 
   return {
-    discountAmount: amount,
-    finalPrice: Math.max(
-      Number((salePrice - amount).toFixed(2)),
-      0
-    ),
+    discountAmount: discountInMinor / 100,
+    finalPrice: finalInMinor / 100,
   };
 };

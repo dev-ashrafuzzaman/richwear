@@ -1,8 +1,20 @@
+import { ObjectId } from "mongodb";
+
 export const getSummary = async (db, branchId, from, to) => {
   const match = {
-    ...(branchId && { branchId }),
-    ...(from && to && { date: { $gte: new Date(from), $lte: new Date(to) } }),
+    status: "COMPLETED",
   };
+
+  if (branchId) {
+    match.branchId = new ObjectId(branchId);
+  }
+
+  if (from && to) {
+    match.createdAt = {
+      $gte: new Date(from),
+      $lte: new Date(to),
+    };
+  }
 
   const [sales] = await db
     .collection("sales")
@@ -11,59 +23,80 @@ export const getSummary = async (db, branchId, from, to) => {
       {
         $group: {
           _id: null,
-          revenue: { $sum: "$totalAmount" },
+          revenue: { $sum: "$grandTotal" },
           orders: { $sum: 1 },
+          totalDue: { $sum: "$dueAmount" },
         },
       },
     ])
     .toArray();
 
-  const products = await db.collection("products").countDocuments();
-  const customers = await db.collection("customers").countDocuments();
+  const productsPromise = db.collection("products").countDocuments();
+  const customersPromise = db.collection("customers").countDocuments();
+
+  const [products, customers] = await Promise.all([
+    productsPromise,
+    customersPromise,
+  ]);
 
   return {
-    revenue: { value: sales?.revenue || 0, change: 0, trend: "up" },
-    orders: { value: sales?.orders || 0, change: 0, trend: "up" },
-    products: { value: products, change: 0, trend: "down" },
-    customers: { value: customers, change: 0, trend: "up" },
+    revenue: { value: sales?.revenue || 0 },
+    orders: { value: sales?.orders || 0 },
+    due: { value: sales?.totalDue || 0 },
+    products: { value: products },
+    customers: { value: customers },
   };
 };
+
+
 export const getSalesChart = async (db, branchId, from, to) => {
-  return db
-    .collection("sales")
-    .aggregate([
-      {
-        $match: {
-          ...(branchId && { branchId }),
-          ...(from && to && {
-            date: { $gte: new Date(from), $lte: new Date(to) },
-          }),
+  const match = { status: "COMPLETED" };
+
+  if (branchId) {
+    match.branchId = new ObjectId(branchId);
+  }
+
+  if (from && to) {
+    match.createdAt = {
+      $gte: new Date(from),
+      $lte: new Date(to),
+    };
+  }
+
+  return db.collection("sales").aggregate([
+    { $match: match },
+
+    {
+      $group: {
+        _id: {
+          year: { $year: "$createdAt" },
+          month: { $month: "$createdAt" },
+          day: { $dayOfMonth: "$createdAt" },
         },
+        sales: { $sum: "$grandTotal" },
+        orders: { $sum: 1 },
       },
-      {
-        $group: {
-          _id: { $dayOfWeek: "$date" },
-          sales: { $sum: "$totalAmount" },
-          orders: { $sum: 1 },
-        },
-      },
-      {
-        $project: {
-          _id: 0,
-          date: {
-            $arrayElemAt: [
-              ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
-              { $subtract: ["$_id", 1] },
-            ],
+    },
+
+    {
+      $project: {
+        _id: 0,
+        date: {
+          $dateFromParts: {
+            year: "$_id.year",
+            month: "$_id.month",
+            day: "$_id.day",
           },
-          sales: 1,
-          orders: 1,
         },
+        sales: 1,
+        orders: 1,
       },
-      { $sort: { date: 1 } },
-    ])
-    .toArray();
+    },
+
+    { $sort: { date: 1 } },
+  ]).toArray();
 };
+
 
 export const getTopCategories = async (db, branchId, from, to) => {
   return db
@@ -125,41 +158,70 @@ export const getLowStock = async (db, branchId) => {
     .toArray();
 };
 export const getRecentTransactions = async (db, branchId) => {
-  return db
-    .collection("sales")
-    .find({ ...(branchId && { branchId }) })
-    .sort({ createdAt: -1 })
-    .limit(5)
-    .project({
-      id: "$invoiceNo",
-      customer: "$customerName",
-      amount: "$totalAmount",
-      items: "$totalQty",
-      status: "$status",
-      time: {
-        $dateToString: { format: "%I:%M %p", date: "$createdAt" },
+  const match = { status: "COMPLETED" };
+
+  if (branchId) {
+    match.branchId = new ObjectId(branchId);
+  }
+
+  return db.collection("sales").aggregate([
+    { $match: match },
+    { $sort: { createdAt: -1 } },
+    { $limit: 5 },
+    {
+      $project: {
+        _id: 0,
+        id: "$invoiceNo",
+        customerId: 1,
+        amount: "$grandTotal",
+        items: "$totalQty",
+        status: 1,
+        createdAt: 1,
       },
-    })
-    .toArray();
+    },
+  ]).toArray();
 };
-export const getPerformanceMetrics = async (db, branchId, from, to) => {
-  const [result] = await db
-    .collection("sales")
-    .aggregate([
-      {
-        $group: {
-          _id: null,
-          orders: { $sum: 1 },
-          revenue: { $sum: "$totalAmount" },
-          items: { $sum: "$totalQty" },
-        },
+
+export const getPerformanceMetrics = async (
+  db,
+  branchId,
+  from,
+  to
+) => {
+  const match = { status: "COMPLETED" };
+
+  if (branchId) {
+    match.branchId = new ObjectId(branchId);
+  }
+
+  if (from && to) {
+    match.createdAt = {
+      $gte: new Date(from),
+      $lte: new Date(to),
+    };
+  }
+
+  const [result] = await db.collection("sales").aggregate([
+    { $match: match },
+    {
+      $group: {
+        _id: null,
+        orders: { $sum: 1 },
+        revenue: { $sum: "$grandTotal" },
+        items: { $sum: "$totalQty" },
       },
-    ])
-    .toArray();
+    },
+  ]).toArray();
+
+  if (!result) {
+    return {
+      avgOrder: 0,
+      itemsPerOrder: 0,
+    };
+  }
 
   return {
-    conversion: 4.2, // optional analytics later
-    avgOrder: result ? result.revenue / result.orders : 0,
-    itemsPerOrder: result ? result.items / result.orders : 0,
+    avgOrder: result.revenue / result.orders,
+    itemsPerOrder: result.items / result.orders,
   };
 };

@@ -18,7 +18,7 @@ export const seedSystemUsers = async () => {
     .findOne({ email: superAdminEmail });
 
   if (!superExists) {
-    const superPassword = await bcrypt.hash("Jcs002255.,.,.@", 10);
+    const superPassword = await bcrypt.hash("Super@126Richwear", 10);
 
     await db.collection("users").insertOne({
       name: "Super Admin",

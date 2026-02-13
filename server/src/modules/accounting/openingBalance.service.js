@@ -1,3 +1,4 @@
+import { ObjectId } from "mongodb";
 import { getDB } from "../../config/db.js";
 import { openingBalanceAccounting } from "./accounting.adapter.js";
 
@@ -14,14 +15,14 @@ export const createOpeningBalance = async (req, res, next) => {
       // ❌ Prevent duplicate opening balance
       const exists = await db
         .collection("journals")
-        .findOne({ refType: "OPENING_BALANCE", branchId }, { session });
+        .findOne({ refType: "OPENING_BALANCE", branchId: new ObjectId(branchId) }, { session });
 
       if (exists) {
         throw new Error("Opening balance already exists for this branch");
       }
 
       await db.collection("settings").updateOne(
-        { key: "OPENING_BALANCE_LOCK", branchId },
+        { key: "OPENING_BALANCE_LOCK", branchId: new ObjectId(branchId) },
         {
           $set: {
             value: true,
@@ -36,7 +37,7 @@ export const createOpeningBalance = async (req, res, next) => {
         session,
         openingDate: new Date(openingDate),
         amount,
-        branchId,
+        branchId: new ObjectId(branchId)
       });
     });
 
@@ -57,7 +58,7 @@ export const getOpeningBalanceStatus = async (req, res, next) => {
     const { branchId } = req.query;
     const lock = await db.collection("settings").findOne({
       key: "OPENING_BALANCE_LOCK",
-      branchId,
+     branchId: new ObjectId(branchId)
     });
 
     res.json({

@@ -4,7 +4,6 @@ import { createSaleSchema } from "./sales.validation.js";
 
 export const createSale = async (req, res, next) => {
   try {
-console.log("req Ueer",req.user)
     const payload = await createSaleSchema.validateAsync(req.body);
     const result = await createSaleService({
       db: getDB(),

@@ -525,7 +525,7 @@ export const getSinglePurchaseInvoice = async (req, res, next) => {
   try {
     const db = getDB();
     const purchaseId = toObjectId(req.params.id, "purchaseId");
-    console.log("purchases id", purchaseId);
+   
     const data = await db
       .collection(COLLECTIONS.PURCHASES)
       .aggregate([

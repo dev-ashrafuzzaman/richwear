@@ -11,10 +11,9 @@ export const me = async (req, res) => {
 
   const userId = new ObjectId(req.user._id);
 
-  const user = await db.collection("users").findOne(
-    { _id: userId },
-    { projection: { password: 0, refreshToken: 0 } }
-  );
+  const user = await db
+    .collection("users")
+    .findOne({ _id: userId }, { projection: { password: 0, refreshToken: 0 } });
 
   if (!user) {
     throw new AppError("User not found", 404);
@@ -46,7 +45,6 @@ export const createUser = async (req, res, next) => {
         message: "Employee email not found",
       });
     }
-
     const exists = await db.collection("users").findOne({
       employeeId: employee._id,
     });
@@ -75,7 +73,10 @@ export const createUser = async (req, res, next) => {
       roleId: roleData.roleId,
       roleName: roleData.roleName,
       permissions: roleData.permissions,
-      branchId: payload.branchId || employee.branchId || null,
+      branchId:
+        new ObjectId(payload.branchId) ||
+        new ObjectId(employee.branchId) ||
+        null,
       isSuperAdmin: payload.isSuperAdmin,
       status: payload.status,
       loginAttempts: 0,
@@ -84,7 +85,7 @@ export const createUser = async (req, res, next) => {
       refreshTokenHash: null,
       createdAt: new Date(),
       updatedAt: new Date(),
-      createdBy: req.user?._id || null,
+      createdBy: new ObjectId(req.user?._id) || null,
       updatedBy: null,
 
       meta: {

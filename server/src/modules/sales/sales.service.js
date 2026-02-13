@@ -217,7 +217,7 @@ export const createSaleService = async ({ db, payload, user }) => {
       payload.payments.map((p) => ({
         saleId,
         method: p.method,
-        paymentId: p.accountId || null,
+        paymentId: new ObjectId(p.accountId) || null,
         amount: Number(p.amount),
         reference: p.reference || null,
         receivedAt: new Date(),

@@ -103,6 +103,30 @@ export const getActiveProductDiscounts = async ({
 };
 
 
+export const getActiveDiscountsForPOS = async ({
+  db,
+  branchId,
+  productIds,
+  categoryIds,
+}) => {
+  const today = getBDMidnight();
+
+  return db.collection("discounts").find({
+    status: "active",
+    startDate: { $lte: today },
+    $or: [
+      { isLifetime: true },
+      { endDate: { $gte: today } },
+    ],
+    $or: [
+      { targetType: "PRODUCT", targetId: { $in: productIds } },
+      { targetType: "CATEGORY", targetId: { $in: categoryIds } },
+      { targetType: "BRANCH", targetId: new ObjectId(branchId) },
+    ],
+  }).toArray();
+};
+
+
 /* ======================================================
    AUTO EXPIRE DISCOUNTS
 ====================================================== */

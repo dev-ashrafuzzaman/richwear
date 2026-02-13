@@ -5,7 +5,7 @@ import { ensureObjectId } from "../../utils/ensureObjectId.js";
 import { getDB } from "../../config/db.js";
 import { getBusinessDateBD } from "../../utils/businessDate.js";
 import { calculateDiscount, getBDMidnight } from "./discount/discount.utils.js";
-import { getActiveProductDiscounts } from "./discount/discount.service.js";
+import { getActiveDiscountsForPOS, getActiveProductDiscounts } from "./discount/discount.service.js";
 import { generateCode } from "../../utils/codeGenerator.js";
 import { getMainWarehouse } from "../branches/branch.utils.js";
 import { upsertStock } from "./stock.utils.js";
@@ -229,12 +229,6 @@ const isNumeric = (val) => /^[0-9]+$/.test(val);
 export const getPosItems = async (req, res, next) => {
   try {
     const db = getDB();
-
-    /* ===============================
-       BUSINESS DATE (BD)
-    =============================== */
-    const today = getBDMidnight();
-
     const { search = "", limit = 20, lastSku, lastId } = req.query;
 
     /* ===============================
@@ -265,7 +259,7 @@ export const getPosItems = async (req, res, next) => {
     }
 
     /* ===============================
-       STOCK QUERY (SOURCE OF TRUTH)
+       STOCK QUERY
     =============================== */
     const match = {
       branchId: new ObjectId(branchId),
@@ -274,7 +268,7 @@ export const getPosItems = async (req, res, next) => {
 
     if (search) {
       if (!isNaN(search) && search.length >= 6) {
-        match.sku = search; // barcode
+        match.sku = search;
       } else {
         match.$text = { $search: search };
       }
@@ -291,7 +285,7 @@ export const getPosItems = async (req, res, next) => {
     }
 
     /* ===============================
-       FETCH STOCK
+       FETCH STOCKS
     =============================== */
     const items = await db
       .collection(COLLECTIONS.STOCKS)
@@ -323,29 +317,94 @@ export const getPosItems = async (req, res, next) => {
     }
 
     /* ===============================
-       DISCOUNT RESOLVE (PRODUCT)
+       FETCH PRODUCTS (categoryPath only)
     =============================== */
     const productIds = [
       ...new Set(items.map((i) => i.productId.toString())),
     ].map((id) => new ObjectId(id));
 
-    const discounts = await getActiveProductDiscounts({
+    const products = await db
+      .collection(COLLECTIONS.PRODUCTS)
+      .find({ _id: { $in: productIds } })
+      .project({ categoryPath: 1 })
+      .toArray();
+
+    const productMap = new Map();
+    const categorySet = new Set();
+
+    for (const p of products) {
+      productMap.set(p._id.toString(), p);
+      p.categoryPath?.forEach((catId) =>
+        categorySet.add(catId.toString())
+      );
+    }
+
+    const categoryIds = [...categorySet].map(
+      (id) => new ObjectId(id)
+    );
+
+    /* ===============================
+       FETCH ALL ACTIVE DISCOUNTS
+    =============================== */
+    const discounts = await getActiveDiscountsForPOS({
       db,
+      branchId,
       productIds,
+      categoryIds,
     });
 
-    const discountMap = new Map();
+    /* ===============================
+       BUILD DISCOUNT MAPS
+    =============================== */
+    const productDiscountMap = new Map();
+    const categoryDiscountMap = new Map();
+    let branchDiscount = null;
+
     for (const d of discounts) {
-      discountMap.set(d.targetId.toString(), d);
+      if (d.targetType === "PRODUCT") {
+        productDiscountMap.set(d.targetId.toString(), d);
+      }
+
+      if (d.targetType === "CATEGORY") {
+        categoryDiscountMap.set(d.targetId.toString(), d);
+      }
+
+      if (d.targetType === "BRANCH") {
+        branchDiscount = d;
+      }
     }
 
     /* ===============================
-       APPLY DISCOUNT
+       APPLY PRIORITY ENGINE
+       PRODUCT > CATEGORY > BRANCH
     =============================== */
     const data = items.map((item) => {
-      const d = discountMap.get(item.productId.toString());
+      const productId = item.productId.toString();
+      const product = productMap.get(productId);
 
-      if (!d) {
+      let discount = null;
+
+      // 1️⃣ PRODUCT
+      if (productDiscountMap.has(productId)) {
+        discount = productDiscountMap.get(productId);
+      }
+
+      // 2️⃣ CATEGORY (L1 + L2 supported)
+      else if (product?.categoryPath?.length) {
+        for (const catId of product.categoryPath) {
+          if (categoryDiscountMap.has(catId.toString())) {
+            discount = categoryDiscountMap.get(catId.toString());
+            break;
+          }
+        }
+      }
+
+      // 3️⃣ BRANCH
+      else if (branchDiscount) {
+        discount = branchDiscount;
+      }
+
+      if (!discount) {
         return {
           ...item,
           discountType: null,
@@ -357,15 +416,16 @@ export const getPosItems = async (req, res, next) => {
 
       const { discountAmount, finalPrice } = calculateDiscount({
         salePrice: item.salePrice,
-        type: d.type,
-        value: Number(d.value),
+        type: discount.type,
+        value: Number(discount.value),
       });
 
       return {
         ...item,
-        discountType: d.type,
-        discountId: d._id,
-        discountValue: d.value,
+        discountType: discount.type,
+        discountSource: discount.targetType,
+        discountId: discount._id,
+        discountValue: discount.value,
         discountAmount,
         finalPrice,
       };
@@ -638,7 +698,7 @@ export const createStockTransfer = async (req, res, next) => {
       toBranchId: new ObjectId(toBranchId),
       status: "PENDING",
       totalItems: items.length,
-      createdBy: req.user._id,
+      createdBy: new ObjectId(req.user._id),
       createdAt: new Date(),
     };
 
@@ -730,7 +790,7 @@ export const createStockTransfer = async (req, res, next) => {
       {
         transferId,
         action: "CREATED",
-        userId: req.user._id,
+        userId: new ObjectId(req.user._id),
         createdAt: new Date(),
       },
       { session },
@@ -996,7 +1056,7 @@ export const receiveStockTransfer = async (req, res, next) => {
         $set: {
           status: hasMismatch ? "MISMATCH" : "RECEIVED",
           receivedAt: new Date(),
-          receivedBy: req.user._id,
+          receivedBy: new ObjectId(req.user._id),
         },
       },
       { session },
@@ -1008,7 +1068,7 @@ export const receiveStockTransfer = async (req, res, next) => {
         transferId,
         status: hasMismatch ? "MISMATCH" : "RECEIVED",
         action: "RECEIVED",
-        receivedBy: req.user._id,
+        receivedBy: new ObjectId(req.user._id),
         receivedAt: new Date(),
       },
       { session },
@@ -1483,7 +1543,7 @@ export const resolveStockMismatch = async (req, res, next) => {
         $set: {
           status: "RESOLVED",
           resolutionType,
-          resolvedBy: req.user._id,
+          resolvedBy: new ObjectId(req.user._id),
           resolvedAt: new Date(),
           note: note || null,
         },

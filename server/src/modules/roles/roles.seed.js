@@ -3,11 +3,11 @@ import { PERMISSIONS } from "./permissions.registry.js";
 import { flattenPermissions } from "./permission.utils.js";
 
 export const ROLE_SEEDS = [
-  {
-    name: "Super Admin",
-    isSystem: true,
-    permissions: ["*"],
-  },
+  // {
+  //   name: "Super Admin",
+  //   isSystem: true,
+  //   permissions: ["*"],
+  // },
 
   {
     name: "Admin",
@@ -56,13 +56,13 @@ export const ROLE_SEEDS = [
     }),
   },
 
-  {
-    name: "Accountant",
-    permissions: flattenPermissions({
-      ACCOUNT: PERMISSIONS.ACCOUNT,
-      REPORT: {
-        PROFIT_LOSS: PERMISSIONS.REPORT.PROFIT_LOSS,
-      },
-    }),
-  },
+  // {
+  //   name: "Accountant",
+  //   permissions: flattenPermissions({
+  //     ACCOUNT: PERMISSIONS.ACCOUNT,
+  //     REPORT: {
+  //       PROFIT_LOSS: PERMISSIONS.REPORT.PROFIT_LOSS,
+  //     },
+  //   }),
+  // },
 ];

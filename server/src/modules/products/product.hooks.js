@@ -8,13 +8,8 @@ export const beforeCreateProduct = async (req, res, next) => {
     const db = getDB();
     const session = req.session;
 
-    const {
-      name,
-      categoryId,
-      productTypeId,
-      sizeType,
-      sizeConfig,
-    } = req.body;
+    const { name, categoryId, level1Id, productTypeId, sizeType, sizeConfig } =
+      req.body;
 
     /* =====================
        OBJECT ID VALIDATION
@@ -34,10 +29,7 @@ export const beforeCreateProduct = async (req, res, next) => {
     ====================== */
     const category = await db
       .collection(COLLECTIONS.CATEGORIES)
-      .findOne(
-        { _id: categoryObjectId, status: "active" },
-        { session }
-      );
+      .findOne({ _id: categoryObjectId, status: "active" }, { session });
 
     if (!category) {
       return res.status(400).json({
@@ -51,10 +43,7 @@ export const beforeCreateProduct = async (req, res, next) => {
     ====================== */
     const productType = await db
       .collection(COLLECTIONS.PRODUCT_TYPES)
-      .findOne(
-        { _id: productTypeObjectId, status: "active" },
-        { session }
-      );
+      .findOne({ _id: productTypeObjectId, status: "active" }, { session });
 
     if (!productType) {
       return res.status(400).json({
@@ -66,16 +55,14 @@ export const beforeCreateProduct = async (req, res, next) => {
     /* =====================
        DUPLICATE CHECK (SESSION)
     ====================== */
-    const exists = await db
-      .collection(COLLECTIONS.PRODUCTS)
-      .findOne(
-        {
-          name: name.trim(),
-          categoryId: categoryObjectId,
-          productTypeId: productTypeObjectId,
-        },
-        { session }
-      );
+    const exists = await db.collection(COLLECTIONS.PRODUCTS).findOne(
+      {
+        name: name.trim(),
+        categoryId: categoryObjectId,
+        productTypeId: productTypeObjectId,
+      },
+      { session },
+    );
 
     if (exists) {
       return res.status(400).json({
@@ -136,6 +123,7 @@ export const beforeCreateProduct = async (req, res, next) => {
       categoryId: categoryObjectId,
       productTypeId: productTypeObjectId,
       productCode,
+      categoryPath: [new ObjectId(level1Id), categoryObjectId],
       sizeType,
       sizeConfig: finalSizeConfig,
       hasVariant,

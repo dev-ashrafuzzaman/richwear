@@ -138,7 +138,7 @@ export const processSalaryPayment = async ({
   payment,
   userId,
 }) => {
-  console.log("amou", amountPaid);
+
   if (!ObjectId.isValid(salarySheetItemId))
     throw new Error("Invalid Salary Item ID");
 
