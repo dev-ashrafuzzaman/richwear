@@ -192,7 +192,7 @@ export default function OpeningBalancePage() {
                         </span>
                       )}
                     </p>
-                    <div className="flex flex-wrap gap-3">
+                    {/* <div className="flex flex-wrap gap-3">
                       <Button
                         variant="outlined"
                         prefix={<Eye size={16} />}
@@ -219,7 +219,7 @@ export default function OpeningBalancePage() {
                       >
                         Go Back
                       </Button>
-                    </div>
+                    </div> */}
                   </div>
                 </div>
               </Card>

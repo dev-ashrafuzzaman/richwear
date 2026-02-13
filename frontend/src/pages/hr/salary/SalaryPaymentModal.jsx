@@ -1,10 +1,11 @@
-import { useState } from "react";
-import { Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Loader2, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import Modal from "../../../components/modals/Modal";
 import Button from "../../../components/ui/Button";
 import Input from "../../../components/ui/Input";
-import Select from "../../../components/ui/Select";
+import { Controller, useForm } from "react-hook-form";
+import ReportSmartSelect from "../../../components/common/ReportSmartSelect";
 import useAxiosSecure from "../../../hooks/useAxiosSecure";
 
 export default function SalaryPaymentModal({
@@ -15,54 +16,81 @@ export default function SalaryPaymentModal({
 }) {
   const { axiosSecure } = useAxiosSecure();
 
-  const [amount, setAmount] = useState(
-    item?.payableRemaining || 0
-  );
-  const [method, setMethod] = useState("CASH");
+  const {
+    control,
+    handleSubmit,
+    watch,
+    setValue,
+  } = useForm();
+
   const [loading, setLoading] = useState(false);
 
-  const handlePay = async () => {
-    if (!amount || Number(amount) <= 0) {
-      toast.error("Invalid amount");
-      return;
-    }
+  const amount = watch("amount");
+  const paymentAccount = watch("paymentAccountId");
 
-    if (Number(amount) > item.payableRemaining) {
-      toast.error("Amount exceeds remaining balance");
-      return;
-    }
+  /* ===============================
+     AUTO SET DEFAULT AMOUNT
+  =============================== */
 
+  useEffect(() => {
+    if (item) {
+      setValue("amount", item.payableRemaining);
+    }
+  }, [item]);
+
+  /* ===============================
+     VALIDATION
+  =============================== */
+
+  const isValid =
+    amount > 0 &&
+    amount <= item?.payableRemaining &&
+    paymentAccount;
+
+  /* ===============================
+     SUBMIT
+  =============================== */
+
+  const onSubmit = async (data) => {
     try {
       setLoading(true);
 
-      await axiosSecure.post("/payroll/salary-payments", {
-        salarySheetItemId: item._id,
-        amount: Number(amount),
-        method,
-      });
-
+     const res= await axiosSecure.post(
+        "/payroll/pay-salary",
+        {
+          salarySheetItemId: item._id,
+          amount: Number(data.amount),
+          paymentAccountId:
+            data.paymentAccountId._id,
+          payment:
+            data.paymentAccountId.name,
+        }
+      );
+console.log(res)
       toast.success("Salary paid successfully");
 
       onSuccess?.();
       setIsOpen(false);
+
     } catch (err) {
       toast.error(
-        err.response?.data?.message || "Error"
+        err.response?.data?.message ||
+          "Error"
       );
     } finally {
       setLoading(false);
     }
   };
 
+  if (!item) return null;
+
   return (
     <Modal
       isOpen={isOpen}
       setIsOpen={setIsOpen}
       title="Salary Payment"
-      subTitle="Pay salary to employee."
-      size="md"
-      closeOnOverlayClick
-      closeOnEsc
+      subTitle="Confirm and process employee salary payment"
+      size="xl"
       footer={
         <div className="flex justify-end gap-2">
           <Button
@@ -73,11 +101,13 @@ export default function SalaryPaymentModal({
           </Button>
 
           <Button
-            onClick={handlePay}
-            disabled={loading}
+            onClick={handleSubmit(onSubmit)}
+            disabled={!isValid || loading}
             prefix={
-              loading && (
+              loading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <CheckCircle className="w-4 h-4" />
               )
             }
             variant="gradient"
@@ -87,30 +117,115 @@ export default function SalaryPaymentModal({
         </div>
       }
     >
-      <div className="flex flex-col gap-4">
-        <div className="text-sm text-muted">
-          Remaining Amount:{" "}
-          <span className="font-semibold">
-            {item?.payableRemaining}
-          </span>
+      <div className="grid md:grid-cols-2 gap-6">
+
+        {/* ================= EMPLOYEE INFO ================= */}
+        <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+          <h3 className="text-sm font-semibold text-gray-600">
+            Employee Information
+          </h3>
+
+          <p>
+            <span className="text-gray-500">
+              Code:
+            </span>{" "}
+            {item.employee?.code}
+          </p>
+
+          <p>
+            <span className="text-gray-500">
+              Name:
+            </span>{" "}
+            {item.employee?.name}
+          </p>
+
+          <p>
+            <span className="text-gray-500">
+              Designation:
+            </span>{" "}
+            {item.employee?.designation} (
+            {item.employee?.role})
+          </p>
+
+          <p>
+            <span className="text-gray-500">
+              Salary Request Date:
+            </span>{" "}
+            {new Date(
+              item.createdAt
+            ).toLocaleDateString()}
+          </p>
         </div>
+
+        {/* ================= SALARY BREAKDOWN ================= */}
+        <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+          <h3 className="text-sm font-semibold text-gray-600">
+            Salary Breakdown
+          </h3>
+
+          <p>Base Salary: {item.baseSalary}</p>
+          <p>Bonus: {item.bonus}</p>
+          <p>Deduction: {item.deduction}</p>
+
+          <hr />
+
+          <p className="font-semibold">
+            Net Salary: {item.netSalary}
+          </p>
+
+          <p className="text-red-600 font-semibold">
+            Remaining: {item.payableRemaining}
+          </p>
+        </div>
+      </div>
+
+      {/* ================= PAYMENT SECTION ================= */}
+      <div className="mt-6 space-y-4">
 
         <Input
           label="Payment Amount"
           type="number"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
+          value={amount || ""}
+          onChange={(e) =>
+            setValue(
+              "amount",
+              Number(e.target.value)
+            )
+          }
         />
 
-        <Select
-          label="Payment Method"
-          value={method}
-          onChange={(e) => setMethod(e.target.value)}
-          options={[
-            { label: "Cash", value: "CASH" },
-            { label: "Bank", value: "BANK" },
-          ]}
+        <Controller
+          name="paymentAccountId"
+          control={control}
+          render={({ field }) => (
+            <ReportSmartSelect
+              label="Payment Account"
+              route="/sales/payment-methods"
+              extraParams={{
+                parentCode: "1002",
+                sort: "cash_first",
+              }}
+              displayField={["name", "code"]}
+              value={field.value}
+              onChange={field.onChange}
+              placeholder="Select Payment Account"
+            />
+          )}
         />
+
+        {/* ================= VALIDATION MESSAGE ================= */}
+        {!paymentAccount && (
+          <p className="text-xs text-red-500">
+            * Payment account is required
+          </p>
+        )}
+
+        {amount > item.payableRemaining && (
+          <p className="text-xs text-red-500">
+            * Amount exceeds remaining
+            balance
+          </p>
+        )}
       </div>
     </Modal>
   );
