@@ -27,7 +27,7 @@ export default function SalesReturnCreateModal({
       onSuccess: (res) => {
         const saleData = res.data;
         setSale(saleData);
-        console.log("return data", res);
+   
         setItems(
           saleData.items.map((i) => ({
             saleItemId: i._id,

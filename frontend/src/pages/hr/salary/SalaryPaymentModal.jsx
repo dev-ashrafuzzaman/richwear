@@ -66,7 +66,7 @@ export default function SalaryPaymentModal({
             data.paymentAccountId.name,
         }
       );
-console.log(res)
+
       toast.success("Salary paid successfully");
 
       onSuccess?.();

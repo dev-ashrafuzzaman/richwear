@@ -13,7 +13,6 @@ export default function LoyaltySettingUpdateModal({
   row, // 🔥 selected row
 }) {
   const { request, loading } = useApi();
-console.log("modal",row)
   const {
     register,
     handleSubmit,

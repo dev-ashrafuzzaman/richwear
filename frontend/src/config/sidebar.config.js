@@ -6,30 +6,28 @@ import {
   Boxes,
   Truck,
   Calculator,
-  BookOpen,
   BarChart3,
   FileText,
   Users,
   UserCheck,
   Briefcase,
-  Wallet,
   CalendarCheck,
   GitBranch,
   Settings,
-  Activity,
-  DollarSignIcon,
   DiscIcon,
   SendToBack,
+  DollarSignIcon,
 } from "lucide-react";
+
 import { ROLES } from "../constants/roles";
 
 export const SIDEBAR_MENU = [
-  /* =======================
-     DASHBOARD
-  ======================== */
+  /* =====================================================
+     CORE DASHBOARD
+  ===================================================== */
   {
-    header: "Main",
-    roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN],
+    header: "Overview",
+    roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER],
     items: [
       {
         title: "Dashboard",
@@ -39,113 +37,85 @@ export const SIDEBAR_MENU = [
     ],
   },
 
-  /* =======================
-     SALES & POS
-  ======================== */
+  /* =====================================================
+     SALES MANAGEMENT
+  ===================================================== */
   {
-    header: "Sales & POS",
-    roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.CASHIER],
+    header: "Sales Management",
+    roles: [
+      ROLES.SUPER_ADMIN,
+      ROLES.MANAGER,
+      ROLES.CASHIER,
+    ],
     items: [
       {
-        title: "POS Create",
+        title: "Point of Sale",
         icon: ShoppingCart,
         to: "/pos",
-        roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.CASHIER],
+        roles: [
+          ROLES.SUPER_ADMIN,
+          ROLES.MANAGER,
+          ROLES.CASHIER,
+        ],
       },
       {
-        title: "Sales",
-        roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.CASHIER],
+        title: "Sales Transactions",
         icon: FileText,
+        roles: [
+          ROLES.SUPER_ADMIN,
+          ROLES.MANAGER,
+          ROLES.CASHIER,
+        ],
         submenu: [
           {
-            title: "Sales Manage",
-            roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.CASHIER],
+            title: "Manage Sales",
             to: "/sales",
           },
           {
-            title: "Sales Return",
-            roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.CASHIER],
+            title: "Sales Returns",
             to: "/sales/return",
           },
-          // { title: "Customer Statement", to: "/sales/statements" },
         ],
       },
     ],
   },
 
-  /* =======================
-     PRODUCTS
-  ======================== */
+  /* =====================================================
+     PRODUCT & INVENTORY
+  ===================================================== */
   {
-    header: "Products",
-    roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN],
+    header: "Product & Inventory",
+    roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.MANAGER],
     items: [
       {
         title: "Categories",
+         roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN],
         icon: Boxes,
         to: "/categories",
       },
       {
         title: "Products",
+        roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN],
         icon: Package,
         submenu: [
-          { title: "Product Manage", to: "/products" },
-          { title: "Variants Manage", to: "/variants" },
+          { title: "Manage Products", to: "/products" },
+          { title: "Manage Variants", to: "/variants" },
         ],
       },
-    ],
-  },
-
-  /* =======================
-     PURCHASES
-  ======================== */
-  {
-    header: "Purchases",
-    roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN],
-    items: [
       {
-        title: "Purchase",
-        icon: Truck,
-        submenu: [
-          { title: "Purchase Create", to: "/purchases/create" },
-          { title: "Purchase Manage", to: "/purchases" },
-          { title: "Purchase Return", to: "/purchase-returns/create" },
-          { title: "Purchase Return Manage", to: "/purchase-returns" },
-        ],
-      },
-    ],
-  },
-
-  /* =======================
-     INVENTORY
-  ======================== */
-  {
-    header: "Inventory",
-    roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.CASHIER],
-    items: [
-      {
-        title: "Stock",
-        roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.CASHIER],
+        title: "Stock Management",
         icon: Boxes,
         submenu: [
           {
             title: "Stock Details",
-            roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN],
             to: "/inventory/stock",
           },
           {
-            title: "Create Transfer",
-            roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN],
-            to: "/inventory/create-transfer",
-          },
-          {
-            title: "Manage Transfer",
-            roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.CASHIER],
+            title: "Stock Transfer",
             to: "/inventory/manage-transfer",
           },
           {
             title: "Low Stock Report",
-            roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN],
             to: "/inventory/low-stock",
           },
         ],
@@ -153,7 +123,6 @@ export const SIDEBAR_MENU = [
       {
         title: "Stock Audit",
         icon: SendToBack,
-        roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN],
         submenu: [
           {
             title: "Manage Audit",
@@ -166,23 +135,52 @@ export const SIDEBAR_MENU = [
         ],
       },
       {
-        title: "Discount",
+        title: "Discount Management",
+        roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN],
         icon: DiscIcon,
-        roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN],
         submenu: [
-          { title: "Discount Create", to: "/inventory/discount-create" },
-          { title: "Discounts Manage", to: "/inventory/discounts" },
+          { title: "Create Discount", to: "/inventory/discount-create" },
+          { title: "Manage Discounts", to: "/inventory/discounts" },
         ],
       },
     ],
   },
 
-  /* =======================
-     USERS & PARTIES
-  ======================== */
+  /* =====================================================
+     PURCHASE & SUPPLY CHAIN
+  ===================================================== */
   {
-    header: "Customer",
-    roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.CASHIER],
+    header: "Purchases & Suppliers",
+    roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN],
+    items: [
+      {
+        title: "Purchases",
+        icon: Truck,
+        submenu: [
+          { title: "Create Purchase", to: "/purchases/create" },
+          { title: "Manage Purchases", to: "/purchases" },
+          { title: "Purchase Returns", to: "/purchase-returns" },
+        ],
+      },
+      {
+        title: "Suppliers",
+        icon: Truck,
+        to: "/suppliers",
+      },
+    ],
+  },
+
+  /* =====================================================
+     CUSTOMERS & PARTIES
+  ===================================================== */
+  {
+    header: "Customers & Parties",
+    roles: [
+      ROLES.SUPER_ADMIN,
+      ROLES.ADMIN,
+      ROLES.MANAGER,
+      ROLES.CASHIER,
+    ],
     items: [
       {
         title: "Customers",
@@ -194,126 +192,75 @@ export const SIDEBAR_MENU = [
         icon: Users,
         to: "/memberships",
       },
-    ],
-  },
-  {
-    header: "Parties",
-    roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN],
-    items: [
-      {
-        title: "Suppliers",
-        icon: Truck,
-        to: "/suppliers",
-      },
       {
         title: "Employees",
         icon: UserCheck,
+        roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN],
         to: "/employees",
       },
     ],
   },
 
-  /* =======================
-     ACCOUNTING
-  ======================== */
+  /* =====================================================
+     FINANCE & ACCOUNTING
+  ===================================================== */
   {
-    header: "Accounting",
-    roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN],
+    header: "Finance & Accounting",
+    roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN],
     items: [
       {
-        title: "Accounts",
+        title: "Expenses",
         icon: Calculator,
-        submenu: [
-          { title: "Expenses", to: "/accounting/expenses" },
-          // { title: "Chart of Accounts", to: "/accounting/coa" },
-          // { title: "Journal Entry", to: "/journal/entries" },
-          // { title: "Journal Manage", to: "/accounting/journal" },
-          // { title: "Ledger Manage", to: "/accounting/ledger" },
-        ],
+        to: "/accounting/expenses",
       },
       {
-        title: "Reports",
-        roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN],
+        title: "Financial Reports",
         icon: BarChart3,
         submenu: [
-          { title: "Stocks Reports", to: "/reports/stocks" },
-          { title: "Sales Reports", to: "/reports/sales" },
+          { title: "Stock Report", to: "/reports/stocks" },
+          { title: "Sales Report", to: "/reports/sales" },
           { title: "Trial Balance", to: "/reports/trial-balance" },
           { title: "Profit & Loss", to: "/reports/profit-loss" },
           { title: "Balance Sheet", to: "/reports/balance-sheet" },
-          // { title: "Ledger Report", to: "/reports/ledger" },
-          { title: "Party Statement", to: "/reports/statements" },
           { title: "Cash Flow", to: "/reports/cash-flow" },
+          { title: "Party Statement", to: "/reports/statements" },
         ],
       },
     ],
   },
 
-  /* =======================
+  /* =====================================================
      HR & PAYROLL
-  ======================== */
+  ===================================================== */
   {
-    header: "HR & Payroll",
-    roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN],
+    header: "Human Resources",
+    roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN],
     items: [
       {
         title: "Attendance",
         icon: CalendarCheck,
         to: "/hr/attendance",
       },
-      // {
-      //   title: "Commission",
-      //   icon: Wallet,
-      //   to: "/hr/commission",
-      // },
       {
-        title: "Payroll Create",
+        title: "Payroll",
         icon: Briefcase,
-        to: "/hr/payroll",
-      },
-      {
-        title: "Payroll Manage",
-        icon: Briefcase,
-        to: "/hr/payroll/salary-sheet",
+        submenu: [
+          { title: "Create Payroll", to: "/hr/payroll" },
+          { title: "Salary Sheet", to: "/hr/payroll/salary-sheet" },
+        ],
       },
     ],
   },
 
-  /* =======================
-     ADMINISTRATION
-  ======================== */
+  /* =====================================================
+     SYSTEM ADMINISTRATION
+  ===================================================== */
   {
-    header: "Administration",
-    roles: [ROLES.ADMIN, ROLES.SUPER_ADMIN],
-    items: [
-      {
-        title: "Settings",
-        icon: Settings,
-        to: "/settings/loyalty",
-      },
-      {
-        title: "User Management",
-        icon: Users,
-        to: "/settings/users",
-      },
-
-      // {
-      //   title: "Activity Logs",
-      //   icon: Activity,
-      //   to: "/settings/logs",
-      // },
-    ],
-  },
-
-  /* =======================
-     BRANCH MANAGEMENT
-  ======================== */
-  {
-    header: "Business Operations",
+    header: "System Administration",
     roles: [ROLES.SUPER_ADMIN],
     items: [
       {
-        title: "Branch Manage",
+        title: "Branch Management",
         icon: GitBranch,
         to: "/branches",
       },
@@ -321,6 +268,16 @@ export const SIDEBAR_MENU = [
         title: "Opening Balance",
         icon: DollarSignIcon,
         to: "/settings/opening-balance",
+      },
+      {
+        title: "User Management",
+        icon: Users,
+        to: "/settings/users",
+      },
+      {
+        title: "System Settings",
+        icon: Settings,
+        to: "/settings/loyalty",
       },
     ],
   },

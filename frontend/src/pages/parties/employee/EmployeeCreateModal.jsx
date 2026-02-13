@@ -66,7 +66,7 @@ export default function EmployeeCreateModal({ isOpen, setIsOpen, refetch }) {
   const commissionType = watch("payroll.commissionType");
 
   const onSubmit = async (data) => {
-    console.log("data",data)
+
     if (data.payroll.commissionType && !data.payroll.commissionValue) {
       return toast.error("Commission value is required");
     }
@@ -79,7 +79,7 @@ export default function EmployeeCreateModal({ isOpen, setIsOpen, refetch }) {
         refetch?.();
       },
     });
-    console.log("Payrole",res)
+ 
   };
 
   return (

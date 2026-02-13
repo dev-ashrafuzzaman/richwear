@@ -137,8 +137,8 @@ export default function DiscountCreatePage() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {[
                 { value: "PRODUCT", label: "Product", icon: Package },
-                // { value: "CATEGORY", label: "Category", icon: Tag },
-                // { value: "BRANCH", label: "Branch", icon: Globe },
+                { value: "CATEGORY", label: "Category", icon: Tag },
+                { value: "BRANCH", label: "Branch", icon: Globe },
                 // { value: "BILL", label: "Bill", icon: CreditCard },
               ].map((option) => {
                 const Icon = option.icon;

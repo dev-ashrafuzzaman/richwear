@@ -21,7 +21,7 @@ export default function ExpenseCreateModal({ isOpen, setIsOpen, refetch }) {
       referenceNo: data.referenceNo,
     };
 
-    console.log("expense", payload);
+
       await request("/expenses", "POST", payload, {
       retries: 2,
       successMessage: "Expense created successfully",

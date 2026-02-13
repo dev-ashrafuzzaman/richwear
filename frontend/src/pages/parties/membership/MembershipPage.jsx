@@ -11,7 +11,7 @@ const MembershipPage = () => {
   const navigate = useNavigate();
 
   const goToOverview = (row) => {
-console.log("memen",row)
+
     navigate(`/memberships/${row.customerId}`);
   };
 

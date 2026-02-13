@@ -3,7 +3,7 @@ import { QRCodeSVG } from "qrcode.react";
 
 export default function PosInvoicePrint({ data }) {
   const { sale, customer, branch, items, summary, payments } = data;
-console.log("printin",data)
+
   return (
     <div className="pos-receipt">
       <div className="header-center">

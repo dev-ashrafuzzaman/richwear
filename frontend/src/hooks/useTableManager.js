@@ -6,12 +6,13 @@ import useAxiosSecure from "./useAxiosSecure";
 
 export default function useTableManager(route, options = {}) {
   const {
-    queryKey = route,
+    queryKey,
     initialQuery = { page: 1, limit: 10 },
     transform,
     staleTime = 30_000,
     onError,
     enabled = true, // 🔥 KEY ADDITION
+    keepPreviousData = true,
   } = options;
 
   const { axiosSecure } = useAxiosSecure();
@@ -43,7 +44,7 @@ export default function useTableManager(route, options = {}) {
 
       setSearchParams(params, { replace: true });
     },
-    [searchParams, setSearchParams]
+    [searchParams, setSearchParams],
   );
 
   const resetQuery = useCallback(() => {
@@ -63,9 +64,7 @@ export default function useTableManager(route, options = {}) {
       // 🔥 Normalize error (ERP friendly)
       const errorPayload = {
         message:
-          err?.response?.data?.message ||
-          err?.message ||
-          "Network error",
+          err?.response?.data?.message || err?.message || "Network error",
         status: err?.response?.status || 500,
       };
 
@@ -73,17 +72,11 @@ export default function useTableManager(route, options = {}) {
     }
   };
 
-  const {
-    data,
-    isLoading,
-    isFetching,
-    error,
-    refetch,
-  } = useQuery({
-    queryKey: [queryKey, query],
+  const { data, isLoading, isFetching, error, refetch } = useQuery({
+    queryKey: queryKey ? [queryKey, query] : [route, query],
     queryFn: fetchData,
     enabled: enabled && !!route, // 🔥 THIS SOLVES YOUR ISSUE
-    keepPreviousData: true,
+    keepPreviousData,
     staleTime,
     onError,
   });

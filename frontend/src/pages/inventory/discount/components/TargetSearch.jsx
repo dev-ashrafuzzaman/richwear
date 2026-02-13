@@ -14,7 +14,7 @@ export default function TargetSearch({ targetType, onSelect }) {
 
     const routeMap = {
       PRODUCT: `/products?search=${search}&limit=10`,
-      CATEGORY: `/categories?search=${search}&limit=10`,
+      CATEGORY: `/categories?level=1&search=${search}&limit=10`,
       BRANCH: `/branches?search=${search}&limit=10`,
     };
 

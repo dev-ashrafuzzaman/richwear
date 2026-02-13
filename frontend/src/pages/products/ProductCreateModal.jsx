@@ -21,8 +21,6 @@ const SIZE_TYPE_OPTIONS = [
   { label: "No Size (Accessory)", value: "N/A" },
 ];
 
-
-
 /* =========================
    ProductCreateModal
 ========================= */
@@ -63,9 +61,12 @@ export default function ProductCreateModal({ isOpen, setIsOpen, refetch }) {
   ------------------------ */
   const level1Table = useTableManager("/categories?level=1");
 
-  // ✅ FIX: Level-2 only loads if level-1 exists
   const level2Table = useTableManager(
     level1Id ? `/categories?level=2&parentId=${level1Id}` : null,
+    {
+      enabled: !!level1Id,
+      keepPreviousData: false,
+    },
   );
 
   const productTypeTable = useTableManager("/products/types");
@@ -77,6 +78,7 @@ export default function ProductCreateModal({ isOpen, setIsOpen, refetch }) {
     const payload = {
       name: data.name.trim(),
       categoryId: data.categoryId,
+      level1Id,
       productTypeId: data.productTypeId,
       sizeType: data.sizeType,
       colors: data.colors.map((c) => c.value),
@@ -116,18 +118,21 @@ export default function ProductCreateModal({ isOpen, setIsOpen, refetch }) {
           <Button
             variant="outline"
             onClick={() => setIsOpen(false)}
-            className="px-6">
+            className="px-6"
+          >
             Cancel
           </Button>
           <Button
             onClick={handleSubmit(onSubmit)}
             disabled={!confirmed || loading}
             className="px-8 bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-sm"
-            prefix={loading && <Loader2 className="w-4 h-4 animate-spin" />}>
+            prefix={loading && <Loader2 className="w-4 h-4 animate-spin" />}
+          >
             Create Product
           </Button>
         </div>
-      }>
+      }
+    >
       <div className="space-y-8">
         {/* Form Sections */}
         <div className="space-y-6">
@@ -308,7 +313,8 @@ export default function ProductCreateModal({ isOpen, setIsOpen, refetch }) {
                     sizeType === "TEXT"
                       ? "bg-blue-50 text-blue-700 border border-blue-100"
                       : "bg-gray-50 text-gray-600 border border-gray-100"
-                  }`}>
+                  }`}
+                >
                   {sizeType === "TEXT"
                     ? "✓ Product will use standard text sizes (XS, S, M, L, XL, etc.)"
                     : "✓ This product does not require size specifications"}
@@ -378,11 +384,13 @@ export default function ProductCreateModal({ isOpen, setIsOpen, refetch }) {
                 confirmed
                   ? "bg-linear-to-r from-emerald-50 to-teal-50 text-emerald-700 border border-emerald-100"
                   : "bg-linear-to-r from-amber-50 to-orange-50 text-amber-700 border border-amber-100"
-              }`}>
+              }`}
+            >
               <div
                 className={`w-2 h-2 rounded-full ${
                   confirmed ? "bg-emerald-500 animate-pulse" : "bg-amber-500"
-                }`}></div>
+                }`}
+              ></div>
               <span>
                 {confirmed
                   ? "✓ Ready to create product - All information confirmed"

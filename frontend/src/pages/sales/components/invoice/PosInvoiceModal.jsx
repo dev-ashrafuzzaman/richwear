@@ -11,7 +11,7 @@ export default function PosInvoiceModal({
   data,
   onAfterClose,
 }) {
-  console.log(data)
+
   const printedRef = useRef(false);
   const printWindowRef = useRef(null);
 

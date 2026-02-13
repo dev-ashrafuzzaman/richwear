@@ -127,7 +127,7 @@ const ReceiveStockTransferPage = () => {
     }
 
     setLoading(true);
-    console.log("iteam", items);
+
     try {
       await request(
         `/stocks/transfers/${id}/receive`,

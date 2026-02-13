@@ -36,7 +36,7 @@ export default function PosPage() {
   const [modalData, setModalData] = useState({});
   const searchRef = useRef(null);
   const salesmanRef = useRef(null);
-  console.log(customerSummary);
+
   /* ---------------- Confirm Sale ---------------- */
   const confirmSale = async (payments, resetPayment) => {
     const payload = {
@@ -66,7 +66,6 @@ export default function PosPage() {
       })),
     };
 
-    console.log("sales", payload);
     const res = await request("/sales", "POST", payload);
     setModalData(res.data);
     openModal("printPosInvoice");
