@@ -6,13 +6,11 @@ import Button from "../ui/Button";
 
 export default function BarcodeModal({ isOpen, setIsOpen, barcodes }) {
   /* ---------------- STATE ---------------- */
-  const [selected, setSelected] = useState(() =>
-    barcodes.map(() => true)
-  );
+  const [selected, setSelected] = useState(() => barcodes.map(() => true));
 
   const selectedBarcodes = useMemo(
     () => barcodes.filter((_, i) => selected[i]),
-    [barcodes, selected]
+    [barcodes, selected],
   );
 
   const allSelected = selected.every(Boolean);
@@ -23,9 +21,7 @@ export default function BarcodeModal({ isOpen, setIsOpen, barcodes }) {
     color ? color.replace(/\s+/g, "").slice(0, 3).toUpperCase() : "";
 
   const toggleOne = (index) => {
-    setSelected((prev) =>
-      prev.map((v, i) => (i === index ? !v : v))
-    );
+    setSelected((prev) => prev.map((v, i) => (i === index ? !v : v)));
   };
 
   const selectAll = () => {
@@ -124,17 +120,17 @@ export default function BarcodeModal({ isOpen, setIsOpen, barcodes }) {
         size && color
           ? `(${size}-${color})`
           : size
-          ? `(${size})`
-          : color
-          ? `(${color})`
-          : "";
+            ? `(${size})`
+            : color
+              ? `(${color})`
+              : "";
 
       return `
       <div class="label">
         <div class="brand">RICHWEAR</div>
 
         <div class="category">
-          ${item.parentCategory || ""}${item.parentCategory && item.subCategory ? " -> " : ""}${item.subCategory || ""} ${variant}
+       ${item.subCategory || ""} " -> " ${variant}
         </div>
 
         <div class="product">${item.productName || ""}</div>
@@ -163,7 +159,7 @@ export default function BarcodeModal({ isOpen, setIsOpen, barcodes }) {
         displayValue: false,
         margin: 0
       });
-    `
+    `,
       )
       .join("\n")}
     window.onload = () => window.print();
@@ -204,10 +200,10 @@ export default function BarcodeModal({ isOpen, setIsOpen, barcodes }) {
             size && color
               ? `(${size}-${color})`
               : size
-              ? `(${size})`
-              : color
-              ? `(${color})`
-              : "";
+                ? `(${size})`
+                : color
+                  ? `(${color})`
+                  : "";
 
           return (
             <div
