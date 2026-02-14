@@ -111,7 +111,11 @@ export const SIDEBAR_MENU = [
             to: "/inventory/stock",
           },
           {
-            title: "Stock Transfer",
+            title: "Create Transfer",
+            to: "/inventory/create-transfer",
+          },
+          {
+            title: "Manage Transfer",
             to: "/inventory/manage-transfer",
           },
           {
@@ -127,10 +131,6 @@ export const SIDEBAR_MENU = [
           {
             title: "Manage Audit",
             to: "/stock-audit/manage",
-          },
-          {
-            title: "New Audit",
-            to: "/stock-audits/create",
           },
         ],
       },
@@ -206,7 +206,7 @@ export const SIDEBAR_MENU = [
   ===================================================== */
   {
     header: "Finance & Accounting",
-    roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN],
+    roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN,ROLES.MANAGER],
     items: [
       {
         title: "Expenses",
@@ -234,7 +234,7 @@ export const SIDEBAR_MENU = [
   ===================================================== */
   {
     header: "Human Resources",
-    roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN],
+    roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN ,ROLES.MANAGER],
     items: [
       {
         title: "Attendance",
@@ -257,25 +257,29 @@ export const SIDEBAR_MENU = [
   ===================================================== */
   {
     header: "System Administration",
-    roles: [ROLES.SUPER_ADMIN],
+    roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN],
     items: [
       {
         title: "Branch Management",
+        roles: [ROLES.SUPER_ADMIN],
         icon: GitBranch,
         to: "/branches",
       },
       {
         title: "Opening Balance",
+        roles: [ROLES.SUPER_ADMIN],
         icon: DollarSignIcon,
         to: "/settings/opening-balance",
       },
       {
         title: "User Management",
+        roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN],
         icon: Users,
         to: "/settings/users",
       },
       {
         title: "System Settings",
+        roles: [ROLES.SUPER_ADMIN, ROLES.ADMIN],
         icon: Settings,
         to: "/settings/loyalty",
       },

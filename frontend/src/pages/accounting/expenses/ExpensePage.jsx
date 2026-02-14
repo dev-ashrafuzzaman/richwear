@@ -31,10 +31,12 @@ export default function ExpensePage() {
         ]}
         columns={[
           { key: "expenseDate", label: "Date" },
-          { key: "accountName", label: "Category" },
+          { key: "category", label: "Category" },
           { key: "amount", label: "Amount" },
-          { key: "paymentMethod", label: "Payment Method" },
+          { key: "referenceNo", label: "Refarence" },
+          { key: "payment", label: "Payment Method" },
           { key: "description", label: "Description" },
+          { key: "status", label: "Status" },
         ]}
       />
     </Page>
