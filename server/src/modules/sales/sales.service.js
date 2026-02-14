@@ -302,15 +302,15 @@ export const createSaleService = async ({ db, payload, user }) => {
       });
 
       // 🔥 ACCRUAL ACCOUNTING (Dr Expense / Cr Payable)
-      if (commissionResult?.amount > 0) {
-        await commissionAccrualAccounting({
-          db,
-          session,
-          commissionId: commissionResult.commissionId,
-          amount: commissionResult.amount,
-          branchId,
-        });
-      }
+      // if (commissionResult?.amount > 0) {
+      //   await commissionAccrualAccounting({
+      //     db,
+      //     session,
+      //     commissionId: commissionResult.commissionId,
+      //     amount: commissionResult.amount,
+      //     branchId,
+      //   });
+      // }
     }
 
     /* ---------- AUDIT ---------- */

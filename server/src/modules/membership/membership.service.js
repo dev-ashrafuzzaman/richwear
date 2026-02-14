@@ -20,6 +20,9 @@ export async function createMembership({
     .collection(COLLECTIONS.BRANCHES)
     .findOne({ _id: new ObjectId(branchId) }, { session });
 
+  if (!branch) {
+    throw new Error("Only Branch User Access / Not Found");
+  }
   if (existing) {
     throw new Error("Membership already exists");
   }

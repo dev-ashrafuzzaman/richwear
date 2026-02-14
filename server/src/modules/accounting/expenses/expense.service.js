@@ -48,7 +48,7 @@ export const createExpenseService = async ({ db, session, payload, user }) => {
     description,
     referenceNo,
     expenseDate: new Date(expenseDate),
-    createdBy: user._id,
+    createdBy: new ObjectId(user._id),
     createdAt: new Date(),
     status: "POSTED",
   };
