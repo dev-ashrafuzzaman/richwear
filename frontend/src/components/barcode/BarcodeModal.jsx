@@ -113,25 +113,38 @@ export default function BarcodeModal({ isOpen, setIsOpen, barcodes }) {
 <body>
   ${selectedBarcodes
     .map((item) => {
-      const size = item.attribute?.size || "";
-      const color = shortColor(item.attribute?.color);
+      const cleanValue = (val) => {
+    if (!val) return "";
+    const v = String(val).trim().toLowerCase();
+    if (["na", "n/a"].includes(v)) return "";
+    return val;
+  };
 
-      const variant =
-        size && color
-          ? `(${size}-${color})`
-          : size
-            ? `(${size})`
-            : color
-              ? `(${color})`
-              : "";
+  const size = cleanValue(item.attribute?.size);
+  const color = cleanValue(shortColor(item.attribute?.color));
+
+  const variant =
+    size && color
+      ? `(${size}-${color})`
+      : size
+        ? `(${size})`
+        : color
+          ? `(${color})`
+          : "";
 
       return `
       <div class="label">
         <div class="brand">RICHWEAR</div>
 
-        <div class="category">
-       ${item.subCategory || ""} " -> " ${variant}
-        </div>
+    <div class="category">
+  ${item.subCategory || ""}
+  ${
+    variant && !["na", "n/a"].includes(variant.toLowerCase())
+      ? ` -> ${variant}`
+      : ""
+  }
+</div>
+
 
         <div class="product">${item.productName || ""}</div>
 

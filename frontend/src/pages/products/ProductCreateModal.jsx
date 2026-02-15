@@ -56,6 +56,11 @@ export default function ProductCreateModal({ isOpen, setIsOpen, refetch }) {
   const sizeType = useWatch({ control, name: "sizeType" });
   const confirmed = useWatch({ control, name: "confirm" });
 
+  const selectedProductTypeId = useWatch({
+    control,
+    name: "productTypeId",
+  });
+
   /* -----------------------
      Data Sources
   ------------------------ */
@@ -70,6 +75,10 @@ export default function ProductCreateModal({ isOpen, setIsOpen, refetch }) {
   );
 
   const productTypeTable = useTableManager("/products/types");
+
+  const selectedProductType = productTypeTable.rows.find(
+    (p) => p._id === selectedProductTypeId,
+  );
 
   /* -----------------------
      Submit Handler
@@ -323,35 +332,36 @@ export default function ProductCreateModal({ isOpen, setIsOpen, refetch }) {
             </div>
           </div>
 
-          {/* Colors Section */}
-          <div className="bg-gray-50/60 rounded-xl p-5 border border-gray-100">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-1.5 h-5 bg-linear-to-b from-purple-500 to-pink-500 rounded-full"></div>
-              <h3 className="text-sm font-semibold text-gray-800">
-                COLOR OPTIONS
-              </h3>
-            </div>
+          {selectedProductType?.name !== "Accessories" && (
+            <div className="bg-gray-50/60 rounded-xl p-5 border border-gray-100">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-1.5 h-5 bg-linear-to-b from-purple-500 to-pink-500 rounded-full"></div>
+                <h3 className="text-sm font-semibold text-gray-800">
+                  COLOR OPTIONS
+                </h3>
+              </div>
 
-            <div className="pl-1">
-              <Controller
-                name="colors"
-                control={control}
-                render={({ field }) => (
-                  <MultiSelect
-                    label="Select Available Colors"
-                    value={field.value}
-                    onChange={field.onChange}
-                    options={COLOR_OPTIONS}
-                    placeholder="Choose colors for this product"
-                    className="bg-white"
-                  />
-                )}
-              />
-              <p className="text-xs text-gray-500 mt-2">
-                Selected colors will be available for this product variant
-              </p>
+              <div className="pl-1">
+                <Controller
+                  name="colors"
+                  control={control}
+                  render={({ field }) => (
+                    <MultiSelect
+                      label="Select Available Colors"
+                      value={field.value}
+                      onChange={field.onChange}
+                      options={COLOR_OPTIONS}
+                      placeholder="Choose colors for this product"
+                      className="bg-white"
+                    />
+                  )}
+                />
+                <p className="text-xs text-gray-500 mt-2">
+                  Selected colors will be available for this product variant
+                </p>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Confirmation Section */}
           <div className="bg-linear-to-r from-gray-50 to-gray-50/50 rounded-xl p-5 border border-gray-200">
