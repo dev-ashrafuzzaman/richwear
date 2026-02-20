@@ -5,7 +5,10 @@ import { ensureObjectId } from "../../utils/ensureObjectId.js";
 import { getDB } from "../../config/db.js";
 import { getBusinessDateBD } from "../../utils/businessDate.js";
 import { calculateDiscount, getBDMidnight } from "./discount/discount.utils.js";
-import { getActiveDiscountsForPOS, getActiveProductDiscounts } from "./discount/discount.service.js";
+import {
+  getActiveDiscountsForPOS,
+  getActiveProductDiscounts,
+} from "./discount/discount.service.js";
 import { generateCode } from "../../utils/codeGenerator.js";
 import { getMainWarehouse } from "../branches/branch.utils.js";
 import { upsertStock } from "./stock.utils.js";
@@ -334,14 +337,10 @@ export const getPosItems = async (req, res, next) => {
 
     for (const p of products) {
       productMap.set(p._id.toString(), p);
-      p.categoryPath?.forEach((catId) =>
-        categorySet.add(catId.toString())
-      );
+      p.categoryPath?.forEach((catId) => categorySet.add(catId.toString()));
     }
 
-    const categoryIds = [...categorySet].map(
-      (id) => new ObjectId(id)
-    );
+    const categoryIds = [...categorySet].map((id) => new ObjectId(id));
 
     /* ===============================
        FETCH ALL ACTIVE DISCOUNTS
@@ -400,7 +399,7 @@ export const getPosItems = async (req, res, next) => {
       }
 
       // 3️⃣ BRANCH
-      else if (branchDiscount) {
+      if (!discount && branchDiscount) {
         discount = branchDiscount;
       }
 
@@ -419,7 +418,7 @@ export const getPosItems = async (req, res, next) => {
         type: discount.type,
         value: Number(discount.value),
       });
-
+      console.log("disc", discount);
       return {
         ...item,
         discountType: discount.type,

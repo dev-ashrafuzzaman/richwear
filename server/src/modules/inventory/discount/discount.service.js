@@ -111,19 +111,25 @@ export const getActiveDiscountsForPOS = async ({
 }) => {
   const today = getBDMidnight();
 
-  return db.collection("discounts").find({
-    status: "active",
-    startDate: { $lte: today },
-    $or: [
-      { isLifetime: true },
-      { endDate: { $gte: today } },
-    ],
-    $or: [
-      { targetType: "PRODUCT", targetId: { $in: productIds } },
-      { targetType: "CATEGORY", targetId: { $in: categoryIds } },
-      { targetType: "BRANCH", targetId: new ObjectId(branchId) },
-    ],
-  }).toArray();
+return db.collection("discounts").find({
+  status: "active",
+  startDate: { $lte: today },
+  $and: [
+    {
+      $or: [
+        { isLifetime: true },
+        { endDate: { $gte: today } },
+      ],
+    },
+    {
+      $or: [
+        { targetType: "PRODUCT", targetId: { $in: productIds } },
+        { targetType: "CATEGORY", targetId: { $in: categoryIds } },
+        { targetType: "BRANCH", targetId: new ObjectId(branchId) },
+      ],
+    },
+  ],
+}).toArray();
 };
 
 

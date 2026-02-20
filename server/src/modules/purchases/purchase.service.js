@@ -18,6 +18,7 @@ import { aggregateList } from "../../database/aggregateList.js";
 import { ObjectId } from "mongodb";
 import { generateVariantSKU } from "../../utils/sku/generateVariantSKU.js";
 import { getDB } from "../../config/db.js";
+import { ensureObjectId } from "../../utils/ensureObjectId.js";
 
 /* ---------------------------------------
   Helpers
@@ -57,6 +58,8 @@ async function upsertStock({
   salePrice,
   costPrice,
   searchableText,
+  refType,
+  refId,
 }) {
   /* ======================
      1️⃣ UPDATE STOCK SNAPSHOT (OPTIONAL CACHE)
@@ -97,7 +100,8 @@ async function upsertStock({
       costPrice,
       salePrice,
       balanceQty: qty,
-      refType: "PURCHASE",
+      refType,
+      refId,
       createdAt: new Date(),
     },
     { session },
@@ -200,6 +204,7 @@ export const createPurchase = async ({ db, body, req }) => {
     let totalQty = 0;
     let totalAmount = 0;
     const barcodePayload = [];
+    const stockOperations = [];
 
     /* ======================
        ITEM LOOP
@@ -312,10 +317,22 @@ export const createPurchase = async ({ db, body, req }) => {
         /* ======================
        STOCK UPSERT
     ====================== */
-        await upsertStock({
-          db,
-          session,
-          branchId,
+        // await upsertStock({
+        //   db,
+        //   session,
+        //   branchId,
+        //   variantId: variant._id,
+        //   productId: product._id,
+        //   productName: product.name,
+        //   attributes: { size, color },
+        //   sku: variant.sku,
+        //   qty,
+        //   costPrice,
+        //   salePrice,
+        //   searchableText: `${product.name} ${product.productCode} ${variant.sku} ${size} ${color}`,
+        // });
+
+        stockOperations.push({
           variantId: variant._id,
           productId: product._id,
           productName: product.name,
@@ -387,6 +404,17 @@ export const createPurchase = async ({ db, body, req }) => {
       },
       { session },
     );
+
+    for (const stock of stockOperations) {
+      await upsertStock({
+        db,
+        session,
+        branchId,
+        ...stock,
+        refType: "PURCHASE",
+        refId: insertResult.insertedId, // ✅ real reference
+      });
+    }
 
     /* ======================
        ACCOUNTING
@@ -525,7 +553,7 @@ export const getSinglePurchaseInvoice = async (req, res, next) => {
   try {
     const db = getDB();
     const purchaseId = toObjectId(req.params.id, "purchaseId");
-   
+
     const data = await db
       .collection(COLLECTIONS.PURCHASES)
       .aggregate([
