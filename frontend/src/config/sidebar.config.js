@@ -159,6 +159,7 @@ export const SIDEBAR_MENU = [
         submenu: [
           { title: "Create Purchase", to: "/purchases/create" },
           { title: "Manage Purchases", to: "/purchases" },
+          { title: "Create Returns", to: "/purchase-returns/create" },
           { title: "Purchase Returns", to: "/purchase-returns" },
         ],
       },
