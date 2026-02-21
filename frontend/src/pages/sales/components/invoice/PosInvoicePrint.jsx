@@ -126,7 +126,7 @@ export default function PosInvoicePrint({ data }) {
       <p className="center small">Return accepted within 7 days with invoice</p>
       <p className="center small">
         Thank you for shopping with us <br />
-        Software By: Codivoo Technologies- MO: 01711347754
+        Software by Softnext IT MO 01728664312
       </p>
     </div>
   );

@@ -602,7 +602,7 @@ export default function Dashboard() {
       path: "/reports/sales",
     },
     {
-      label: "Manage Inventory",
+      label: "Stock Reports",
       icon: Package,
       color: "bg-amber-500",
       path: "/reports/stocks",

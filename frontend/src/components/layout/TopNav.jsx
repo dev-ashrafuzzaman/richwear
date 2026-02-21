@@ -58,7 +58,7 @@ const quickActions = [
     label: "Sale Return",
     path: "/sales",
     color: "bg-blue-500",
-    roles: ["Admin", "Super Admin", "Manager", "Cashier"], 
+    roles: ["Manager", "Cashier"], 
   },
   {
     icon: <PackagePlus className="w-4 h-4" />,

@@ -10,6 +10,8 @@ import useApi from "../../hooks/useApi";
 import useModalManager from "../../hooks/useModalManager";
 import PosInvoiceModal from "./components/invoice/PosInvoiceModal";
 import PosCustomerInfo from "./components/PosCustomerInfo";
+import POSHeader from "./components/POSHeader";
+import { useAuth } from "../../context/useAuth";
 
 export default function PosPage() {
   const { request } = useApi();
@@ -36,6 +38,7 @@ export default function PosPage() {
   const [modalData, setModalData] = useState({});
   const searchRef = useRef(null);
   const salesmanRef = useRef(null);
+  const {user} = useAuth()
 
   /* ---------------- Confirm Sale ---------------- */
   const confirmSale = async (payments, resetPayment) => {
@@ -177,50 +180,7 @@ export default function PosPage() {
         />
       )}
       {/* POS Header – Professional UI/UX */}
-      <section className="">
-        <div className="bg-linear-to-r from-blue-50 to-indigo-50 border border-gray-200 rounded-2xl shadow-sm">
-          <div className="flex items-center justify-between px-8 py-5">
-            {/* Left Section */}
-            <div className="flex items-center gap-5">
-              <div className="w-14 h-14 rounded-2xl bg-linear-to-br from-blue-600 to-cyan-500 flex items-center justify-center shadow-md">
-                <svg
-                  className="w-7 h-7 text-white"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"
-                  />
-                </svg>
-              </div>
-
-              <div>
-                <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">
-                  Point of Sale
-                </h1>
-                <div className="mt-1 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-green-50 text-green-600 text-sm font-medium">
-                  <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                  Live Session Active
-                </div>
-              </div>
-            </div>
-
-            {/* Right Section */}
-            <div className="text-right">
-              <h2 className="text-xl font-bold text-gray-900 tracking-wide">
-                RICHWEAR
-              </h2>
-              <p className="mt-1 text-sm font-medium text-blue-600 uppercase tracking-wider">
-                Jhikargachha Outlet
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
+     <POSHeader  user={user}/>
 
       <div className="py-2 grid grid-cols-12 gap-2">
         {/* LEFT */}
